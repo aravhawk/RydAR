@@ -56,6 +56,45 @@ final class ScreeningTests: XCTestCase {
         XCTAssertEqual(kept.1, .conflictKeptUnpaved)
     }
 
+    func testLookAheadNeverShrinksAndCapsAt450() {
+        let calm = ApproachMemory(latePasses: 0, earlyPasses: 0)
+        let none = VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false)
+        let base = baseLookAheadMeters(speedMps: 20)
+        XCTAssertEqual(lookAheadMeters(speedMps: 20, memory: calm, vision: none), base, accuracy: 0.001)
+
+        let late = ApproachMemory(latePasses: 3, earlyPasses: 0)
+        let earlier = lookAheadMeters(speedMps: 20, memory: late, vision: none)
+        XCTAssertGreaterThan(earlier, base)
+        XCTAssertLessThanOrEqual(earlier, 450)
+
+        let alreadyFar = lookAheadMeters(speedMps: 80, memory: late, vision: VisionCaution(standingWaterOrSnow: true, severeUnevenOnPaved: true))
+        XCTAssertEqual(alreadyFar, 450, accuracy: 0.001)
+    }
+
+    func testOneLatePassDoesNotMoveTheWarning() {
+        let one = ApproachMemory(latePasses: 1, earlyPasses: 0)
+        let none = VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false)
+        XCTAssertEqual(
+            lookAheadMeters(speedMps: 15, memory: one, vision: none),
+            baseLookAheadMeters(speedMps: 15),
+            accuracy: 0.001
+        )
+    }
+
+    func testWaterMovesTheWarningEarlierWithoutAHabit() {
+        let calm = ApproachMemory(latePasses: 0, earlyPasses: 0)
+        let water = VisionCaution(standingWaterOrSnow: true, severeUnevenOnPaved: false)
+        let base = baseLookAheadMeters(speedMps: 15)
+        XCTAssertEqual(lookAheadMeters(speedMps: 15, memory: calm, vision: water), base * 1.3, accuracy: 0.001)
+    }
+
+    func testRepeatPromptStaysOffUntilThisPassIsOverRange() {
+        let range = screeningRange(radiusFeet: 200, surface: .paved)
+        XCTAssertTrue(suppressRepeatPrompt(passesUnderRange: 3, effectiveSpeed: range.low, range: range))
+        XCTAssertFalse(suppressRepeatPrompt(passesUnderRange: 3, effectiveSpeed: range.low + 0.1, range: range))
+        XCTAssertFalse(suppressRepeatPrompt(passesUnderRange: 2, effectiveSpeed: range.low, range: range))
+    }
+
     func testSpokenLineMatchesTheContract() throws {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

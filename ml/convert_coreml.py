@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert a trained checkpoint to a Core ML package. Run this on a Mac."""
+"""Convert a trained three-head checkpoint to a Core ML package. Run this on a Mac."""
 
 from __future__ import annotations
 
@@ -17,22 +17,27 @@ def main() -> int:
     try:
         import coremltools as ct
         import torch
-        from torch import nn
-        from torchvision import models
+        from roadnet import RoadNet
     except ImportError:
         print("On a Mac: python3 -m pip install torch torchvision coremltools", file=sys.stderr)
         return 1
 
     blob = torch.load(args.checkpoint, map_location="cpu")
-    labels = list(blob["labels"])
-    model = models.mobilenet_v3_small(weights=None)
-    model.classifier[-1] = nn.Linear(model.classifier[-1].in_features, len(labels))
+    model = RoadNet(pretrained=False)
     model.load_state_dict(blob["state_dict"])
     model.eval()
 
+    class SoftmaxHeads(torch.nn.Module):
+        def __init__(self, net: RoadNet) -> None:
+            super().__init__()
+            self.net = net
+
+        def forward(self, x: torch.Tensor):
+            material, friction, uneven = self.net(x)
+            return material.softmax(dim=1), friction.softmax(dim=1), uneven.softmax(dim=1)
+
     example = torch.rand(1, 3, 224, 224)
-    traced = torch.jit.trace(model, example)
-    # ImageType scale/bias matches the Normalize() used in train_surface.py.
+    traced = torch.jit.trace(SoftmaxHeads(model), example)
     mean = (0.485, 0.456, 0.406)
     std = (0.229, 0.224, 0.225)
     image = ct.ImageType(
@@ -45,12 +50,20 @@ def main() -> int:
     mlmodel = ct.convert(
         traced,
         inputs=[image],
-        classifier_config=ct.ClassifierConfig(labels),
+        outputs=[
+            ct.TensorType(name="material"),
+            ct.TensorType(name="friction"),
+            ct.TensorType(name="uneven"),
+        ],
     )
     mlmodel.short_description = (
-        "Experimental road-surface classifier trained on RSCD (CC BY 4.0). "
-        "Not validated on Arkansas roads. Labels: paved, unpaved, cant_tell."
+        "Experimental road-state model trained on RSCD (CC BY 4.0). "
+        "Not validated on Arkansas roads. Material can only lower the screening "
+        "assumption. Friction appearance and unevenness can only move a warning earlier."
     )
+    mlmodel.user_defined_metadata["material_labels"] = ",".join(blob["material_labels"])
+    mlmodel.user_defined_metadata["friction_labels"] = ",".join(blob["friction_labels"])
+    mlmodel.user_defined_metadata["uneven_labels"] = ",".join(blob["uneven_labels"])
     args.output.parent.mkdir(parents=True, exist_ok=True)
     mlmodel.save(str(args.output))
     print(f"Wrote {args.output}")

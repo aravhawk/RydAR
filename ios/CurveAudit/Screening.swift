@@ -33,4 +33,45 @@ func shouldSpeak(effectiveSpeed: Double, range: ScreeningRange) -> Bool {
     effectiveSpeed > range.low
 }
 
+/// Counts of this driver's past approaches in one context
+/// (surface × radius band × day or night). The prior is two late and two
+/// early, so a single pass cannot move the warning.
+struct ApproachMemory {
+    var latePasses: Int
+    var earlyPasses: Int
+}
+
+/// Camera flags that are allowed to move a warning earlier.
+/// A dry or smooth reading is not represented here, so it cannot raise a speed.
+struct VisionCaution: Equatable {
+    var standingWaterOrSnow: Bool
+    var severeUnevenOnPaved: Bool
+}
+
+func baseLookAheadMeters(speedMps: Double) -> Double {
+    min(450, max(100, speedMps * 7))
+}
+
+/// Physics sets the floor. Memory and the camera can only lengthen it, and
+/// only up to 450 m. The screening range itself does not change here.
+func lookAheadMeters(speedMps: Double, memory: ApproachMemory, vision: VisionCaution) -> Double {
+    let base = baseLookAheadMeters(speedMps: speedMps)
+    var multiplier = 1.0
+    let realPasses = memory.latePasses + memory.earlyPasses
+    let posteriorLate = Double(memory.latePasses + 2) / Double(realPasses + 4)
+    if realPasses >= 3 && posteriorLate > 0.5 {
+        multiplier = max(multiplier, 1.4)
+    }
+    if vision.standingWaterOrSnow || vision.severeUnevenOnPaved {
+        multiplier = max(multiplier, 1.3)
+    }
+    return min(450, base * multiplier)
+}
+
+/// Stay quiet on a curve this driver has already taken under the range three
+/// times, unless this pass is over the range now.
+func suppressRepeatPrompt(passesUnderRange: Int, effectiveSpeed: Double, range: ScreeningRange) -> Bool {
+    passesUnderRange >= 3 && effectiveSpeed <= range.low
+}
+
 let spokenWarning = "Curve ahead. Above screening range."
