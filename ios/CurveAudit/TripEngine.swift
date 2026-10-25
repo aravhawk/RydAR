@@ -210,6 +210,7 @@ struct TripUpdate: Equatable {
     var surface: RoadSurface?
     var surfaceUI: SurfaceUI?
     var completed: [CompletedPass]
+    var gpsGood = false
 }
 
 func driveGate(mode: DriverMode?, speedMps: Double, dashEnabled: Bool, uploadOptIn: Bool) -> DriveGate {
@@ -462,7 +463,8 @@ struct TripMatcher {
             distanceMeters: focus?.distance,
             surface: focus?.surface,
             surfaceUI: focus?.surfaceUI,
-            completed: completed
+            completed: completed,
+            gpsGood: true
         )
     }
 
@@ -576,6 +578,8 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
     var promptStyle: PromptStyle = .normal
     var dashEnabled = false
     var uploadOptIn = false
+    /// Screen hook. The engine still matches, speaks, and logs. The screen does not.
+    var onHandled: ((TripUpdate, Curve?) -> Void)?
     private(set) var snapshot = DriveSnapshot()
 
     private let store: any CurveStore
@@ -584,6 +588,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
     private var matcher = TripMatcher()
     private var tripID: String?
     private var paused = false
+    private var sensorsWanted = true
     private var latestVision = VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false)
     private var latestCamera: CameraEvidence?
     private var horizontalGs: [Double] = []
@@ -622,9 +627,12 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         matcher.begin(driverMode: driverMode)
         tripID = try passLog.startTrip(mode: driverMode, at: date, notes: nil)
         paused = false
+        latestVision = VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false)
+        latestCamera = nil
         snapshot.driverMode = driverMode
         snapshot.tripID = tripID
         snapshot.paused = false
+        sensorsWanted = startSensors
         guard startSensors else { return }
         startSensorsIfNeeded()
     }
@@ -637,6 +645,8 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         }
         matcher.end()
         tripID = nil
+        latestVision = VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false)
+        latestCamera = nil
         snapshot.driverMode = nil
         snapshot.tripID = nil
         snapshot.paused = false
@@ -655,6 +665,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         guard matcher.driverMode != nil else { return }
         paused = false
         snapshot.paused = false
+        guard sensorsWanted else { return }
         startSensorsIfNeeded()
     }
 
@@ -713,7 +724,24 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
             }
         }
         publish(update)
+        let matched = update.gpsGood
+            ? update.matchedCurveID.flatMap { id in nearby.first { $0.id == id } }
+            : nil
+        onHandled?(update, matched)
         return update
+    }
+
+    /// Deletes trips, passes, and timing memory. The curve table stays. Sensors stop.
+    func deletePassHistory() throws {
+        try passLog.deleteAll()
+        endTrip()
+        uploadOptIn = false
+    }
+
+    /// Reads this trip's rows before the caller clears the trip id.
+    func debrief(curves: SQLiteCurveStore) throws -> TripScreenDebrief {
+        guard let tripID else { return TripScreenDebrief() }
+        return try LiveTripDebrief.make(tripID: tripID, log: passLog, curves: curves)
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {

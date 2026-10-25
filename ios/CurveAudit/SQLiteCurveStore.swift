@@ -150,13 +150,22 @@ final class SQLiteConnection {
 }
 
 final class SQLiteCurveStore: CurveStore {
+    static let curveColumns = """
+    id, county, road_name, surface, radius_ft, deflection_deg, \
+    rd_class, rd_design, closed_loop, quality_flags, \
+    lat, lon, min_lat, max_lat, min_lon, max_lon, coordinates_json
+    """
+
     /// Bounding-box lookup. Callers pass a radius; this never reads the whole table.
     static let nearbySQL = """
-    SELECT id, county, road_name, surface, radius_ft, deflection_deg, \
-    rd_class, rd_design, closed_loop, quality_flags, \
-    lat, lon, min_lat, max_lat, min_lon, max_lon, coordinates_json \
+    SELECT \(curveColumns) \
     FROM curves \
     WHERE min_lat <= ? AND max_lat >= ? AND min_lon <= ? AND max_lon >= ?
+    """
+
+    /// One row by primary key. This is not a table scan.
+    static let curveByIDSQL = """
+    SELECT \(curveColumns) FROM curves WHERE id = ?
     """
 
     private let connection: SQLiteConnection
@@ -195,6 +204,23 @@ final class SQLiteCurveStore: CurveStore {
         } catch {
             print("Curve lookup failed: \(error)")
             return []
+        }
+    }
+
+    func curve(id: String) -> Curve? {
+        lock.lock()
+        defer { lock.unlock() }
+        do {
+            var found: Curve?
+            try connection.query(Self.curveByIDSQL, { statement in
+                found = self.curve(from: statement)
+            }, bind: { statement in
+                self.connection.bind(statement, 1, id)
+            })
+            return found
+        } catch {
+            print("Curve id lookup failed: \(error)")
+            return nil
         }
     }
 

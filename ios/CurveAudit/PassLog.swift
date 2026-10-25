@@ -64,6 +64,7 @@ final class PassLog {
     init(databaseURL: URL) throws {
         connection = try SQLiteConnection(url: databaseURL, readonly: false)
         try connection.execute("PRAGMA foreign_keys = ON;")
+        try connection.execute("PRAGMA journal_mode=WAL;")
         try connection.execute(
             """
             CREATE TABLE IF NOT EXISTS trips (

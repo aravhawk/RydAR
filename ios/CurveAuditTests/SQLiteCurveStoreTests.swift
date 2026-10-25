@@ -10,6 +10,9 @@ final class SQLiteCurveStoreTests: XCTestCase {
         XCTAssertTrue(sql.contains("max_lon"))
         XCTAssertTrue(sql.contains("where"))
         XCTAssertFalse(sql.contains("select *"))
+        let byID = SQLiteCurveStore.curveByIDSQL.lowercased()
+        XCTAssertTrue(byID.contains("where id = ?"))
+        XCTAssertFalse(byID.contains("select *"))
     }
 
     func testRadiusLookupDoesNotReturnDistantCurves() throws {
