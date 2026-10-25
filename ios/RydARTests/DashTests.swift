@@ -142,7 +142,8 @@ final class DashTests: XCTestCase {
         let underHarness = try makeSession(camera: underage)
         underHarness.bridge.start(mode: .under18, style: .normal, uploadOptIn: true)
         XCTAssertEqual(underage.starts, 0)
-        XCTAssertEqual(underHarness.bridge.drive.cameraStatus, "Surface unconfirmed")
+        XCTAssertFalse(underHarness.engine.dashEnabled)
+        XCTAssertEqual(underHarness.bridge.drive.cameraStatus, "Off · Co-pilot mode")
         XCTAssertFalse(driveGate(mode: .under18, speedMps: 12, dashEnabled: true, uploadOptIn: false).allowsCamera)
 
         DashPreference.isOn = true

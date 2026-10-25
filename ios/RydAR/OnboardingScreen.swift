@@ -1,4 +1,5 @@
 import SwiftUI
+import AVFoundation
 import CoreLocation
 import UIKit
 
@@ -54,6 +55,15 @@ struct OnboardingScreen: View {
                     Label("Location is on", systemImage: "location.fill")
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
+                AuditCard {
+                    Text("Dash is on").font(.headline)
+                    Text("The camera looks at the road while this app is open. experimental — validated on public datasets only, not on Arkansas roads.")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                    Text("Anonymous passes are sent: the curve, the direction, a 5 mph band, and the hour. No name and no route. A count is published after 20 passes in more than one hour.")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                    Text("An under-18 driver does not use the camera and does not send passes. Turn either one off in Settings.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
                 Text("How much tread is on the tires?").font(.title3.bold())
                 TreadChoices(selection: $tread)
                 if tread?.replaceBeforeDriving == true {
@@ -65,7 +75,11 @@ struct OnboardingScreen: View {
                 }
                 Button("Continue") {
                     if let tread { TreadStore.save(tread) }
-                    onContinue()
+                    DashPreference.isOn = true
+                    UserDefaults.standard.set(true, forKey: "rydar.uploadOptIn")
+                    AVCaptureDevice.requestAccess(for: .video) { _ in
+                        Task { @MainActor in onContinue() }
+                    }
                 }
                 .buttonStyle(AuditPrimaryButton())
                 .disabled(tread == nil)

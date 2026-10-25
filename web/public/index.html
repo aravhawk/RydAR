@@ -8,15 +8,16 @@
   <link rel="stylesheet" href="/vendor/maplibre-gl/maplibre-gl.css">
   <style>
     :root {
-      --sheet: #d5dee2;
-      --panel: #f7f8f6;
-      --ink: #15252d;
-      --muted: #50636c;
-      --rule: #c8d1d4;
-      --paved: #1b5b8c;
-      --unpaved: #b3530b;
-      --focus: #0b6bcb;
-      --serif: Charter, "Bitstream Charter", "Sitka Text", Cambria, Georgia, serif;
+      --sheet: #e5e5ea;
+      --panel: #f2f2f7;
+      --card: #ffffff;
+      --ink: #1c1c1e;
+      --muted: #636366;
+      --rule: #e5e5ea;
+      --paved: #30b0c7;
+      --unpaved: #c47a2b;
+      --accent: #30b0c7;
+      --focus: #30b0c7;
       --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
     * { box-sizing: border-box; }
@@ -33,29 +34,36 @@
 
     aside {
       background: var(--panel);
-      border-right: 1px solid var(--rule);
       overflow-y: auto;
-      padding: 1.35rem 1.35rem 2rem;
+      padding: 1.25rem 1rem 2rem;
     }
     h1 {
-      font: 600 1.7rem/1.15 var(--serif);
-      letter-spacing: -0.01em;
-      margin: 0 0 0.55rem;
+      font: 700 2rem/1.1 var(--sans);
+      letter-spacing: -0.03em;
+      margin: 0 0 0.35rem;
     }
     h2 {
-      font: 600 0.95rem/1.3 var(--sans);
-      margin: 0 0 0.45rem;
+      font: 700 0.72rem/1.2 var(--sans);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 0 0 0.7rem;
     }
     p { margin: 0 0 0.75rem; }
-    .lead { font-family: var(--serif); font-size: 1.02rem; line-height: 1.5; }
+    .lead { font-size: 1.02rem; line-height: 1.45; color: var(--muted); }
     .muted { color: var(--muted); }
     .small { font-size: 0.86rem; }
-    section { border-top: 1px solid var(--rule); padding: 0.9rem 0 0.15rem; margin-top: 0.9rem; }
+    section {
+      background: var(--card);
+      border-radius: 24px;
+      padding: 1rem 1rem 0.9rem;
+      margin-top: 0.85rem;
+    }
 
     label.field { display: block; font-weight: 600; margin-bottom: 0.35rem; }
     select, input[type="search"] {
-      width: 100%; font: inherit; color: inherit; background: #fff;
-      border: 1px solid #8fa0a7; border-radius: 4px; padding: 0.5rem 0.65rem;
+      width: 100%; font: inherit; color: inherit; background: var(--panel);
+      border: 0; border-radius: 14px; padding: 0.7rem 0.8rem;
     }
     .hint-copy { margin: 0.4rem 0 0; }
 
@@ -71,29 +79,30 @@
 
     ul.results { list-style: none; margin: 0.4rem 0 0; padding: 0; }
     ul.results button {
-      width: 100%; text-align: left; font: inherit; color: inherit; background: none;
-      border: 0; border-bottom: 1px solid var(--rule); padding: 0.45rem 0.1rem; cursor: pointer;
+      width: 100%; text-align: left; font: inherit; color: inherit; background: var(--panel);
+      border: 0; border-radius: 14px; padding: 0.55rem 0.75rem; margin-top: 0.4rem; cursor: pointer;
     }
-    ul.results button:hover { background: #eaeeed; }
+    ul.results button:hover { background: #e5e5ea; }
     ul.results .meta { display: block; color: var(--muted); font-size: 0.82rem; }
 
     #map { position: relative; min-width: 0; height: 100%; }
     .map-hint {
       position: absolute; top: 0.75rem; left: 0.75rem; z-index: 1; max-width: 16rem; margin: 0;
-      background: rgba(247, 248, 246, 0.94); border: 1px solid var(--rule); border-radius: 4px;
+      background: rgba(255, 255, 255, 0.94); border-radius: 16px;
       padding: 0.45rem 0.65rem; font-size: 0.86rem; pointer-events: none;
     }
     #map .maplibregl-popup-content {
       font: 14px/1.45 var(--sans); color: var(--ink); padding: 0.8rem 1rem 0.9rem; max-width: 20rem;
     }
-    .maplibregl-popup-content h3 { font: 600 1.05rem/1.25 var(--serif); margin: 0 1.2rem 0.35rem 0; }
+    .maplibregl-popup-content { border-radius: 18px; }
+    .maplibregl-popup-content h3 { font: 700 1.15rem/1.25 var(--sans); margin: 0 1.2rem 0.35rem 0; }
     .maplibregl-popup-content p { margin: 0 0 0.35rem; }
     .maplibregl-popup-content .stats { border-top: 1px solid var(--rule); padding-top: 0.4rem; margin-top: 0.5rem; }
 
     @media (max-width: 760px) {
       body { grid-template-columns: 100%; grid-template-rows: minmax(28rem, 58vh) minmax(0, 1fr); }
       #map { order: -1; height: auto; }
-      aside { border-right: 0; border-top: 1px solid var(--rule); padding: 1rem 1rem 1.5rem; }
+      aside { padding: 1rem 1rem 1.5rem; }
       h1 { font-size: 1.35rem; }
     }
   </style>
@@ -167,7 +176,7 @@
       style: {
         version: 8,
         sources: {},
-        layers: [{ id: "sheet", type: "background", paint: { "background-color": "#d5dee2" } }],
+        layers: [{ id: "sheet", type: "background", paint: { "background-color": "#e5e5ea" } }],
       },
       bounds: [[-94.8, 33.0], [-89.6, 36.6]],
       fitBoundsOptions: { padding: 28 },
@@ -249,7 +258,7 @@
         type: "fill",
         source: "counties",
         paint: {
-          "fill-color": ["case", ["boolean", ["feature-state", "selected"], false], "#e3eef3", "#f4f7f6"],
+          "fill-color": ["case", ["boolean", ["feature-state", "selected"], false], "#d7f3f6", "#ffffff"],
         },
       });
       map.addLayer({
@@ -257,7 +266,7 @@
         type: "line",
         source: "counties",
         paint: {
-          "line-color": ["case", ["boolean", ["feature-state", "selected"], false], "#1b5b8c", "#8ea0a8"],
+          "line-color": ["case", ["boolean", ["feature-state", "selected"], false], "#30b0c7", "#c7c7cc"],
           "line-width": ["case", ["boolean", ["feature-state", "selected"], false], 2.4, 1.1],
         },
       });
@@ -279,8 +288,8 @@
           "line-color": [
             "case",
             ["boolean", ["feature-state", "selected"], false], "#15252d",
-            ["==", ["get", "surface"], "unpaved"], "#b3530b",
-            "#1b5b8c",
+            ["==", ["get", "surface"], "unpaved"], "#c47a2b",
+            "#30b0c7",
           ],
           "line-width": ["interpolate", ["linear"], ["zoom"], 6, 1.4, 9, 2.4, 12, 3.6, 15, 6],
           "line-opacity": 0.95,

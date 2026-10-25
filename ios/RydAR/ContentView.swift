@@ -7,7 +7,7 @@ struct ContentView: View {
     @StateObject private var trip: TripScreenBridge
     @AppStorage("rydar.onboardingComplete") private var onboarded = false
     @AppStorage("rydar.promptStyle") private var promptStyle = PromptStyle.normal.rawValue
-    @AppStorage("rydar.uploadOptIn") private var uploadOptIn = false
+    @AppStorage("rydar.uploadOptIn") private var uploadOptIn = true
     @AppStorage(TreadStore.choiceKey) private var treadRaw = ""
     @State private var phase = ScreenPhase.home
     @State private var showDriverGate = false
@@ -35,7 +35,7 @@ struct ContentView: View {
                         phase = .debrief
                     }
                 case .debrief:
-                    DebriefScreen(trip: trip, uploadOptIn: $uploadOptIn) { phase = .home }
+                    DebriefScreen(trip: trip) { phase = .home }
                 }
             }
         }

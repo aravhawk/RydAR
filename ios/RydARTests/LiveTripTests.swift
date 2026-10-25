@@ -8,12 +8,12 @@ final class LiveTripTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: DashPreference.key)
     }
 
-    func testStartStoresStyleAndUploadAndLeavesDashOff() throws {
+    func testStartStoresStyleAndUploadAndTurnsDashOn() throws {
         let harness = try makeHarness()
         harness.bridge.start(mode: .adult, style: .chimeOnly, uploadOptIn: true)
         XCTAssertEqual(harness.engine.promptStyle, .chimeOnly)
         XCTAssertTrue(harness.engine.uploadOptIn)
-        XCTAssertFalse(harness.engine.dashEnabled)
+        XCTAssertTrue(harness.engine.dashEnabled)
         XCTAssertNotNil(harness.engine.snapshot.tripID)
         XCTAssertFalse(harness.engine.locationManager.pausesLocationUpdatesAutomatically)
         let kept = harness.engine.snapshot.tripID
@@ -48,8 +48,8 @@ final class LiveTripTests: XCTestCase {
         XCTAssertNotNil(harness.bridge.drive.distanceMeters)
         XCTAssertEqual(harness.bridge.drive.gpsStatus, "GPS ready")
         XCTAssertFalse(harness.bridge.drive.isPaused)
-        XCTAssertEqual(harness.bridge.drive.cameraStatus, "Off · Co-pilot mode")
-        XCTAssertEqual(harness.bridge.drive.tripTitle, "Co-pilot")
+        XCTAssertEqual(harness.bridge.drive.cameraStatus, "Surface unconfirmed")
+        XCTAssertEqual(harness.bridge.drive.tripTitle, "Dash")
         XCTAssertEqual(
             harness.bridge.drive.screeningRange,
             screeningRange(radiusFeet: 200, surface: .paved)

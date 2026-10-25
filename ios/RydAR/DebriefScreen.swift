@@ -2,8 +2,8 @@ import SwiftUI
 
 struct DebriefScreen: View {
     @ObservedObject var trip: TripScreenBridge
-    @Binding var uploadOptIn: Bool
     var onDone: () -> Void
+    @AppStorage("rydar.uploadOptIn") private var uploadOptIn = true
     @State private var exportMessage: String?
 
     var body: some View {
@@ -48,9 +48,12 @@ struct DebriefScreen: View {
                     }
                 }
                 AuditCard {
-                    Toggle("Opt in to anonymous pass uploads", isOn: $uploadOptIn)
+                    Text(uploadOptIn
+                         ? "Anonymous passes from this trip are sent. No name and no route."
+                         : "Anonymous passes are off on this iPhone.")
+                        .font(.subheadline)
                         .accessibilityIdentifier("debriefUpload")
-                    Text("A count for a curve. Not your route.")
+                    Text("Turn this off in Settings. A count is published after 20 passes in more than one hour.")
                         .font(.caption).foregroundStyle(.secondary)
                     if trip.isConnected && !trip.uploadConfigured {
                         Text("Saved here. No upload address in this build.")
@@ -69,7 +72,6 @@ struct DebriefScreen: View {
         }
         .background(AuditTheme.background)
         .navigationTitle("Trip debrief").navigationBarTitleDisplayMode(.inline).navigationBarBackButtonHidden()
-        .onChange(of: uploadOptIn) { _, value in trip.onUploadPreference?(value) }
         .alert("Saved", isPresented: Binding(get: { exportMessage != nil }, set: { if !$0 { exportMessage = nil } })) {
             Button("OK") { exportMessage = nil }
         } message: { Text(exportMessage ?? "") }

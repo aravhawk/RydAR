@@ -1,12 +1,16 @@
 import CoreGraphics
 import Foundation
 
-/// Parked preference. Co-pilot is the default, so this stays off until someone turns it on.
+/// Parked preference. Dash is on until someone turns it off in Settings.
+/// A missing key is on. Under-18 trips ignore this and keep the camera off.
 enum DashPreference {
     static let key = "rydar.dashEnabled"
 
     static var isOn: Bool {
-        get { UserDefaults.standard.bool(forKey: key) }
+        get {
+            guard UserDefaults.standard.object(forKey: key) != nil else { return true }
+            return UserDefaults.standard.bool(forKey: key)
+        }
         set { UserDefaults.standard.set(newValue, forKey: key) }
     }
 }

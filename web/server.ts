@@ -1,0 +1,165 @@
+import { createClient, type Client } from "@libsql/client";
+import { Hono } from "hono";
+
+declare const process: { env: Record<string, string | undefined> };
+
+const app = new Hono();
+
+const COUNTY_FIPS: Record<string, string> = {
+  arkansas: "001", ashley: "003", baxter: "005", benton: "007", boone: "009",
+  bradley: "011", calhoun: "013", carroll: "015", chicot: "017", clark: "019",
+  clay: "021", cleburne: "023", cleveland: "025", columbia: "027", conway: "029",
+  craighead: "031", crawford: "033", crittenden: "035", cross: "037", dallas: "039",
+  desha: "041", drew: "043", faulkner: "045", franklin: "047", fulton: "049",
+  garland: "051", grant: "053", greene: "055", hempstead: "057", "hot spring": "059",
+  howard: "061", independence: "063", izard: "065", jackson: "067", jefferson: "069",
+  johnson: "071", lafayette: "073", lawrence: "075", lee: "077", lincoln: "079",
+  "little river": "081", logan: "083", lonoke: "085", madison: "087", marion: "089",
+  miller: "091", mississippi: "093", monroe: "095", montgomery: "097", nevada: "099",
+  newton: "101", ouachita: "103", perry: "105", phillips: "107", pike: "109",
+  poinsett: "111", polk: "113", pope: "115", prairie: "117", pulaski: "119",
+  randolph: "121", "st. francis": "123", saline: "125", scott: "127", searcy: "129",
+  sebastian: "131", sevier: "133", sharp: "135", stone: "137", union: "139",
+  "van buren": "141", washington: "143", white: "145", woodruff: "147", yell: "149",
+};
+
+const CURVE_ID = /^(\d{3})-\d{1,7}-\d{1,7}$/;
+
+interface PassBody {
+  curve_id: string;
+  direction: string;
+  speed_band_mph: number;
+  hour_bucket: number;
+  app_version: string;
+  lat_accel_band?: number | null;
+}
+
+function countyPrefix(county: string): string | null {
+  const fips = COUNTY_FIPS[county.toLowerCase().replace(/-/g, " ")];
+  return fips ? `${fips}-` : null;
+}
+
+function isArkansasCurveID(id: string): boolean {
+  const county = Number(id.slice(0, 3));
+  return county >= 1 && county <= 149 && county % 2 === 1;
+}
+
+function isPass(value: unknown): value is PassBody {
+  if (typeof value !== "object" || value === null) return false;
+  const row = value as Record<string, unknown>;
+  const latAccel = row.lat_accel_band;
+  return (
+    typeof row.curve_id === "string" &&
+    CURVE_ID.test(row.curve_id) &&
+    isArkansasCurveID(row.curve_id) &&
+    typeof row.direction === "string" &&
+    row.direction.length >= 1 &&
+    row.direction.length <= 8 &&
+    Number.isInteger(row.speed_band_mph) &&
+    (row.speed_band_mph as number) >= 0 &&
+    (row.speed_band_mph as number) <= 150 &&
+    (row.speed_band_mph as number) % 5 === 0 &&
+    Number.isInteger(row.hour_bucket) &&
+    (row.hour_bucket as number) >= 0 &&
+    (row.hour_bucket as number) <= 23 &&
+    typeof row.app_version === "string" &&
+    row.app_version.length >= 1 &&
+    row.app_version.length <= 32 &&
+    (latAccel === undefined || latAccel === null || Number.isInteger(latAccel))
+  );
+}
+
+function database(): Client | null {
+  const url = process.env.TURSO_DATABASE_URL;
+  const authToken = process.env.TURSO_AUTH_TOKEN;
+  if (!url || !authToken) return null;
+  return createClient({ url, authToken });
+}
+
+let schemaReady: Promise<void> | null = null;
+
+function ensureSchema(client: Client): Promise<void> {
+  schemaReady ??= (async () => {
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS passes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        curve_id TEXT NOT NULL,
+        direction TEXT NOT NULL,
+        speed_band_mph INTEGER NOT NULL,
+        hour_bucket INTEGER NOT NULL,
+        app_version TEXT NOT NULL,
+        lat_accel_band INTEGER,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `);
+    await client.execute(`CREATE INDEX IF NOT EXISTS passes_curve ON passes (curve_id)`);
+  })();
+  return schemaReady;
+}
+
+app.get("/api/health", (c) => c.json({ ok: true }));
+
+app.post("/api/pass", async (c) => {
+  const client = database();
+  if (!client) return c.json({ error: "database unavailable" }, 503);
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "invalid json" }, 400);
+  }
+  if (!isPass(body)) return c.json({ error: "missing fields" }, 400);
+  await ensureSchema(client);
+  await client.execute({
+    sql: `INSERT INTO passes (curve_id, direction, speed_band_mph, hour_bucket, app_version, lat_accel_band)
+          VALUES (?, ?, ?, ?, ?, ?)`,
+    args: [
+      body.curve_id,
+      body.direction,
+      body.speed_band_mph,
+      body.hour_bucket,
+      body.app_version,
+      body.lat_accel_band ?? null,
+    ],
+  });
+  return c.json({ stored: true });
+});
+
+app.get("/api/curves/:file", (c) => {
+  const county = decodeURIComponent(c.req.param("file")).replace(/\.geojson$/, "");
+  if (countyPrefix(county) === null) return c.json({ error: "unknown county" }, 404);
+  return c.redirect(`/data/curves-${county.toLowerCase()}.geojson`);
+});
+
+app.get("/api/export/:file", async (c) => {
+  const county = decodeURIComponent(c.req.param("file")).replace(/\.csv$/, "");
+  const prefix = countyPrefix(county);
+  if (prefix === null) return c.json({ error: "unknown county" }, 404);
+  const client = database();
+  if (!client) {
+    return c.text("curve_id,n,hour_buckets\n", 200, {
+      "content-type": "text/csv; charset=utf-8",
+    });
+  }
+  await ensureSchema(client);
+  const rows = await client.execute({
+    sql: `SELECT curve_id,
+                 COUNT(*) AS n,
+                 COUNT(DISTINCT hour_bucket) AS hours
+          FROM passes
+          WHERE curve_id LIKE ?
+          GROUP BY curve_id
+          HAVING n >= 20 AND hours >= 2
+          ORDER BY curve_id`,
+    args: [`${prefix}%`],
+  });
+  const lines = ["curve_id,n,hour_buckets"];
+  for (const row of rows.rows) {
+    lines.push(`${row.curve_id},${row.n},${row.hours}`);
+  }
+  return c.text(lines.join("\n") + "\n", 200, {
+    "content-type": "text/csv; charset=utf-8",
+  });
+});
+
+export default app;

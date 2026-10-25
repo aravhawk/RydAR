@@ -219,8 +219,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				COREML_CODEGEN_LANGUAGE = None;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = XLR6H6DKHH;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RydAR/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = RydAR;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Dash mode looks at the road ahead and compares it with a public dataset. No photo is saved.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "RydAR uses your location to know which curve you are approaching.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "RydAR uses motion to estimate speed changes on the way into a curve.";
@@ -233,8 +235,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				INFOPLIST_KEY_CFBundleDisplayName = RydAR;
-				PRODUCT_BUNDLE_IDENTIFIER = com.rydar.app;
+				PRODUCT_BUNDLE_IDENTIFIER = org.rydar.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -248,8 +249,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				COREML_CODEGEN_LANGUAGE = None;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = XLR6H6DKHH;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RydAR/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = RydAR;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Dash mode looks at the road ahead and compares it with a public dataset. No photo is saved.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "RydAR uses your location to know which curve you are approaching.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "RydAR uses motion to estimate speed changes on the way into a curve.";
@@ -262,8 +265,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				INFOPLIST_KEY_CFBundleDisplayName = RydAR;
-				PRODUCT_BUNDLE_IDENTIFIER = com.rydar.app;
+				PRODUCT_BUNDLE_IDENTIFIER = org.rydar.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -313,7 +315,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.rydar.app.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = org.rydar.app.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -330,7 +332,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.rydar.app.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = org.rydar.app.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;

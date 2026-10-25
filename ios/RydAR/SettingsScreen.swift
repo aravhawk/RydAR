@@ -3,8 +3,8 @@ import SwiftUI
 struct SettingsScreen: View {
     @ObservedObject var trip: TripScreenBridge
     @AppStorage("rydar.promptStyle") private var promptStyle = PromptStyle.normal.rawValue
-    @AppStorage("rydar.uploadOptIn") private var uploadOptIn = false
-    @AppStorage("rydar.dashEnabled") private var dashEnabled = false
+    @AppStorage("rydar.uploadOptIn") private var uploadOptIn = true
+    @AppStorage("rydar.dashEnabled") private var dashEnabled = true
     @AppStorage("rydar.onboardingComplete") private var onboarded = false
     @AppStorage(TreadStore.choiceKey) private var treadRaw = ""
     @State private var confirmDelete = false
@@ -21,7 +21,7 @@ struct SettingsScreen: View {
             } header: { Text("Hands-free prompts") }
             Section {
                 Toggle("Anonymous pass uploads", isOn: $uploadOptIn).accessibilityIdentifier("settingsUpload")
-                Text("Off unless you turn it on. No account and no route.")
+                Text("On unless you turn it off. A curve, a direction, a 5 mph band, and the hour. No name and no route. An under-18 driver does not send passes.")
                     .font(.footnote).foregroundStyle(.secondary)
             } header: { Text("Privacy") }
             Section {
@@ -37,7 +37,7 @@ struct SettingsScreen: View {
                     }
                 }.accessibilityIdentifier("treadSetting")
                 Toggle("Dash mode", isOn: $dashEnabled).accessibilityIdentifier("dashMode")
-                Text("Camera stays off unless Dash is on.")
+                Text("On unless you turn it off. The camera stays off for an under-18 driver. experimental — validated on public datasets only, not on Arkansas roads.")
                     .font(.footnote).foregroundStyle(.secondary)
             } header: { Text("Trip setup") }
             Section {
@@ -54,8 +54,8 @@ struct SettingsScreen: View {
         .onChange(of: uploadOptIn) { _, value in trip.onUploadPreference?(value) }
         .confirmationDialog("Delete all local data?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete all data", role: .destructive) {
-                uploadOptIn = false
-                dashEnabled = false
+                uploadOptIn = true
+                dashEnabled = true
                 trip.onUploadPreference?(false)
                 do {
                     try trip.deleteAllData()

@@ -106,7 +106,7 @@ final class LiveTripSession {
             guard let self else { return }
             self.engine.promptStyle = style
             self.engine.uploadOptIn = upload
-            self.engine.dashEnabled = DashPreference.isOn
+            self.engine.dashEnabled = mode == .under18 ? false : DashPreference.isOn
             self.reading = DashReading(camera: nil, vision: .quiet, state: self.engine.dashEnabled ? .unconfirmed : .off, acceptedAt: nil)
             self.lastUpdate = nil
             self.lastCurve = nil
@@ -137,7 +137,6 @@ final class LiveTripSession {
         let onDelete: () throws -> Void = { [weak self] in
             guard let self else { return }
             self.camera.stop()
-            DashPreference.isOn = false
             self.reading = DashReading(camera: nil, vision: .quiet, state: .off, acceptedAt: nil)
             try self.engine.deletePassHistory()
         }

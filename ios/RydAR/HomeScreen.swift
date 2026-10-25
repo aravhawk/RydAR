@@ -5,7 +5,7 @@ struct HomeScreen: View {
     var isSampleStore: Bool
     var onStart: () -> Void
     @ObservedObject var trip: TripScreenBridge
-    @AppStorage("rydar.dashEnabled") private var dashEnabled = false
+    @AppStorage("rydar.dashEnabled") private var dashEnabled = true
     @AppStorage(TreadStore.choiceKey) private var treadRaw = ""
 
     private var tread: TreadChoice? { TreadChoice(rawValue: treadRaw) }
