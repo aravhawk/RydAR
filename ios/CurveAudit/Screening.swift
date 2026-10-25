@@ -5,7 +5,7 @@ enum RoadSurface: String {
     case unpaved
 }
 
-struct ScreeningRange {
+struct ScreeningRange: Equatable {
     let low: Double
     let high: Double
 }

@@ -49,6 +49,11 @@ final class LiveTripTests: XCTestCase {
         XCTAssertEqual(harness.bridge.drive.gpsStatus, "GPS ready")
         XCTAssertFalse(harness.bridge.drive.isPaused)
         XCTAssertEqual(harness.bridge.drive.cameraStatus, "Off · Co-pilot mode")
+        XCTAssertEqual(harness.bridge.drive.tripTitle, "Co-pilot")
+        XCTAssertEqual(
+            harness.bridge.drive.screeningRange,
+            screeningRange(radiusFeet: 200, surface: .paved)
+        )
         XCTAssertNil(harness.bridge.drive.cameraEvidence)
         XCTAssertEqual(harness.bridge.drive.cameraThreshold, DriveRules.cameraConfidence)
         XCTAssertEqual(harness.speech.spoken, [spokenWarning])
@@ -115,6 +120,62 @@ final class LiveTripTests: XCTestCase {
         XCTAssertTrue(harness.bridge.debrief.lateContexts[0].movesPromptEarlier)
     }
 
+    func testOptInSendsOnePassAndALaterToggleDoesNotReplay() throws {
+        let spy = SpyUpload()
+        let harness = try makeHarness(uploader: spy)
+        let start = date(hour: 14)
+        harness.bridge.start(mode: .adult, style: .normal, uploadOptIn: true)
+        let curve = line(id: "007-2-3", north: 200, length: 40)
+        try insertCurve(harness.writer, curve)
+        var completed = 0
+        var north = 0.0
+        for index in 0..<20 {
+            let when = start.addingTimeInterval(Double(index))
+            let update = harness.engine.handle(
+                fix: fix(north: north, speed: 20, speedAccuracy: 0, at: when),
+                nearby: [curve],
+                now: when
+            )
+            completed += update.completed.count
+            north += 20
+            if completed > 0 { break }
+        }
+        XCTAssertEqual(completed, 1)
+        XCTAssertEqual(spy.sent.count, 1)
+        XCTAssertEqual(spy.sent[0].curve_id, "007-2-3")
+        XCTAssertEqual(spy.sent[0].direction, "N")
+        XCTAssertEqual(spy.sent[0].speed_band_mph, 40)
+        XCTAssertEqual(spy.sent[0].speed_band_mph % 5, 0)
+        XCTAssertEqual(spy.sent[0].hour_bucket, 14)
+        XCTAssertNil(spy.sent[0].lat_accel_band)
+        harness.bridge.finish()
+        harness.bridge.onUploadPreference?(true)
+        XCTAssertEqual(spy.sent.count, 1)
+    }
+
+    func testUnder18CompletesAPassWithoutUploading() throws {
+        let spy = SpyUpload()
+        let harness = try makeHarness(uploader: spy)
+        harness.bridge.start(mode: .under18, style: .normal, uploadOptIn: true)
+        let curve = line(id: "007-2-3", north: 200, length: 40)
+        var completed = 0
+        var north = 0.0
+        let start = date(hour: 14)
+        for index in 0..<20 {
+            let when = start.addingTimeInterval(Double(index))
+            let update = harness.engine.handle(
+                fix: fix(north: north, speed: 20, speedAccuracy: 0, at: when),
+                nearby: [curve],
+                now: when
+            )
+            completed += update.completed.count
+            north += 20
+            if completed > 0 { break }
+        }
+        XCTAssertEqual(completed, 1)
+        XCTAssertTrue(spy.sent.isEmpty)
+    }
+
     func testDeleteClearsPassHistoryAndKeepsTheCurveTable() throws {
         let harness = try makeHarness()
         harness.bridge.start(mode: .adult, style: .normal, uploadOptIn: true)
@@ -129,7 +190,7 @@ final class LiveTripTests: XCTestCase {
         XCTAssertEqual(harness.curves.curve(id: "kept")?.roadName, "Test Rd")
     }
 
-    private func makeHarness() throws -> Harness {
+    private func makeHarness(uploader: PassSending = PassUpload(endpoint: nil)) throws -> Harness {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("live-\(UUID().uuidString).sqlite")
         let writer = try SQLiteConnection(url: url, readonly: false)
         try writer.execute(
@@ -160,7 +221,13 @@ final class LiveTripTests: XCTestCase {
         let speech = SpySpeech()
         let engine = TripEngine(store: curves, passLog: log, speech: speech)
         let bridge = TripScreenBridge()
-        let session = LiveTripSession(engine: engine, bridge: bridge, curves: curves, startSensors: false)
+        let session = LiveTripSession(
+            engine: engine,
+            bridge: bridge,
+            curves: curves,
+            startSensors: false,
+            uploader: uploader
+        )
         return Harness(url: url, writer: writer, log: log, curves: curves, engine: engine, bridge: bridge, speech: speech, session: session)
     }
 
@@ -279,6 +346,11 @@ private struct Harness {
     var bridge: TripScreenBridge
     var speech: SpySpeech
     var session: LiveTripSession
+}
+
+private final class SpyUpload: PassSending {
+    var sent: [AnonymousPassBody] = []
+    func send(_ body: AnonymousPassBody) { sent.append(body) }
 }
 
 private final class SpySpeech: PromptPlaying {

@@ -22,7 +22,9 @@ enum LiveTripDebrief {
                 curve: curve,
                 effectiveMPH: row.pass.effectiveSpeedMPH,
                 range: ScreeningRange(low: row.pass.vLoMPH, high: row.pass.vHiMPH),
-                surfaceUsed: row.pass.surfaceUsed
+                surfaceUsed: row.pass.surfaceUsed,
+                brakingDistanceMeters: row.pass.brakingDistanceMeters,
+                apparentTiltDegrees: nil
             )
         }
         return TripScreenDebrief(
@@ -72,6 +74,7 @@ final class LiveTripSession {
     let bridge: TripScreenBridge
     let curves: SQLiteCurveStore
     let camera: DashRunning
+    let uploader: PassSending
     private let startSensors: Bool
     private var reading = DashReading(camera: nil, vision: .quiet, state: .off, acceptedAt: nil)
     private var lastUpdate: TripUpdate?
@@ -82,13 +85,15 @@ final class LiveTripSession {
         bridge: TripScreenBridge,
         curves: SQLiteCurveStore,
         startSensors: Bool = true,
-        camera: DashRunning? = nil
+        camera: DashRunning? = nil,
+        uploader: PassSending = PassUpload()
     ) {
         self.engine = engine
         self.bridge = bridge
         self.curves = curves
         self.startSensors = startSensors
         self.camera = camera ?? DashCamera()
+        self.uploader = uploader
         connect()
     }
 
@@ -137,9 +142,20 @@ final class LiveTripSession {
             try self.engine.deletePassHistory()
         }
         engine.onHandled = { [weak self] update, curve in
-            self?.publishDrive(update, curve: curve)
+            guard let self else { return }
+            if update.gate.allowsUpload {
+                let version = PassUpload.appVersion
+                for pass in update.completed {
+                    if let body = AnonymousPass.body(from: pass, appVersion: version) {
+                        self.uploader.send(body)
+                    }
+                }
+            }
+            self.publishDrive(update, curve: curve)
         }
+        let configured = (uploader as? PassUpload)?.isConfigured ?? true
         MainActor.assumeIsolated {
+            bridge.uploadConfigured = configured
             bridge.onStart = onStart
             bridge.onPause = onPause
             bridge.onFinish = onFinish
@@ -194,15 +210,38 @@ final class LiveTripSession {
             curve: showCurve ? curve : nil,
             distance: showCurve ? update.distanceMeters : nil,
             gps: update.gpsGood ? "GPS ready" : "Waiting for location",
-            paused: engine.snapshot.paused
+            paused: engine.snapshot.paused,
+            range: showCurve ? update.screeningRange : nil
         ))
     }
 
     private func publishIdle() {
-        assignDrive(snapshot(curve: nil, distance: nil, gps: "Waiting for location", paused: engine.snapshot.paused))
+        assignDrive(snapshot(
+            curve: nil,
+            distance: nil,
+            gps: "Waiting for location",
+            paused: engine.snapshot.paused,
+            range: nil
+        ))
     }
 
-    private func snapshot(curve: Curve?, distance: Double?, gps: String, paused: Bool) -> DriveScreenSnapshot {
+    private var tripTitle: String {
+        let allowsCamera = driveGate(
+            mode: engine.snapshot.driverMode,
+            speedMps: 0,
+            dashEnabled: engine.dashEnabled,
+            uploadOptIn: engine.uploadOptIn
+        ).allowsCamera
+        return allowsCamera ? "Dash" : "Co-pilot"
+    }
+
+    private func snapshot(
+        curve: Curve?,
+        distance: Double?,
+        gps: String,
+        paused: Bool,
+        range: ScreeningRange?
+    ) -> DriveScreenSnapshot {
         DriveScreenSnapshot(
             nextCurve: curve,
             distanceMeters: distance,
@@ -210,7 +249,9 @@ final class LiveTripSession {
             cameraThreshold: DriveRules.cameraConfidence,
             cameraStatus: cameraStatus,
             gpsStatus: gps,
-            isPaused: paused
+            isPaused: paused,
+            screeningRange: range,
+            tripTitle: tripTitle
         )
     }
 

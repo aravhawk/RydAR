@@ -33,6 +33,10 @@ struct DriveScreenSnapshot {
     var cameraStatus = "Off · Co-pilot mode"
     var gpsStatus = "Waiting for location"
     var isPaused = false
+    /// The range the trip engine used for this match. Preview and debrief keep their own copies.
+    var screeningRange: ScreeningRange?
+    /// Co-pilot unless this trip opened the camera.
+    var tripTitle = "Co-pilot"
 }
 
 struct TripCurvePass: Identifiable {
@@ -90,6 +94,7 @@ struct TripScreenDebrief {
 final class TripScreenBridge: ObservableObject {
     @Published var drive = DriveScreenSnapshot()
     @Published var debrief = TripScreenDebrief()
+    @Published var uploadConfigured = false
     @Published private(set) var driverMode: DriverMode?
 
     var onStart: ((DriverMode, PromptStyle, Bool) -> Void)?

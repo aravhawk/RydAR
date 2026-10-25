@@ -300,6 +300,22 @@
       }
     }
 
+    // Same formula as ios/CurveAudit/Screening.swift. e and f are ratios.
+    function screeningMPH(radiusFeet, superelevation, friction) {
+      const inside = 15 * radiusFeet * (superelevation + friction);
+      return inside > 0 ? Math.sqrt(inside) : 0;
+    }
+
+    function screeningRangeText(radiusFeet, surface) {
+      const radius = Number(radiusFeet);
+      if (!Number.isFinite(radius) || radius <= 0) return "";
+      const friction = surface === "paved" ? 0.15 : 0.1;
+      const low = screeningMPH(radius, -0.02, friction);
+      const high = screeningMPH(radius, 0.02, friction);
+      const text = `${low.toFixed(1)}\u2013${high.toFixed(1)} mph. screening range \u2014 not an advisory speed.`;
+      return text;
+    }
+
     function flagList(flags) {
       return flags ? flags.split(";").map((f) => FLAG_TEXT[f] || f) : [];
     }
@@ -316,6 +332,8 @@
       add("h3", p.road);
       add("p", `${p.county} County, ${p.surface} road`);
       add("p", `Estimated radius ${p.radius_ft} ft, turning about ${p.deflection_deg} degrees`);
+      const range = screeningRangeText(p.radius_ft, p.surface);
+      if (range) add("p", range);
       add("p", `Curve ${p.id}`, "id");
       for (const text of flagList(p.flags)) add("p", `Flag: ${text}`, "muted");
       const s = stats[p.id];

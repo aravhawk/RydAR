@@ -49,6 +49,7 @@ CREATE TABLE trip_passes (
   surface_used TEXT,
   radius_band TEXT,
   look_ahead_m REAL,
+  braking_m REAL,
   FOREIGN KEY (trip_id) REFERENCES trips (id)
 );
 

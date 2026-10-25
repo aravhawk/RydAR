@@ -11,6 +11,36 @@ final class PassLogTests: XCTestCase {
         XCTAssertTrue(passWasLate(brakingOnsetDistanceMeters: 200, baseLookAheadMeters: 140, fastAboveRangeInsideFortyMeters: true))
     }
 
+    func testBrakingDistanceRoundTrips() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("brake-\(UUID().uuidString).sqlite")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let log = try PassLog(databaseURL: url)
+        let tripID = try log.startTrip(mode: .passenger)
+        var pass = CompletedPass(
+            curveID: "007-2-3",
+            direction: "N",
+            effectiveSpeedMPH: 30,
+            vLoMPH: 19,
+            vHiMPH: 23,
+            spoke: true,
+            hourBucket: 14,
+            late: true,
+            surfaceUsed: .paved,
+            radiusBand: "150-300",
+            lookAheadMeters: 140,
+            contextKey: "paved|150-300|day",
+            brakingDistanceMeters: 80
+        )
+        try log.record(pass, tripID: tripID)
+        pass.brakingDistanceMeters = nil
+        pass.curveID = "143-1-1"
+        try log.record(pass, tripID: tripID)
+        let rows = try log.passes(forTrip: tripID)
+        XCTAssertEqual(rows[0].pass.brakingDistanceMeters, 80)
+        XCTAssertNil(rows[1].pass.brakingDistanceMeters)
+    }
+
     func testOneLatePassDoesNotMarkTheContext() {
         XCTAssertFalse(contextSaysLate(ApproachMemory(latePasses: 1, earlyPasses: 0)))
         XCTAssertTrue(contextSaysLate(ApproachMemory(latePasses: 3, earlyPasses: 0)))
@@ -53,6 +83,7 @@ final class PassLogTests: XCTestCase {
         XCTAssertEqual(stored[0].pass.contextKey, nightKey)
         XCTAssertTrue(stored[0].pass.late)
         XCTAssertFalse(stored[1].pass.late)
+        XCTAssertNil(stored[0].pass.brakingDistanceMeters)
 
         let dayKey = approachContextKey(surface: .paved, radiusFeet: 200, hour: 14)
         try log.record(sample(curveID: "wide", speed: 50, low: 20, late: true, key: dayKey, band: "150-300", hour: 14, surface: .paved), tripID: tripID)

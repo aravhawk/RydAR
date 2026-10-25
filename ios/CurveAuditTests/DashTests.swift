@@ -151,6 +151,7 @@ final class DashTests: XCTestCase {
         adultHarness.bridge.start(mode: .adult, style: .normal, uploadOptIn: false)
         XCTAssertEqual(adult.starts, 1)
         XCTAssertTrue(adultHarness.engine.dashEnabled)
+        XCTAssertEqual(adultHarness.bridge.drive.tripTitle, "Dash")
         adult.onChange?(DashReading(
             camera: CameraEvidence(label: .unpaved, confidence: 0.9, age: 0, onMatchedRoadROI: true, persistent: true),
             vision: VisionCaution(standingWaterOrSnow: true, severeUnevenOnPaved: false),

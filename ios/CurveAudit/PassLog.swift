@@ -13,6 +13,7 @@ struct CompletedPass: Equatable {
     var radiusBand: String
     var lookAheadMeters: Double
     var contextKey: String
+    var brakingDistanceMeters: Double? = nil
 }
 
 struct StoredPass: Equatable {
@@ -87,6 +88,7 @@ final class PassLog {
               surface_used TEXT,
               radius_band TEXT,
               look_ahead_m REAL,
+              braking_m REAL,
               FOREIGN KEY (trip_id) REFERENCES trips (id)
             );
             CREATE TABLE IF NOT EXISTS approach_memory (
@@ -96,6 +98,18 @@ final class PassLog {
             );
             """
         )
+        try ensureBrakingColumn()
+    }
+
+    /// Copies made before braking distance was stored still open.
+    private func ensureBrakingColumn() throws {
+        var names: [String] = []
+        try connection.query("PRAGMA table_info(trip_passes)") { statement in
+            names.append(self.connection.text(statement, 1))
+        }
+        if !names.contains("braking_m") {
+            try connection.execute("ALTER TABLE trip_passes ADD COLUMN braking_m REAL;")
+        }
     }
 
     func startTrip(mode: DriverMode, at date: Date = Date(), notes: String? = nil) throws -> String {
@@ -151,8 +165,8 @@ final class PassLog {
                 """
                 INSERT INTO trip_passes (
                   id, trip_id, curve_id, direction, v_eff_mph, v_lo_mph, v_hi_mph,
-                  spoke, hour_bucket, late, surface_used, radius_band, look_ahead_m
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                  spoke, hour_bucket, late, surface_used, radius_band, look_ahead_m, braking_m
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """
             ) { statement in
                 connection.bind(statement, 1, id)
@@ -168,6 +182,11 @@ final class PassLog {
                 connection.bind(statement, 11, pass.surfaceUsed.rawValue)
                 connection.bind(statement, 12, pass.radiusBand)
                 connection.bind(statement, 13, pass.lookAheadMeters)
+                if let braking = pass.brakingDistanceMeters {
+                    connection.bind(statement, 14, braking)
+                } else {
+                    connection.bindNull(statement, 14)
+                }
             }
             try connection.run(
                 """
@@ -231,7 +250,7 @@ final class PassLog {
         try connection.query(
             """
             SELECT id, trip_id, curve_id, direction, v_eff_mph, v_lo_mph, v_hi_mph,
-                   spoke, hour_bucket, late, surface_used, radius_band, look_ahead_m
+                   spoke, hour_bucket, late, surface_used, radius_band, look_ahead_m, braking_m
             FROM trip_passes WHERE trip_id = ? ORDER BY rowid
             """,
             { statement in
@@ -308,7 +327,8 @@ final class PassLog {
             surfaceUsed: surface,
             radiusBand: band,
             lookAheadMeters: connection.double(statement, 12),
-            contextKey: key
+            contextKey: key,
+            brakingDistanceMeters: connection.isNull(statement, 13) ? nil : connection.double(statement, 13)
         )
         return StoredPass(id: connection.text(statement, 0), tripID: connection.text(statement, 1), pass: pass)
     }

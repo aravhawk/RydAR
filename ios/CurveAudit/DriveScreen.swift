@@ -9,7 +9,7 @@ struct DriveScreen: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             HStack {
-                AuditEyebrow(text: trip.drive.isPaused ? "Trip paused" : "Co-pilot")
+                AuditEyebrow(text: trip.drive.isPaused ? "Trip paused" : trip.drive.tripTitle)
                 Spacer()
                 Image(systemName: soundAllowed ? "speaker.wave.2" : "speaker.slash")
                     .accessibilityLabel(soundAllowed ? "Sound permitted by driver choice" : "Sound disabled")
@@ -38,6 +38,9 @@ struct DriveScreen: View {
                 if let curve = trip.drive.nextCurve {
                     SurfaceBadge(fileSurface: curve.surface, camera: trip.drive.cameraEvidence,
                                  threshold: trip.drive.cameraThreshold)
+                    if let range = trip.drive.screeningRange {
+                        ScreeningRangeLabel(range: range)
+                    }
                 } else {
                     Label("Surface unconfirmed", systemImage: "road.lanes").foregroundStyle(.secondary)
                 }

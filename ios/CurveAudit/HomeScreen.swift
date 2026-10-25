@@ -6,6 +6,7 @@ struct HomeScreen: View {
     @Binding var county: String
     var onStart: () -> Void
     @ObservedObject var trip: TripScreenBridge
+    @AppStorage("curveaudit.dashEnabled") private var dashEnabled = false
 
     var body: some View {
         ScrollView {
@@ -27,7 +28,9 @@ struct HomeScreen: View {
                         Text("\(county)\nCounty").font(.headline).multilineTextAlignment(.trailing)
                     }
                     Text("Ready when you're parked.").font(.title2.bold())
-                    Text("Choose who's driving before each trip. Co-pilot uses the county-file surface; camera is off.")
+                    Text(dashEnabled
+                         ? "Choose who's driving before each trip. Dash is on. The camera can only lower a paved county-file surface, and it stays off for an under-18 driver."
+                         : "Choose who's driving before each trip. Co-pilot uses the county-file surface; camera is off.")
                         .font(.subheadline).foregroundStyle(.secondary)
                     Button(action: onStart) {
                         Label("Start trip", systemImage: "arrow.right")

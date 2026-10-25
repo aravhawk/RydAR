@@ -220,7 +220,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CurveAudit/Info.plist;
-				INFOPLIST_KEY_NSCameraUsageDescription = "Dash mode uses the camera to tell paved pavement from gravel. The photo stays on this phone.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Dash mode looks at the road ahead and compares it with a public dataset. No photo is saved.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "CurveAudit uses your location to know which curve you are approaching.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "CurveAudit uses motion to estimate speed changes on the way into a curve.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -248,7 +248,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CurveAudit/Info.plist;
-				INFOPLIST_KEY_NSCameraUsageDescription = "Dash mode uses the camera to tell paved pavement from gravel. The photo stays on this phone.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Dash mode looks at the road ahead and compares it with a public dataset. No photo is saved.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "CurveAudit uses your location to know which curve you are approaching.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "CurveAudit uses motion to estimate speed changes on the way into a curve.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

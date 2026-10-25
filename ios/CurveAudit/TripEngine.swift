@@ -211,6 +211,7 @@ struct TripUpdate: Equatable {
     var surfaceUI: SurfaceUI?
     var completed: [CompletedPass]
     var gpsGood = false
+    var screeningRange: ScreeningRange? = nil
 }
 
 func driveGate(mode: DriverMode?, speedMps: Double, dashEnabled: Bool, uploadOptIn: Bool) -> DriveGate {
@@ -464,7 +465,8 @@ struct TripMatcher {
             surface: focus?.surface,
             surfaceUI: focus?.surfaceUI,
             completed: completed,
-            gpsGood: true
+            gpsGood: true,
+            screeningRange: focus?.range
         )
     }
 
@@ -534,7 +536,8 @@ struct TripMatcher {
             surfaceUsed: track.surface,
             radiusBand: radiusBand(feet: track.radiusFeet),
             lookAheadMeters: track.lookAhead,
-            contextKey: approachContextKey(surface: track.surface, radiusFeet: track.radiusFeet, hour: hour)
+            contextKey: approachContextKey(surface: track.surface, radiusFeet: track.radiusFeet, hour: hour),
+            brakingDistanceMeters: track.brakingOnset
         )
     }
 }

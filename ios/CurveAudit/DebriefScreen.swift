@@ -67,6 +67,9 @@ struct DebriefScreen: View {
                     if !trip.isConnected {
                         Text("Preference saved. Upload service is not connected in this UI preview.")
                             .font(.caption).foregroundStyle(.secondary)
+                    } else if !trip.uploadConfigured {
+                        Text("This switch is saved. This build has no upload address yet, so nothing is sent. Timing memory stays on this iPhone.")
+                            .font(.caption).foregroundStyle(.secondary)
                     }
                     Button("Save export on this iPhone", systemImage: "square.and.arrow.down") {
                         do {
