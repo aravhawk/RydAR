@@ -20,7 +20,7 @@ enum BundledCurves {
             appropriateFor: nil,
             create: true
         )
-        let directory = base.appendingPathComponent("CurveAudit", isDirectory: true)
+        let directory = base.appendingPathComponent("RydAR", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         return directory.appendingPathComponent("curves.sqlite")
     }

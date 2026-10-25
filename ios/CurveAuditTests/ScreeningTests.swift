@@ -8,6 +8,36 @@ final class ScreeningTests: XCTestCase {
         XCTAssertEqual(range.high, 22.6, accuracy: 0.05)
     }
 
+    func testTreadQuestionReturnsAfterAboutOneThousandMiles() {
+        let defaults = UserDefaults.standard
+        let previous = defaults.string(forKey: TreadStore.choiceKey)
+        let meters = defaults.object(forKey: TreadStore.metersKey)
+        defer {
+            if let previous { defaults.set(previous, forKey: TreadStore.choiceKey) }
+            else { defaults.removeObject(forKey: TreadStore.choiceKey) }
+            if let meters { defaults.set(meters, forKey: TreadStore.metersKey) }
+            else { defaults.removeObject(forKey: TreadStore.metersKey) }
+        }
+        TreadStore.save(.half)
+        TreadStore.addMeters(200)
+        XCTAssertEqual(TreadStore.choice, .half)
+        let steps = Int((TreadStore.reviewMeters / 200).rounded(.up))
+        for _ in 0..<steps { TreadStore.addMeters(200) }
+        XCTAssertNil(TreadStore.choice)
+    }
+
+    func testWornTreadLowersTheRangeAndNewTreadDoesNot() {
+        let design = screeningRange(radiusFeet: 200, surface: .paved)
+        let fresh = screeningRange(radiusFeet: 200, surface: .paved, tread: .fresh)
+        let low = screeningRange(radiusFeet: 200, surface: .paved, tread: .low)
+        let bars = screeningRange(radiusFeet: 200, surface: .paved, tread: .bars)
+        XCTAssertEqual(fresh.low, design.low, accuracy: 0.01)
+        XCTAssertLessThan(low.low, design.low)
+        XCTAssertLessThan(bars.low, low.low)
+        XCTAssertEqual(screeningFriction(surface: .paved, tread: .unsure), 0.15, accuracy: 0.001)
+        XCTAssertEqual(screeningFriction(surface: .unpaved, tread: .bars), 0.07, accuracy: 0.001)
+    }
+
     func testUnpavedLowEnd() {
         let range = screeningRange(radiusFeet: 200, surface: .unpaved)
         XCTAssertEqual(range.low, 15.5, accuracy: 0.05)

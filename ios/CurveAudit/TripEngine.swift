@@ -268,6 +268,7 @@ struct TripMatcher {
     var promptStyle: PromptStyle = .normal
     var dashEnabled = false
     var uploadOptIn = false
+    var tread: TreadChoice = .unsure
 
     private var streakID: String?
     private var streak = 0
@@ -276,8 +277,9 @@ struct TripMatcher {
     private var spokenThisPass: Set<String> = []
     private var tracks: [String: ApproachTrack] = [:]
 
-    mutating func begin(driverMode: DriverMode) {
+    mutating func begin(driverMode: DriverMode, tread: TreadChoice = .unsure) {
         self.driverMode = driverMode
+        self.tread = tread
         streakID = nil
         streak = 0
         lastMatchAt = nil
@@ -496,7 +498,7 @@ struct TripMatcher {
             let ahead = geometry.headingError <= 90
             let confidence = ahead ? max(0, cos(geometry.headingError * .pi / 180)) : 0
             let fused = fuseSurface(fileLabel: curve.surface, camera: cameraUsed, threshold: DriveRules.cameraConfidence)
-            let range = screeningRange(radiusFeet: curve.radiusFeet, surface: fused.0)
+            let range = screeningRange(radiusFeet: curve.radiusFeet, surface: fused.0, tread: tread)
             let effective = effectiveSpeedMPH(speedMps: speed, accuracyMps: max(0, fix.speedAccuracyMps))
             let key = approachContextKey(surface: fused.0, radiusFeet: curve.radiusFeet, hour: hour)
             let memory = memoryForContext(key)
@@ -581,6 +583,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
     var promptStyle: PromptStyle = .normal
     var dashEnabled = false
     var uploadOptIn = false
+    var tread: TreadChoice = .unsure
     /// Screen hook. The engine still matches, speaks, and logs. The screen does not.
     var onHandled: ((TripUpdate, Curve?) -> Void)?
     private(set) var snapshot = DriveSnapshot()
@@ -597,9 +600,10 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
     private var cameraAcceptedAt: Date?
     private var horizontalGs: [Double] = []
     private var lastSpeedSample: (speed: Double, time: Date)?
+    private var previousLocation: CLLocation?
     private let motionQueue: OperationQueue = {
         let queue = OperationQueue()
-        queue.name = "com.curveaudit.motion"
+        queue.name = "com.rydar.motion"
         queue.maxConcurrentOperationCount = 1
         return queue
     }()
@@ -628,8 +632,11 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
     }
 
     func beginTrip(driverMode: DriverMode, at date: Date = Date(), startSensors: Bool = true) throws {
-        matcher.begin(driverMode: driverMode)
+        let reported = TreadStore.choice ?? .unsure
+        tread = reported
+        matcher.begin(driverMode: driverMode, tread: reported)
         tripID = try passLog.startTrip(mode: driverMode, at: date, notes: nil)
+        previousLocation = nil
         paused = false
         latestVision = VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false)
         latestCamera = nil
@@ -764,6 +771,11 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard tripID != nil, !paused, let location = locations.last else { return }
+        if let previous = previousLocation,
+           location.horizontalAccuracy >= 0, location.horizontalAccuracy <= 50 {
+            TreadStore.addMeters(location.distance(from: previous))
+        }
+        previousLocation = location
         let fix = LocationFix(location)
         let braking = detectBraking(fix)
         handle(fix: fix, braking: braking, now: Date())

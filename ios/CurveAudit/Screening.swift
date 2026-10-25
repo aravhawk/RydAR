@@ -17,8 +17,22 @@ func screeningMPH(radiusFeet: Double, superelevation: Double, friction: Double) 
     return inside.squareRoot()
 }
 
-func screeningRange(radiusFeet: Double, surface: RoadSurface) -> ScreeningRange {
-    let friction = surface == .paved ? 0.15 : 0.10
+/// Design friction stays 0.15 paved and 0.10 unpaved for new, halfway, and unknown tread.
+/// Those values are already a wet-pavement assumption. Reported wear only lowers them.
+/// 4/32 uses 0.12 / 0.08. At the 2/32 wear bars, 0.10 / 0.07. This is not a measured friction coefficient.
+func screeningFriction(surface: RoadSurface, tread: TreadChoice) -> Double {
+    switch (surface, tread) {
+    case (.paved, .low): return 0.12
+    case (.paved, .bars): return 0.10
+    case (.unpaved, .low): return 0.08
+    case (.unpaved, .bars): return 0.07
+    case (.paved, _): return 0.15
+    case (.unpaved, _): return 0.10
+    }
+}
+
+func screeningRange(radiusFeet: Double, surface: RoadSurface, tread: TreadChoice = .unsure) -> ScreeningRange {
+    let friction = screeningFriction(surface: surface, tread: tread)
     return ScreeningRange(
         low: screeningMPH(radiusFeet: radiusFeet, superelevation: -0.02, friction: friction),
         high: screeningMPH(radiusFeet: radiusFeet, superelevation: 0.02, friction: friction)

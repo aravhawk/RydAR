@@ -31,44 +31,103 @@ final class ScreenPermissions: NSObject, ObservableObject, CLLocationManagerDele
 struct OnboardingScreen: View {
     var onContinue: () -> Void
     @StateObject private var permissions = ScreenPermissions()
+    @State private var tread: TreadChoice?
     @Environment(\.openURL) private var openURL
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 22) {
                 Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
-                    .font(.system(size: 56)).foregroundStyle(AuditTheme.accent)
+                    .font(.system(size: 52)).foregroundStyle(AuditTheme.accent)
                     .accessibilityHidden(true)
-                AuditEyebrow(text: "CurveAudit AR / Welcome")
-                Text("Know the curve.\nUnderstand the range.")
-                    .font(.largeTitle.bold()).fixedSize(horizontal: false, vertical: true)
-                Text("A screening tool for Benton and Washington county roads. Screening is not driving advice or an advisory speed. Follow posted signs and road conditions.")
+                Text("RydAR").font(.largeTitle.bold())
+                Text("A heads-up before a tight curve. Follow the signs.")
                     .foregroundStyle(.secondary)
-                AuditCard {
-                    Label("Permissions, with a purpose", systemImage: "hand.raised")
-                        .font(.headline)
-                    Text(permissions.locationDescription).font(.subheadline)
-                    if permissions.locationStatus == .notDetermined {
-                        Button("Allow location while using", action: permissions.requestLocation)
-                            .buttonStyle(.bordered).accessibilityIdentifier("allowLocation")
-                    } else if permissions.locationStatus == .denied {
-                        Button("Open iPhone Settings") {
-                            if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
-                        }
+                if permissions.locationStatus == .notDetermined {
+                    Button("Allow location", action: permissions.requestLocation)
+                        .buttonStyle(.bordered).accessibilityIdentifier("allowLocation")
+                } else if permissions.locationStatus == .denied {
+                    Button("Turn on location in Settings") {
+                        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
                     }
-                    Text("Always location is optional. Motion is requested when trip recording is connected. Camera permission is only for Dash mode; no frames are saved. No microphone is needed.")
-                        .font(.footnote).foregroundStyle(.secondary)
-                }
-                AuditCard {
-                    Label("Who's driving? Every trip.", systemImage: "person.crop.circle.badge.checkmark")
-                        .font(.headline)
-                    Text("Nothing is pre-selected. Adult driver and Passenger operating can use sound. Under-18 driver has preview before moving and debrief after parking, with no in-drive sound, camera, or upload.")
+                } else {
+                    Label("Location is on", systemImage: "location.fill")
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
-                Label("No account. Trips stay on this iPhone.", systemImage: "iphone.gen3")
-                    .font(.subheadline)
-                Button("Continue", action: onContinue)
-                    .buttonStyle(AuditPrimaryButton()).accessibilityIdentifier("finishOnboarding")
+                Text("How much tread is on the tires?").font(.title3.bold())
+                TreadChoices(selection: $tread)
+                if tread?.replaceBeforeDriving == true {
+                    Text("Those tires are at the wear bars. Replace them before driving.")
+                        .font(.subheadline.bold())
+                } else if tread == .low {
+                    Text("Low tread. The range on a curve will sit lower.")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
+                Button("Continue") {
+                    if let tread { TreadStore.save(tread) }
+                    onContinue()
+                }
+                .buttonStyle(AuditPrimaryButton())
+                .disabled(tread == nil)
+                .opacity(tread == nil ? 0.45 : 1)
+                .accessibilityIdentifier("finishOnboarding")
+            }.padding(24)
+        }
+        .background(AuditTheme.background)
+    }
+}
+
+struct TreadChoices: View {
+    @Binding var selection: TreadChoice?
+
+    var body: some View {
+        VStack(spacing: 8) {
+            ForEach(TreadChoice.allCases) { choice in
+                Button {
+                    selection = choice
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(choice.rawValue).font(.headline)
+                            Text(choice.detail).font(.subheadline).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        if selection == choice {
+                            Image(systemName: "checkmark.circle.fill").foregroundStyle(AuditTheme.accent)
+                        }
+                    }
+                    .padding(.horizontal, 16).padding(.vertical, 12)
+                    .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("tread-\(choice.rawValue)")
+            }
+        }
+    }
+}
+
+struct TreadCheckScreen: View {
+    var onContinue: () -> Void
+    @State private var tread: TreadChoice?
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                Text("Check the tires").font(.largeTitle.bold())
+                Text("About 1,000 miles since the last answer. Use a gauge, or the wear bars.")
+                    .foregroundStyle(.secondary)
+                TreadChoices(selection: $tread)
+                if tread?.replaceBeforeDriving == true {
+                    Text("Replace them before this trip.")
+                        .font(.subheadline.bold())
+                }
+                Button("Save") {
+                    if let tread { TreadStore.save(tread) }
+                    onContinue()
+                }
+                .buttonStyle(AuditPrimaryButton())
+                .disabled(tread == nil)
+                .opacity(tread == nil ? 0.45 : 1)
             }.padding(24)
         }
         .background(AuditTheme.background)

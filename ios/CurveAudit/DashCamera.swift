@@ -17,7 +17,7 @@ final class DashCamera: NSObject, DashRunning, AVCaptureVideoDataOutputSampleBuf
     var thermal: () -> Bool
     private(set) var didLoadModel = false
 
-    private let queue = DispatchQueue(label: "com.curveaudit.dash")
+    private let queue = DispatchQueue(label: "com.rydar.dash")
     private lazy var context = CIContext(options: [.cacheIntermediates: false])
     private var session: AVCaptureSession?
     private var request: VNCoreMLRequest?

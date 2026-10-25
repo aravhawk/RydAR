@@ -21,6 +21,8 @@ final class AnonymousPassTests: XCTestCase {
         XCTAssertNil(AnonymousPass.body(from: sample(id: "preview-curve", speed: 20, hour: 14), appVersion: "0.1.0"))
         XCTAssertNil(AnonymousPass.body(from: sample(id: "143-9-1", speed: 20, hour: 14), appVersion: " "))
         XCTAssertNil(AnonymousPass.body(from: sample(id: "143-9-1", speed: 20, hour: 24), appVersion: "0.1.0"))
+        XCTAssertNotNil(AnonymousPass.body(from: sample(id: "119-4-8", speed: 30, hour: 9), appVersion: "0.1.0"))
+        XCTAssertNil(AnonymousPass.body(from: sample(id: "002-1-1", speed: 30, hour: 9), appVersion: "0.1.0"))
     }
 
     private func sample(id: String, speed: Double, hour: Int) -> CompletedPass {

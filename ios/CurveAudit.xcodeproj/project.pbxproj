@@ -217,6 +217,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				COREML_CODEGEN_LANGUAGE = None;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CurveAudit/Info.plist;
@@ -232,9 +233,9 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.curveaudit.app;
+				INFOPLIST_KEY_CFBundleDisplayName = RydAR;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rydar.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				COREML_CODEGEN_LANGUAGE = None;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -245,6 +246,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				COREML_CODEGEN_LANGUAGE = None;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CurveAudit/Info.plist;
@@ -260,9 +262,9 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.curveaudit.app;
+				INFOPLIST_KEY_CFBundleDisplayName = RydAR;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rydar.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				COREML_CODEGEN_LANGUAGE = None;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -311,7 +313,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.curveaudit.app.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rydar.app.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -328,7 +330,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.curveaudit.app.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rydar.app.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -339,15 +341,6 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		CA0000000000000000000015 /* Build configuration list for PBXProject "CurveAudit" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				CA0000000000000000000018 /* Debug */,
-				CA0000000000000000000019 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		CA0000000000000000000011 /* Build configuration list for PBXNativeTarget "CurveAudit" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -362,6 +355,15 @@
 			buildConfigurations = (
 				CA000000000000000000001A /* Debug */,
 				CA000000000000000000001B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CA0000000000000000000015 /* Build configuration list for PBXProject "CurveAudit" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CA0000000000000000000018 /* Debug */,
+				CA0000000000000000000019 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

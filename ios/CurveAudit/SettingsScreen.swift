@@ -2,10 +2,11 @@ import SwiftUI
 
 struct SettingsScreen: View {
     @ObservedObject var trip: TripScreenBridge
-    @AppStorage("curveaudit.promptStyle") private var promptStyle = PromptStyle.normal.rawValue
-    @AppStorage("curveaudit.uploadOptIn") private var uploadOptIn = false
-    @AppStorage("curveaudit.dashEnabled") private var dashEnabled = false
-    @AppStorage("curveaudit.onboardingComplete") private var onboarded = false
+    @AppStorage("rydar.promptStyle") private var promptStyle = PromptStyle.normal.rawValue
+    @AppStorage("rydar.uploadOptIn") private var uploadOptIn = false
+    @AppStorage("rydar.dashEnabled") private var dashEnabled = false
+    @AppStorage("rydar.onboardingComplete") private var onboarded = false
+    @AppStorage(TreadStore.choiceKey) private var treadRaw = ""
     @State private var confirmDelete = false
     @State private var deleteError: String?
 
@@ -15,35 +16,38 @@ struct SettingsScreen: View {
                 Picker("Prompt style", selection: $promptStyle) {
                     ForEach(PromptStyle.allCases) { style in Text(style.rawValue).tag(style.rawValue) }
                 }.pickerStyle(.inline).accessibilityIdentifier("promptStyle")
-                Text("Spoken prompts use: “\(spokenWarning)” No numeric speed is spoken. Chime only uses a sound instead. Under-18 driver has no in-drive sound.")
+                Text("“\(spokenWarning)”")
                     .font(.footnote).foregroundStyle(.secondary)
             } header: { Text("Hands-free prompts") }
             Section {
                 Toggle("Anonymous pass uploads", isOn: $uploadOptIn).accessibilityIdentifier("settingsUpload")
-                Text("Opt-in only. No account, device ID, or route trace. Public statistics require at least 20 passes across more than one hour bucket. Under-18 driver has no upload while moving.")
+                Text("Off unless you turn it on. No account and no route.")
                     .font(.footnote).foregroundStyle(.secondary)
-                if !trip.isConnected {
-                    Text("Upload service is not connected in this UI preview.")
-                        .font(.footnote).foregroundStyle(.secondary)
-                }
             } header: { Text("Privacy") }
             Section {
-                LabeledContent("Driver choice", value: "Ask every trip")
+                Picker("Tires", selection: Binding(
+                    get: { treadRaw.isEmpty ? TreadChoice.unsure.rawValue : treadRaw },
+                    set: { newValue in
+                        treadRaw = newValue
+                        if let choice = TreadChoice(rawValue: newValue) { TreadStore.save(choice) }
+                    }
+                )) {
+                    ForEach(TreadChoice.allCases) { choice in
+                        Text("\(choice.rawValue) · \(choice.detail)").tag(choice.rawValue)
+                    }
+                }.accessibilityIdentifier("treadSetting")
                 Toggle("Dash mode", isOn: $dashEnabled).accessibilityIdentifier("dashMode")
-                Text("Parked setting. Co-pilot is the default and leaves the camera off.")
-                    .font(.footnote).foregroundStyle(.secondary)
-                Text("Nothing is pre-selected. Set up the phone while parked. Camera stays off in Co-pilot mode.")
+                Text("Camera stays off unless Dash is on.")
                     .font(.footnote).foregroundStyle(.secondary)
             } header: { Text("Trip setup") }
             Section {
                 Button("Delete all data", role: .destructive) { confirmDelete = true }
                     .accessibilityIdentifier("deleteAllData")
-                Text("Deletes local trips, pass history, timing memory, saved exports, and preferences, and stops uploads. The bundled road file stays installed. Previously uploaded anonymous rows cannot be linked back to this phone.")
+                Text("Clears trips on this iPhone. The road file stays.")
                     .font(.footnote).foregroundStyle(.secondary)
             } header: { Text("On this iPhone") }
             Section {
-                Text("Screening, not driving advice. The range is not an advisory speed.")
-                Text("Road geometry and surface labels: Arkansas GIS Office.")
+                Text("Screening range, not an advisory speed. Roads: Arkansas GIS Office.")
             }.font(.footnote).foregroundStyle(.secondary)
         }
         .navigationTitle("Settings").navigationBarTitleDisplayMode(.inline)
@@ -58,6 +62,8 @@ struct SettingsScreen: View {
                     try LocalTripExport.deleteAll()
                     promptStyle = PromptStyle.normal.rawValue
                     onboarded = false
+                    TreadStore.clear()
+                    treadRaw = ""
                 } catch { deleteError = error.localizedDescription }
             }
         } message: { Text("Local trips and exports cannot be recovered.") }

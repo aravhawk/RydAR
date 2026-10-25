@@ -9,12 +9,9 @@ struct DebriefScreen: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                AuditEyebrow(text: "Parked / This trip")
-                Text("A look back.\nAn earlier heads-up.").font(.largeTitle.bold())
-                Text("\(trip.debrief.overRangePasses.count) over-range curve passes")
+                Text("Parked.").font(.largeTitle.bold())
+                Text("\(trip.debrief.overRangePasses.count) curves above the range")
                     .font(.headline).foregroundStyle(AuditTheme.accent)
-                Text("Largest gap above the low end first. This is screening, not an advisory speed.")
-                    .font(.subheadline).foregroundStyle(.secondary)
                 if trip.debrief.overRangePasses.isEmpty {
                     AuditCard {
                         Label("No over-range passes recorded", systemImage: "checkmark.circle")
@@ -33,18 +30,11 @@ struct DebriefScreen: View {
                             Text("+\(pass.gapAboveLowEnd, specifier: "%.1f") mph")
                                 .font(.headline.monospacedDigit()).foregroundStyle(.orange)
                         }
-                        Text("Gap above screening low end").font(.caption).foregroundStyle(.secondary)
-                        Text("Approach · \(pass.effectiveMPH, specifier: "%.1f") mph").font(.subheadline)
+                        Text("Approach \(pass.effectiveMPH, specifier: "%.0f") mph").font(.subheadline)
                         ScreeningRangeLabel(range: pass.range)
-                        Text("Surface used · \(pass.surfaceUsed.rawValue)").font(.subheadline)
-                        Text("Braking onset · \(measurement(pass.brakingDistanceMeters, unit: "m before curve"))")
-                            .font(.subheadline)
-                        Text("Apparent lateral tilt · \(measurement(pass.apparentTiltDegrees, unit: "°"))")
-                            .font(.subheadline).foregroundStyle(.secondary)
-                        Text("Curve \(pass.curve.id)").font(.caption).foregroundStyle(.secondary)
+                        Text(pass.surfaceUsed.rawValue.capitalized).font(.subheadline).foregroundStyle(.secondary)
                     }
                 }
-                AuditEyebrow(text: "Personal timing memory / On this phone")
                 if trip.debrief.lateContexts.isEmpty {
                     Text("No context has enough late approaches to move the next prompt earlier.")
                         .font(.subheadline).foregroundStyle(.secondary)
@@ -53,32 +43,25 @@ struct DebriefScreen: View {
                     AuditCard {
                         Label("Earlier next time", systemImage: "clock.arrow.circlepath").font(.headline)
                         Text(context.message).font(.subheadline)
-                        Text("\(context.surface.rawValue.capitalized) · radius \(radiusBand(feet: context.representativeRadiusFeet)) ft · \(isNightHour(context.hour) ? "night" : "day")")
-                            .font(.caption).foregroundStyle(.secondary)
-                        Text("Timing changes. The screening range stays the same.")
+                        Text("\(context.surface.rawValue.capitalized) · \(isNightHour(context.hour) ? "night" : "day")")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
                 AuditCard {
                     Toggle("Opt in to anonymous pass uploads", isOn: $uploadOptIn)
                         .accessibilityIdentifier("debriefUpload")
-                    Text("Off by default. Only curve ID, direction, a 5-mph speed band, hour bucket, app version, and optional lateral-acceleration band. No accounts or traces. Timing memory stays here.")
+                    Text("A count for a curve. Not your route.")
                         .font(.caption).foregroundStyle(.secondary)
-                    if !trip.isConnected {
-                        Text("Preference saved. Upload service is not connected in this UI preview.")
-                            .font(.caption).foregroundStyle(.secondary)
-                    } else if !trip.uploadConfigured {
-                        Text("This switch is saved. This build has no upload address yet, so nothing is sent. Timing memory stays on this iPhone.")
+                    if trip.isConnected && !trip.uploadConfigured {
+                        Text("Saved here. No upload address in this build.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     Button("Save export on this iPhone", systemImage: "square.and.arrow.down") {
                         do {
                             let file = try LocalTripExport.save(trip.debrief)
-                            exportMessage = "Saved on this iPhone in CurveAudit Exports: \(file.lastPathComponent). This file is excluded from device backups."
+                            exportMessage = "Saved on this iPhone."
                         } catch { exportMessage = "Export could not be saved: \(error.localizedDescription)" }
                     }.disabled(trip.debrief.passes.isEmpty).accessibilityIdentifier("exportTrip")
-                    Text("Export stays on device. It does not upload or open a share sheet.")
-                        .font(.caption).foregroundStyle(.secondary)
                 }
                 Button("Done", action: onDone).buttonStyle(AuditPrimaryButton())
                     .accessibilityIdentifier("debriefDone")
@@ -87,13 +70,8 @@ struct DebriefScreen: View {
         .background(AuditTheme.background)
         .navigationTitle("Trip debrief").navigationBarTitleDisplayMode(.inline).navigationBarBackButtonHidden()
         .onChange(of: uploadOptIn) { _, value in trip.onUploadPreference?(value) }
-        .alert("Local export", isPresented: Binding(get: { exportMessage != nil }, set: { if !$0 { exportMessage = nil } })) {
+        .alert("Saved", isPresented: Binding(get: { exportMessage != nil }, set: { if !$0 { exportMessage = nil } })) {
             Button("OK") { exportMessage = nil }
         } message: { Text(exportMessage ?? "") }
-    }
-
-    private func measurement(_ value: Double?, unit: String) -> String {
-        guard let value, value.isFinite else { return "Not recorded" }
-        return String(format: "%.1f %@", value, unit)
     }
 }

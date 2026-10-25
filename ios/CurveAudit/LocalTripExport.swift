@@ -17,7 +17,7 @@ enum LocalTripExport {
         let folder = try directory()
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         // Do not accept a backend-provided trip ID as a filesystem path.
-        var file = folder.appendingPathComponent("CurveAudit-\(UUID().uuidString).csv")
+        var file = folder.appendingPathComponent("RydAR-\(UUID().uuidString).csv")
         try Data(csv(debrief).utf8).write(to: file, options: [.atomic, .completeFileProtectionUnlessOpen])
         var values = URLResourceValues()
         values.isExcludedFromBackup = true
@@ -33,7 +33,7 @@ enum LocalTripExport {
     private static func directory() throws -> URL {
         try FileManager.default.url(for: .documentDirectory, in: .userDomainMask,
                                     appropriateFor: nil, create: true)
-            .appendingPathComponent("CurveAudit Exports", isDirectory: true)
+            .appendingPathComponent("RydAR Exports", isDirectory: true)
     }
     private static func number(_ value: Double?) -> String {
         guard let value, value.isFinite else { return "" }

@@ -3,7 +3,7 @@ import Foundation
 
 /// Parked preference. Co-pilot is the default, so this stays off until someone turns it on.
 enum DashPreference {
-    static let key = "curveaudit.dashEnabled"
+    static let key = "rydar.dashEnabled"
 
     static var isOn: Bool {
         get { UserDefaults.standard.bool(forKey: key) }

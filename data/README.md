@@ -1,4 +1,6 @@
-# CurveAudit AR — research data (frozen Oct 24, 2026)
+# RydAR — research data
+
+The two-county curve study below is the original Benton and Washington file. `tools/build_arkansas.py` adds the other Arkansas counties from the same Arkansas GIS Office layer and keeps these Benton and Washington curves unchanged. That layer does not include a belt of roads in the surrounding states.
 
 The product spec in this repo is `docs/CurveAudit-AR-Product-Brief.md`. If this folder and that file disagree, the **build contract** at the top of the brief wins. This folder is the copy of record. The Downloads copy of these files has been removed.
 

@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "curveaudit",
+  "name": "rydar",
   "main": "src/index.ts",
   "compatibility_date": "2026-10-24",
   "compatibility_flags": ["nodejs_compat"],
@@ -18,7 +18,7 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "curveaudit-passes",
+      "database_name": "rydar-passes",
       "database_id": "00000000-0000-0000-0000-000000000000"
     }
   ]

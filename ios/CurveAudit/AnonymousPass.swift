@@ -33,10 +33,11 @@ enum AnonymousPass {
         )
     }
 
-    /// Benton ids start with 007-. Washington ids start with 143-.
+    /// County code is an Arkansas FIPS: odd numbers from 001 through 149.
     static func isCurveID(_ id: String) -> Bool {
         let parts = id.split(separator: "-", omittingEmptySubsequences: false)
-        guard parts.count == 3, parts[0] == "007" || parts[0] == "143" else { return false }
+        guard parts.count == 3, parts[0].count == 3, parts[0].allSatisfy(\.isNumber),
+              let county = Int(parts[0]), county >= 1, county <= 149, county % 2 == 1 else { return false }
         return parts[1].count >= 1 && parts[1].count <= 7 && parts[1].allSatisfy(\.isNumber)
             && parts[2].count >= 1 && parts[2].count <= 7 && parts[2].allSatisfy(\.isNumber)
     }
@@ -57,7 +58,7 @@ final class PassUpload: PassSending {
     }
 
     static var bundledEndpoint: URL? {
-        guard let raw = Bundle.main.object(forInfoDictionaryKey: "CurveAuditPassEndpoint") as? String else {
+        guard let raw = Bundle.main.object(forInfoDictionaryKey: "RydARPassEndpoint") as? String else {
             return nil
         }
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -3,55 +3,43 @@ import SwiftUI
 struct HomeScreen: View {
     let store: any CurveStore
     var isSampleStore: Bool
-    @Binding var county: String
     var onStart: () -> Void
     @ObservedObject var trip: TripScreenBridge
-    @AppStorage("curveaudit.dashEnabled") private var dashEnabled = false
+    @AppStorage("rydar.dashEnabled") private var dashEnabled = false
+    @AppStorage(TreadStore.choiceKey) private var treadRaw = ""
+
+    private var tread: TreadChoice? { TreadChoice(rawValue: treadRaw) }
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                AuditEyebrow(text: "Northwest Arkansas")
-                Text("A little context\nbefore the bend.")
-                    .font(.largeTitle.bold()).fixedSize(horizontal: false, vertical: true)
-                Text("Curve screening, built from Arkansas road geometry. Available in Benton and Washington.")
+            VStack(alignment: .leading, spacing: 22) {
+                Text("Parked.").font(.largeTitle.bold())
+                Text(dashEnabled ? "Dash is on." : "Co-pilot. Camera off.")
                     .foregroundStyle(.secondary)
-                Picker("County", selection: $county) {
-                    Text("Benton").tag("Benton")
-                    Text("Washington").tag("Washington")
-                }.pickerStyle(.segmented).accessibilityIdentifier("countyPicker")
-                AuditCard {
-                    HStack {
-                        Image(systemName: "point.topleft.down.to.point.bottomright.curvepath")
-                            .font(.system(size: 36)).foregroundStyle(AuditTheme.accent)
-                        Spacer()
-                        Text("\(county)\nCounty").font(.headline).multilineTextAlignment(.trailing)
-                    }
-                    Text("Ready when you're parked.").font(.title2.bold())
-                    Text(dashEnabled
-                         ? "Choose who's driving before each trip. Dash is on. The camera can only lower a paved county-file surface, and it stays off for an under-18 driver."
-                         : "Choose who's driving before each trip. Co-pilot uses the county-file surface; camera is off.")
+                if tread?.replaceBeforeDriving == true {
+                    Text("Replace the tires before this trip.")
+                        .font(.headline)
+                } else if tread == .low {
+                    Text("Low tread. Curve ranges sit lower.")
                         .font(.subheadline).foregroundStyle(.secondary)
-                    Button(action: onStart) {
-                        Label("Start trip", systemImage: "arrow.right")
-                    }.buttonStyle(AuditPrimaryButton()).accessibilityIdentifier("startTrip")
-                    NavigationLink {
-                        PreviewScreen(store: store, county: county, isSampleStore: isSampleStore)
-                    } label: {
-                        Label("Preview route", systemImage: "map")
-                            .font(.headline).frame(maxWidth: .infinity, minHeight: 44)
-                    }.accessibilityIdentifier("previewRoute")
                 }
-                Label("No account · no curve download after install", systemImage: "iphone.gen3")
-                    .font(.footnote).foregroundStyle(.secondary)
+                Button(action: onStart) {
+                    Label(tread?.replaceBeforeDriving == true ? "Start anyway" : "Start trip", systemImage: "arrow.right")
+                }.buttonStyle(AuditPrimaryButton()).accessibilityIdentifier("startTrip")
+                NavigationLink {
+                    PreviewScreen(store: store, isSampleStore: isSampleStore)
+                } label: {
+                    Label("Look at a road", systemImage: "map")
+                        .font(.headline).frame(maxWidth: .infinity, minHeight: 44)
+                }.accessibilityIdentifier("previewRoute")
                 if isSampleStore {
-                    Text("UI preview · five sample curves. Live trip recording is not connected.")
+                    Text("Sample roads only.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
             }.padding(24)
         }
         .background(AuditTheme.background)
-        .navigationTitle("CurveAudit AR").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("RydAR").navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink { SettingsScreen(trip: trip) } label: {

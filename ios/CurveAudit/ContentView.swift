@@ -5,10 +5,10 @@ struct ContentView: View {
     private let store: any CurveStore
     private let isSampleStore: Bool
     @StateObject private var trip: TripScreenBridge
-    @AppStorage("curveaudit.onboardingComplete") private var onboarded = false
-    @AppStorage("curveaudit.promptStyle") private var promptStyle = PromptStyle.normal.rawValue
-    @AppStorage("curveaudit.uploadOptIn") private var uploadOptIn = false
-    @State private var county = "Benton"
+    @AppStorage("rydar.onboardingComplete") private var onboarded = false
+    @AppStorage("rydar.promptStyle") private var promptStyle = PromptStyle.normal.rawValue
+    @AppStorage("rydar.uploadOptIn") private var uploadOptIn = false
+    @AppStorage(TreadStore.choiceKey) private var treadRaw = ""
     @State private var phase = ScreenPhase.home
     @State private var showDriverGate = false
 
@@ -22,10 +22,12 @@ struct ContentView: View {
         NavigationStack {
             if !onboarded {
                 OnboardingScreen { onboarded = true }
+            } else if treadRaw.isEmpty {
+                TreadCheckScreen { }
             } else {
                 switch phase {
                 case .home:
-                    HomeScreen(store: store, isSampleStore: isSampleStore, county: $county,
+                    HomeScreen(store: store, isSampleStore: isSampleStore,
                                onStart: { showDriverGate = true }, trip: trip)
                 case .drive:
                     DriveScreen(trip: trip) {

@@ -1,6 +1,6 @@
-# CurveAudit AR
+# RydAR
 
-iPhone app for curve-speed screening on Benton and Washington county roads, plus a public Cloudflare map. The product spec is `docs/CurveAudit-AR-Product-Brief.md`. If this README and that file disagree, the build contract at the top of the brief wins.
+iPhone app for curve screening on Arkansas roads, plus a public Cloudflare map. The product spec is `docs/CurveAudit-AR-Product-Brief.md`. If this README and that file disagree, the build contract at the top of the brief wins.
 
 ## Stack
 
@@ -40,7 +40,7 @@ That reads `data/curves/curves.geojson` and writes `ios/CurveAudit/curves.sqlite
 ```bash
 cd web
 npm install
-npx wrangler d1 migrations apply curveaudit-passes --local
+npx wrangler d1 migrations apply rydar-passes --local
 npm run dev
 ```
 
@@ -48,7 +48,7 @@ The `database_id` in `web/wrangler.jsonc` is a placeholder. The first person wit
 
 ```bash
 npx wrangler login
-npx wrangler d1 create curveaudit-passes
+npx wrangler d1 create rydar-passes
 ```
 
 Paste the printed id into `wrangler.jsonc`, then `npm run types`.

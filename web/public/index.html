@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Candidate curves for engineering review | CurveAudit AR</title>
-  <meta name="description" content="County-class road curves in Benton and Washington counties, Arkansas, listed as candidates for engineering review. Geometry only.">
+  <title>Curves in Arkansas | RydAR</title>
+  <meta name="description" content="County-road curves in Arkansas. Candidates for a road department to look at. Geometry only.">
   <link rel="stylesheet" href="/vendor/maplibre-gl/maplibre-gl.css">
   <style>
     :root {
@@ -103,16 +103,11 @@
 </head>
 <body>
   <aside aria-label="Map controls and notes">
-    <h1>Candidate curves for engineering review</h1>
-    <p class="lead">Bends on county-class roads in Benton and Washington counties, Arkansas, where the road centerline turns tighter than a 600-foot radius. Each one is a candidate for a road department to look at. This page does not rank curves or recommend an action on any road.</p>
+    <h1>RydAR</h1>
+    <p class="lead">County roads in Arkansas that bend tighter than a 600-foot radius. A candidate list, not a ranking.</p>
 
     <section aria-labelledby="show-h">
       <h2 id="show-h">Show</h2>
-      <fieldset>
-        <legend>County</legend>
-        <label class="check"><input type="checkbox" name="county" value="Benton" checked> Benton</label>
-        <label class="check"><input type="checkbox" name="county" value="Washington" checked> Washington</label>
-      </fieldset>
       <fieldset>
         <legend>Road surface</legend>
         <label class="check"><input type="checkbox" name="surface" value="paved" checked> <span><span class="swatch paved"></span>Paved</span></label>
@@ -120,35 +115,19 @@
       </fieldset>
       <label class="check">
         <input type="checkbox" id="flagged">
-        <span>Include curves with quality flags<span class="muted small"><br>Sparse road-file points, closed loops, corners under 50 ft, ramps. Many are intersection corners or subdivision loops.</span></span>
+        <span>Include flagged curves</span>
       </label>
       <p class="count" id="count" role="status" aria-live="polite">Loading curves</p>
     </section>
 
     <section aria-labelledby="find-h">
       <h2 id="find-h">Find a road</h2>
-      <label class="small muted" for="find">Type part of a road name. Matches are in alphabetical order.</label>
+      <label class="small muted" for="find">Road name</label>
       <input id="find" type="search" autocomplete="off" placeholder="Road name">
       <ul class="results" id="results"></ul>
     </section>
 
-    <section aria-labelledby="pass-h">
-      <h2 id="pass-h">Pass statistics</h2>
-      <p class="small" id="pass-note">Checking for published statistics.</p>
-      <p class="small muted">Drivers can opt in to share anonymous passes. A curve shows statistics only after 20 or more passes across more than one hour of the day. Below that, this page shows geometry only.</p>
-      <p class="small links">Download statistics (CSV):
-        <a href="/api/export/benton.csv" download>Benton</a>,
-        <a href="/api/export/washington.csv" download>Washington</a>.
-        Curve geometry (GeoJSON):
-        <a href="/api/curves/benton.geojson" download>Benton</a>,
-        <a href="/api/curves/washington.geojson" download>Washington</a>.</p>
-    </section>
-
-    <section aria-labelledby="about-h">
-      <h2 id="about-h">About this list</h2>
-      <p class="small">Built from Arkansas GIS Office road centerlines. Radius is estimated from the centerline, which is digitized coarsely, so estimates can run small and some entries are not real curves. Every entry is a candidate. None is a verified hazard, and none has been checked on the ground.</p>
-      <p class="small muted">Colors show road surface only. They do not show how a curve compares with any other.</p>
-    </section>
+    <p class="small muted">A curve shows pass counts only after 20 passes in more than one hour. Roads: Arkansas GIS Office.</p>
   </aside>
 
   <main id="map" aria-label="Map of candidate curves">
@@ -159,7 +138,6 @@
     import { Map, NavigationControl, ScaleControl, AttributionControl, Popup, LngLatBounds }
       from "/vendor/maplibre-gl/maplibre-gl.mjs";
 
-    const COUNTIES = ["Benton", "Washington"];
     const FLAG_TEXT = {
       sparse_vertices_gt25m: "Few road-file points here, so the radius is a rough estimate.",
       closed_loop: "Closed loop, such as a cul-de-sac or subdivision loop.",
@@ -169,12 +147,11 @@
     const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const state = {
-      counties: new Set(COUNTIES),
       surfaces: new Set(["paved", "unpaved"]),
       flagged: false,
     };
-    const data = {};       // county -> features
-    const stats = {};      // curve id -> { n, hours }
+    let features = [];
+    const stats = {};
     let selectedId = null;
     let popup = null;
 
@@ -185,10 +162,9 @@
         sources: {},
         layers: [{ id: "sheet", type: "background", paint: { "background-color": "#e8ecec" } }],
       },
-      bounds: [[-94.65, 35.72], [-93.78, 36.52]],
+      bounds: [[-94.8, 33.0], [-89.6, 36.6]],
       fitBoundsOptions: { padding: 16 },
       attributionControl: false,
-      maxBounds: [[-95.1, 35.4], [-93.3, 36.85]],
       dragRotate: false,
       touchPitch: false,
     });
@@ -196,10 +172,10 @@
     map.addControl(new ScaleControl({ unit: "imperial" }), "bottom-left");
     map.addControl(new AttributionControl({
       compact: true,
-      customAttribution: "Road centerlines: Arkansas GIS Office. Curve analysis: CurveAudit AR.",
+      customAttribution: "Road centerlines: Arkansas GIS Office. Curve analysis: RydAR.",
     }), "bottom-right");
     map.touchZoomRotate.disableRotation();
-    const HOME = [[-94.65, 35.72], [-93.78, 36.52]];
+    const HOME = [[-94.8, 33.0], [-89.6, 36.6]];
     const mapReady = new Promise((resolve) => map.once("load", resolve));
     mapReady.then(() => {
       // Layout can settle after the first measure, so frame the counties again.
@@ -214,49 +190,30 @@
     }
 
     function applyFilters() {
-      for (const county of COUNTIES) {
-        const id = layerId(county);
-        if (!map.getLayer(id)) continue;
-        map.setLayoutProperty(id, "visibility", state.counties.has(county) ? "visible" : "none");
-        map.setFilter(id, surfaceFilter());
-      }
+      if (map.getLayer("arkansas")) map.setFilter("arkansas", surfaceFilter());
       updateCount();
       runSearch();
     }
 
     function matches(f) {
       const p = f.properties;
-      return (
-        state.counties.has(p.county) &&
-        state.surfaces.has(p.surface) &&
-        (state.flagged || p.flags === "")
-      );
+      return state.surfaces.has(p.surface) && (state.flagged || p.flags === "");
     }
 
     function updateCount() {
       const el = document.getElementById("count");
-      if (COUNTIES.some((c) => !data[c])) return;
-      let total = 0;
+      if (!features.length) return;
       let shown = 0;
-      for (const county of COUNTIES) {
-        if (!state.counties.has(county)) continue;
-        for (const f of data[county]) {
-          total += 1;
-          if (matches(f)) shown += 1;
-        }
-      }
-      el.textContent = `Showing ${shown.toLocaleString()} of ${total.toLocaleString()} county-class curves`;
+      for (const f of features) if (matches(f)) shown += 1;
+      el.textContent = `Showing ${shown.toLocaleString()} of ${features.length.toLocaleString()} curves`;
     }
 
-    const layerId = (county) => `curves-${county.toLowerCase()}`;
-
-    function addCounty(county, geojson) {
-      const src = layerId(county);
-      map.addSource(src, { type: "geojson", data: geojson, promoteId: "id" });
+    function addCurves(geojson) {
+      map.addSource("arkansas", { type: "geojson", data: geojson, promoteId: "id" });
       map.addLayer({
-        id: src,
+        id: "arkansas",
         type: "line",
-        source: src,
+        source: "arkansas",
         filter: surfaceFilter(),
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
@@ -275,29 +232,13 @@
       });
     }
 
-    async function loadCounty(county) {
-      const res = await fetch(`/api/curves/${county.toLowerCase()}.geojson`);
-      if (!res.ok) throw new Error(`${county}: HTTP ${res.status}`);
+    async function loadCurves() {
+      const res = await fetch("/data/curves-arkansas.geojson");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const geojson = await res.json();
-      data[county] = geojson.features;
+      features = geojson.features;
       await mapReady;
-      addCounty(county, geojson);
-    }
-
-    async function loadStats(county) {
-      try {
-        const res = await fetch(`/api/export/${county.toLowerCase()}.csv`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const lines = (await res.text()).trim().split("\n").slice(1);
-        for (const line of lines) {
-          const [id, n, hours] = line.split(",");
-          // Same rule as the server: 20 or more passes across more than one hour bucket.
-          if (Number(n) >= 20 && Number(hours) >= 2) stats[id] = { n: Number(n), hours: Number(hours) };
-        }
-        return true;
-      } catch {
-        return false;
-      }
+      addCurves(geojson);
     }
 
     // Same formula as ios/CurveAudit/Screening.swift. e and f are ratios.
@@ -334,8 +275,7 @@
       add("p", `Estimated radius ${p.radius_ft} ft, turning about ${p.deflection_deg} degrees`);
       const range = screeningRangeText(p.radius_ft, p.surface);
       if (range) add("p", range);
-      add("p", `Curve ${p.id}`, "id");
-      for (const text of flagList(p.flags)) add("p", `Flag: ${text}`, "muted");
+      for (const text of flagList(p.flags)) add("p", text, "muted");
       const s = stats[p.id];
       if (s) {
         const box = add("p", `Anonymous passes: ${s.n} across ${s.hours} hours of the day.`, "stats");
@@ -361,31 +301,24 @@
     }
 
     function setSelected(id, on) {
-      const county = COUNTIES.find((c) => id.startsWith(c === "Benton" ? "007-" : "143-"));
-      if (!county || !map.getSource(layerId(county))) return;
-      map.setFeatureState({ source: layerId(county), id }, { selected: on });
+      if (!map.getSource("arkansas")) return;
+      map.setFeatureState({ source: "arkansas", id }, { selected: on });
     }
 
     map.on("click", (e) => {
       const r = 7;
       const box = [[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]];
-      const layers = COUNTIES.map(layerId).filter((l) => map.getLayer(l));
-      const hits = map.queryRenderedFeatures(box, { layers });
+      if (!map.getLayer("arkansas")) return;
+      const hits = map.queryRenderedFeatures(box, { layers: ["arkansas"] });
       if (hits.length) select(hits[0], e.lngLat);
     });
     map.on("mousemove", (e) => {
       const r = 5;
       const box = [[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]];
-      const layers = COUNTIES.map(layerId).filter((l) => map.getLayer(l));
-      map.getCanvas().style.cursor = map.queryRenderedFeatures(box, { layers }).length ? "pointer" : "";
+      if (!map.getLayer("arkansas")) return;
+      map.getCanvas().style.cursor = map.queryRenderedFeatures(box, { layers: ["arkansas"] }).length ? "pointer" : "";
     });
 
-    // Filters
-    document.querySelectorAll('input[name="county"]').forEach((el) =>
-      el.addEventListener("change", () => {
-        el.checked ? state.counties.add(el.value) : state.counties.delete(el.value);
-        applyFilters();
-      }));
     document.querySelectorAll('input[name="surface"]').forEach((el) =>
       el.addEventListener("change", () => {
         el.checked ? state.surfaces.add(el.value) : state.surfaces.delete(el.value);
@@ -404,10 +337,8 @@
       resultsEl.replaceChildren();
       if (q.length < 2) return;
       const found = [];
-      for (const county of COUNTIES) {
-        for (const f of data[county] || []) {
-          if (matches(f) && f.properties.road.toLowerCase().includes(q)) found.push(f);
-        }
+      for (const f of features) {
+        if (matches(f) && f.properties.road.toLowerCase().includes(q)) found.push(f);
       }
       found.sort((a, b) =>
         a.properties.road.localeCompare(b.properties.road) || a.properties.id.localeCompare(b.properties.id));
@@ -424,7 +355,7 @@
         b.textContent = f.properties.road;
         const meta = document.createElement("span");
         meta.className = "meta";
-        meta.textContent = `${f.properties.county} County, ${f.properties.surface}, curve ${f.properties.id}`;
+        meta.textContent = `${f.properties.county} County, ${f.properties.surface}`;
         b.appendChild(meta);
         b.addEventListener("click", () => goTo(f));
         li.appendChild(b);
@@ -441,25 +372,9 @@
       select(f, mid);
     }
 
-    // Start
-    const loads = COUNTIES.map((c) =>
-      loadCounty(c).catch((err) => {
-        console.error(err);
-        document.getElementById("count").textContent =
-          "Could not load curve data. Reload the page to try again.";
-      }));
-    Promise.all([...loads]).then(() => { updateCount(); runSearch(); });
-
-    Promise.all(COUNTIES.map(loadStats)).then((results) => {
-      const note = document.getElementById("pass-note");
-      if (results.some((ok) => !ok)) {
-        note.textContent = "Pass statistics are not available right now. The map shows geometry only.";
-        return;
-      }
-      const n = Object.keys(stats).length;
-      note.textContent = n
-        ? `${n} curve${n === 1 ? " has" : "s have"} published pass statistics. Select a curve to see them.`
-        : "No curve has met the publication threshold yet. The map shows geometry only.";
+    loadCurves().then(() => { updateCount(); runSearch(); }).catch((err) => {
+      console.error(err);
+      document.getElementById("count").textContent = "Could not load curves. Reload the page.";
     });
   </script>
 </body>
