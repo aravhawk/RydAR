@@ -6,10 +6,37 @@ final class TripEngineTests: XCTestCase {
     private let baseLat = 36.0
     private let baseLon = -94.0
 
+    func testABackgroundAlertUsesVibrationAndAnOnScreenAlertUsesTheTapticEngine() {
+        XCTAssertEqual(hapticRoute(appIsActive: true, hardwareSupportsHaptics: true), .taptic)
+        XCTAssertEqual(hapticRoute(appIsActive: false, hardwareSupportsHaptics: true), .vibration)
+        XCTAssertEqual(hapticRoute(appIsActive: true, hardwareSupportsHaptics: false), .vibration)
+    }
+
+    func testAParkedFixIsStandingStillRatherThanMissing() {
+        let now = Date()
+        let still = LocationFix(
+            latitude: baseLat, longitude: baseLon, speedMps: -1, speedAccuracyMps: -1,
+            courseDegrees: -1, horizontalAccuracyMeters: 5, timestamp: now
+        )
+        let lost = LocationFix(
+            latitude: baseLat, longitude: baseLon, speedMps: -1, speedAccuracyMps: -1,
+            courseDegrees: -1, horizontalAccuracyMeters: -1, timestamp: now
+        )
+        let ready = LocationFix(
+            latitude: baseLat, longitude: baseLon, speedMps: 12, speedAccuracyMps: 1,
+            courseDegrees: 90, horizontalAccuracyMeters: 8, timestamp: now
+        )
+        XCTAssertEqual(gpsStatusText(for: still, now: now), "Standing still")
+        XCTAssertFalse(gpsIsGood(still, now: now))
+        XCTAssertEqual(gpsStatusText(for: lost, now: now), "Waiting for location")
+        XCTAssertEqual(gpsStatusText(for: ready, now: now), "GPS ready")
+    }
+
     func testSpeechSessionUsesTheVoicePrompt() {
         XCTAssertEqual(SpeechPrompt.category, .playback)
         XCTAssertEqual(SpeechPrompt.mode, .voicePrompt)
         XCTAssertTrue(SpeechPrompt.options.contains(.duckOthers))
+        XCTAssertTrue(SpeechPrompt.options.contains(.interruptSpokenAudioAndMixWithOthers))
         XCTAssertEqual(SpeechPrompt.line, "Curve ahead. Above screening range.")
         XCTAssertEqual(SpeechPrompt.line, spokenWarning)
         XCTAssertNil(SpeechPrompt.line.range(of: #"\d"#, options: .regularExpression))
@@ -47,6 +74,7 @@ final class TripEngineTests: XCTestCase {
         XCTAssertEqual(last.prompt, nil)
         XCTAssertEqual(harness.speech.spoken, [spokenWarning])
         XCTAssertEqual(harness.speech.chimes, 0)
+        XCTAssertEqual(harness.speech.taps, 1)
         XCTAssertGreaterThanOrEqual(last.matchStreak, 3)
     }
 
@@ -73,6 +101,7 @@ final class TripEngineTests: XCTestCase {
         XCTAssertFalse(update.gate.allowsUpload)
         XCTAssertTrue(harness.speech.spoken.isEmpty)
         XCTAssertEqual(harness.speech.chimes, 0)
+        XCTAssertEqual(harness.speech.taps, 0)
 
         let parked = harness.engine.handle(fix: fix(speed: 0, at: moment), nearby: [], now: moment)
         XCTAssertFalse(parked.gate.allowsSound)
@@ -90,6 +119,7 @@ final class TripEngineTests: XCTestCase {
         }
         XCTAssertTrue(harness.speech.spoken.isEmpty)
         XCTAssertEqual(harness.speech.chimes, 1)
+        XCTAssertEqual(harness.speech.taps, 1)
     }
 
     func testLookAheadFollowsMemoryAndNeverShrinks() {
@@ -418,6 +448,26 @@ final class TripEngineTests: XCTestCase {
         return (engine, speech, log)
     }
 
+    func testFifteenMilesAnHourOnAGentleCurveStaysQuietAndShowsTheSpeed() {
+        let speed = 15 / 2.23694
+        let update = run(
+            mode: .adult,
+            speed: speed,
+            curve: line(id: "gentle", north: 80, radius: 400),
+            at: Date()
+        )
+        XCTAssertNil(update.prompt)
+        XCTAssertEqual(update.measuredSpeedMPH ?? -1, 15, accuracy: 0.2)
+        if let low = update.screeningRange?.low {
+            XCTAssertLessThan(update.promptSpeedMPH ?? -1, low)
+        }
+    }
+
+    func testARampClassWithABlankDesignStaysQuiet() {
+        XCTAssertFalse(canWarn(on: line(id: "class-ramp", north: 80, roadClass: "Ramp", roadDesign: "")))
+        XCTAssertTrue(canWarn(on: line(id: "county", north: 80, roadClass: "County", roadDesign: "")))
+    }
+
     func testBlankAndAbbreviatedDesignsAreNotRamps() {
         XCTAssertFalse(isRampDesign(""))
         XCTAssertFalse(isRampDesign("SC"))
@@ -435,6 +485,8 @@ private final class EmptyCurveStore: CurveStore {
 private final class SpyPrompt: PromptPlaying {
     var spoken: [String] = []
     var chimes = 0
+    var taps = 0
     func speakWarning() throws { spoken.append(spokenWarning) }
     func playChime() throws { chimes += 1 }
+    func playCurveTap() { taps += 1 }
 }

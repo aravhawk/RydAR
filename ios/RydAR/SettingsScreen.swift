@@ -16,12 +16,12 @@ struct SettingsScreen: View {
                 Picker("Prompt style", selection: $promptStyle) {
                     ForEach(PromptStyle.allCases) { style in Text(style.rawValue).tag(style.rawValue) }
                 }.pickerStyle(.inline).accessibilityIdentifier("promptStyle")
-                Text("“\(spokenWarning)”")
+                Text("“\(spokenWarning)” The phone taps with each prompt.")
                     .font(.footnote).foregroundStyle(.secondary)
             } header: { Text("Hands-free prompts") }
             Section {
                 Toggle("Anonymous pass uploads", isOn: $uploadOptIn).accessibilityIdentifier("settingsUpload")
-                Text("On unless you turn it off. A curve, a direction, a 5 mph band, and the hour. No name and no route. An under-18 driver does not send passes.")
+                Text("On unless you turn it off. A curve, a direction, a 5 mph band, and the hour. No name and no route. A count is published after 20 passes in more than one hour. An under-18 driver does not send passes.")
                     .font(.footnote).foregroundStyle(.secondary)
             } header: { Text("Privacy") }
             Section {
@@ -37,7 +37,7 @@ struct SettingsScreen: View {
                     }
                 }.accessibilityIdentifier("treadSetting")
                 Toggle("Dash mode", isOn: $dashEnabled).accessibilityIdentifier("dashMode")
-                Text("On unless you turn it off. The camera stays off for an under-18 driver. experimental — validated on public datasets only, not on Arkansas roads.")
+                Text("On unless you turn it off. The camera looks at the road surface and can only treat a paved road as unpaved. It stays off for an under-18 driver. experimental — validated on public datasets only, not on Arkansas roads.")
                     .font(.footnote).foregroundStyle(.secondary)
             } header: { Text("Trip setup") }
             Section {
@@ -47,7 +47,7 @@ struct SettingsScreen: View {
                     .font(.footnote).foregroundStyle(.secondary)
             } header: { Text("On this iPhone") }
             Section {
-                Text("Screening range, not an advisory speed. Roads: Arkansas GIS Office.")
+                Text("screening range — not an advisory speed. Roads: Arkansas GIS Office.")
             }.font(.footnote).foregroundStyle(.secondary)
         }
         .navigationTitle("Settings").navigationBarTitleDisplayMode(.inline)

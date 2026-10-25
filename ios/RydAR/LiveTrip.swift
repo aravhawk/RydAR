@@ -208,7 +208,9 @@ final class LiveTripSession {
         assignDrive(snapshot(
             curve: showCurve ? curve : nil,
             distance: showCurve ? update.distanceMeters : nil,
-            gps: update.gpsGood ? "GPS ready" : "Waiting for location",
+            gps: update.gpsStatus,
+            measured: update.measuredSpeedMPH,
+            prompt: update.promptSpeedMPH,
             paused: engine.snapshot.paused,
             range: showCurve ? update.screeningRange : nil
         ))
@@ -238,6 +240,8 @@ final class LiveTripSession {
         curve: Curve?,
         distance: Double?,
         gps: String,
+        measured: Double? = nil,
+        prompt: Double? = nil,
         paused: Bool,
         range: ScreeningRange?
     ) -> DriveScreenSnapshot {
@@ -248,6 +252,8 @@ final class LiveTripSession {
             cameraThreshold: DriveRules.cameraConfidence,
             cameraStatus: cameraStatus,
             gpsStatus: gps,
+            measuredSpeedMPH: measured,
+            promptSpeedMPH: prompt,
             isPaused: paused,
             screeningRange: range,
             tripTitle: tripTitle

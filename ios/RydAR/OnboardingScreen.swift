@@ -44,6 +44,13 @@ struct OnboardingScreen: View {
                 Text("RydAR").font(.largeTitle.bold())
                 Text("A heads-up before a tight curve. Follow the signs.")
                     .foregroundStyle(.secondary)
+                AuditCard {
+                    Text("How a trip works").font(.headline)
+                    Text("Park, choose who is driving, and start. Leave RydAR open. Alerts still speak if Maps is in front, unless the driver is under 18.")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                    Text("The phone speaks only “\(spokenWarning)” and taps at the same moment. That happens when a filed curve is ahead and the cautious speed is above its screening range — not an advisory speed. A neighborhood corner the road file does not keep, or a speed under that range, stays quiet.")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
                 if permissions.locationStatus == .notDetermined {
                     Button("Allow location", action: permissions.requestLocation)
                         .buttonStyle(.bordered).accessibilityIdentifier("allowLocation")
@@ -57,11 +64,16 @@ struct OnboardingScreen: View {
                 }
                 AuditCard {
                     Text("Dash is on").font(.headline)
-                    Text("The camera looks at the road while this app is open. experimental — validated on public datasets only, not on Arkansas roads.")
+                    Text("Dash uses the camera to look at the road surface during a trip. It can only treat a paved road as unpaved. It does not measure ice or a friction number. experimental — validated on public datasets only, not on Arkansas roads.")
                         .font(.subheadline).foregroundStyle(.secondary)
-                    Text("Anonymous passes are sent: the curve, the direction, a 5 mph band, and the hour. No name and no route. A count is published after 20 passes in more than one hour.")
+                    Text("Turn Dash off in Settings if you do not want the camera. An under-18 driver never gets the camera.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+                AuditCard {
+                    Text("Anonymous passes are on").font(.headline)
+                    Text("A pass is the curve, the direction, a 5 mph band, and the hour. No name and no route. A road department sees a count only after 20 passes in more than one hour. That count is how those curves show up beyond this phone.")
                         .font(.subheadline).foregroundStyle(.secondary)
-                    Text("An under-18 driver does not use the camera and does not send passes. Turn either one off in Settings.")
+                    Text("It stays on unless you turn it off in Settings. An under-18 driver does not send passes.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
                 Text("How much tread is on the tires?").font(.title3.bold())

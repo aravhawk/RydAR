@@ -22,7 +22,7 @@ struct ContentView: View {
         NavigationStack {
             if !onboarded {
                 OnboardingScreen { onboarded = true }
-            } else if treadRaw.isEmpty {
+            } else if treadRaw.isEmpty && phase == .home {
                 TreadCheckScreen { }
             } else {
                 switch phase {

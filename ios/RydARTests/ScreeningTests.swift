@@ -2,6 +2,15 @@ import XCTest
 @testable import RydAR
 
 final class ScreeningTests: XCTestCase {
+    func testPavedGisLabelsStayPaved() {
+        for label in ["paved", "Paved", "p", "paved: asphalt", "paved asphalt", "paved: chip seal", "asphalt", "concrete", "chipnseal"] {
+            XCTAssertEqual(roadSurface(from: label), .paved, label)
+        }
+        for label in ["", "unknown", "Unknown", "unpaved", "u", "unpaved gravel", "gravel", "dirt"] {
+            XCTAssertEqual(roadSurface(from: label), .unpaved, label)
+        }
+    }
+
     func testPavedRangeMatchesTheBrief() {
         let range = screeningRange(radiusFeet: 200, surface: .paved)
         XCTAssertEqual(range.low, 19.7, accuracy: 0.05)

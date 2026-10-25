@@ -82,7 +82,7 @@
     select, input[type="search"] {
       width: 100%;
       height: 46px;
-      font: inherit;
+      font: 16px/1.45 var(--sans);
       color: inherit;
       background: var(--panel);
       border: 0;
@@ -157,7 +157,16 @@
       pointer-events: none;
     }
     .maplibregl-ctrl-top-right { top: 8px; right: 8px; }
-    .maplibregl-ctrl-bottom-right { bottom: 8px; right: 8px; }
+    .maplibregl-ctrl-bottom-right {
+      bottom: 8px;
+      right: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+    .maplibregl-ctrl-bottom-right .maplibregl-ctrl { margin: 0; }
+    .maplibregl-popup { z-index: 4; }
     .maplibregl-popup-content {
       font: 14px/1.45 var(--sans);
       color: var(--ink);
@@ -184,6 +193,7 @@
       }
       h1 { font-size: 1.6rem; }
       .map-hint { left: 16px; top: 16px; right: 64px; }
+      .maplibregl-ctrl-top-right { top: 56px; }
       .maplibregl-ctrl-bottom-right {
         right: 8px;
         bottom: calc(min(48vh, 100% - 120px) + 12px);
@@ -259,6 +269,7 @@
     let selectedId = null;
     let selectedFeature = null;
     let popup = null;
+    let replacingPopup = false;
 
     const map = new Map({
       container: "map",
@@ -332,6 +343,10 @@
 
     function updateCount() {
       if (!features.length) return;
+      if (!state.surfaces.size) {
+        setStatus("Both surfaces are off. Turn paved or unpaved back on to see curves.");
+        return;
+      }
       let shown = 0;
       for (const f of features) if (matches(f)) shown += 1;
       const where = state.county ? `${state.county} County` : "Arkansas";
@@ -385,7 +400,7 @@
             ["==", ["get", "surface"], "unpaved"], "#c47a2b",
             "#30b0c7",
           ],
-          "line-width": ["interpolate", ["linear"], ["zoom"], 6, 1.4, 9, 2.4, 12, 3.6, 15, 6],
+          "line-width": ["interpolate", ["linear"], ["zoom"], 0, 2.2, 8, 2.2, 12, 3.6, 15, 6],
           "line-opacity": 0.95,
         },
       });
@@ -417,11 +432,14 @@
 
     function screeningRangeText(radiusFeet, surface) {
       const radius = Number(radiusFeet);
-      if (!Number.isFinite(radius) || radius <= 0) return "";
+      if (!Number.isFinite(radius) || radius <= 0) return null;
       const friction = surface === "paved" ? 0.15 : 0.1;
       const low = screeningMPH(radius, -0.02, friction);
       const high = screeningMPH(radius, 0.02, friction);
-      return `${low.toFixed(1)}\u2013${high.toFixed(1)} mph. screening range \u2014 not an advisory speed.`;
+      return {
+        speed: `${low.toFixed(1)}\u2013${high.toFixed(1)} mph.`,
+        note: "screening range \u2014 not an advisory speed.",
+      };
     }
 
     function flagList(flags) {
@@ -441,7 +459,10 @@
       add("p", `${p.county} County, ${p.surface} road`);
       add("p", `Estimated radius ${p.radius_ft} ft, turning about ${p.deflection_deg} degrees`);
       const range = screeningRangeText(p.radius_ft, p.surface);
-      if (range) add("p", range);
+      if (range) {
+        add("p", range.speed);
+        add("p", range.note);
+      }
       for (const text of flagList(p.flags)) add("p", text, "muted");
       const s = stats[p.id];
       if (s) add("p", `Anonymous passes: ${s.n} across ${s.hours} hours of the day.`, "stats");
@@ -454,12 +475,17 @@
       selectedId = p.id;
       selectedFeature = feature;
       setSelected(p.id, true);
-      if (popup) popup.remove();
+      if (popup) {
+        replacingPopup = true;
+        popup.remove();
+        replacingPopup = false;
+      }
       popup = new Popup({ closeButton: true, maxWidth: "20rem", focusAfterOpen: false })
         .setLngLat(lngLat)
         .setDOMContent(popupContent(p))
         .addTo(map);
       popup.on("close", () => {
+        if (replacingPopup) return;
         if (selectedId) setSelected(selectedId, false);
         selectedId = null;
         selectedFeature = null;
@@ -519,18 +545,7 @@
     let resizeTimer;
     window.addEventListener("resize", () => {
       clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => {
-        map.resize();
-        if (!countyFeatures.length) return;
-        if (state.county) {
-          const feature = countyFeatures.find((f) => f.properties.county === state.county);
-          if (feature) frame(boundsOf(feature), 11);
-        } else {
-          const bounds = new LngLatBounds();
-          for (const feature of countyFeatures) bounds.extend(boundsOf(feature));
-          frame(bounds, 8);
-        }
-      }, 150);
+      resizeTimer = setTimeout(() => map.resize(), 150);
     });
 
     map.on("click", (e) => {
@@ -544,7 +559,10 @@
       }
       if (!map.getLayer("counties-fill")) return;
       const counties = map.queryRenderedFeatures(e.point, { layers: ["counties-fill"] });
-      if (counties.length) chooseCounty(counties[0].properties.county, true);
+      if (counties.length) {
+        const name = counties[0].properties.county;
+        chooseCounty(name, name !== state.county);
+      }
     });
     map.on("mousemove", (e) => {
       const box = [[e.point.x - 6, e.point.y - 6], [e.point.x + 6, e.point.y + 6]];
@@ -570,9 +588,7 @@
       for (const f of features) {
         if (matches(f) && String(f.properties.road || "").toLowerCase().includes(q)) found.push(f);
       }
-      found.sort((a, b) =>
-        String(a.properties.road).localeCompare(String(b.properties.road)) ||
-        String(a.properties.id).localeCompare(String(b.properties.id)));
+      const shown = topRoads(found, 8);
       const li0 = document.createElement("li");
       li0.className = "small muted";
       const scope = state.county ? ` in ${state.county} County` : "";
@@ -580,7 +596,7 @@
         ? `${found.length.toLocaleString()} match${found.length === 1 ? "" : "es"}${scope}${found.length > 8 ? ", first 8 shown" : ""}`
         : `No matching road${scope}.`;
       resultsEl.appendChild(li0);
-      for (const f of found.slice(0, 8)) {
+      for (const f of shown) {
         const li = document.createElement("li");
         const b = document.createElement("button");
         b.type = "button";
@@ -594,6 +610,25 @@
         resultsEl.appendChild(li);
       }
     }
+    function roadOrder(a, b) {
+      return String(a.properties.road).localeCompare(String(b.properties.road))
+        || String(a.properties.id).localeCompare(String(b.properties.id));
+    }
+
+    function topRoads(found, limit) {
+      const best = [];
+      for (const feature of found) {
+        let index = best.findIndex((item) => roadOrder(feature, item) < 0);
+        if (index === -1) {
+          if (best.length < limit) best.push(feature);
+        } else {
+          best.splice(index, 0, feature);
+          if (best.length > limit) best.pop();
+        }
+      }
+      return best;
+    }
+
     findInput.addEventListener("input", runSearch);
 
     function goTo(f) {

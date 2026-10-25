@@ -109,9 +109,9 @@ extension DriverMode {
     }
     var screenDetail: String {
         switch self {
-        case .adult: return "Hands-free prompts. Set up while parked."
-        case .passenger: return "An adult drives. You operate the screen."
-        case .under18: return "Preview and debrief only. No sound, camera, or upload while moving."
+        case .adult: return "An adult is driving. Prompts can speak. Set up while parked."
+        case .passenger: return "An adult is driving. You are holding the phone. Prompts can speak."
+        case .under18: return "You are the driver, and you are under 18. No voice, camera, or upload on this trip."
         }
     }
 }

@@ -32,6 +32,9 @@ struct DriveScreenSnapshot {
     var cameraThreshold: Double = 1
     var cameraStatus = "Off · Co-pilot mode"
     var gpsStatus = "Waiting for location"
+    var measuredSpeedMPH: Double? = nil
+    /// Speed after the GPS uncertainty is removed. A prompt uses this, not the measured number.
+    var promptSpeedMPH: Double? = nil
     var isPaused = false
     /// The range the trip engine used for this match. Preview and debrief keep their own copies.
     var screeningRange: ScreeningRange?

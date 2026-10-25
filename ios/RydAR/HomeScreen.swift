@@ -16,6 +16,8 @@ struct HomeScreen: View {
                 Text("Parked.").font(.largeTitle.bold())
                 Text(dashEnabled ? "Dash is on." : "Co-pilot. Camera off.")
                     .foregroundStyle(.secondary)
+                Text("Leave RydAR open. Alerts still speak if Maps is in front, unless the driver is under 18.")
+                    .font(.subheadline).foregroundStyle(.secondary)
                 if tread?.replaceBeforeDriving == true {
                     Text("Replace the tires before this trip.")
                         .font(.headline)

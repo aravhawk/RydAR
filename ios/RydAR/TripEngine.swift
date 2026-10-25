@@ -211,6 +211,9 @@ struct TripUpdate: Equatable {
     var surfaceUI: SurfaceUI?
     var completed: [CompletedPass]
     var gpsGood = false
+    var gpsStatus = "Waiting for location"
+    var measuredSpeedMPH: Double? = nil
+    var promptSpeedMPH: Double? = nil
     var screeningRange: ScreeningRange? = nil
 }
 
@@ -247,11 +250,26 @@ func gpsIsGood(_ fix: LocationFix, now: Date) -> Bool {
     return age >= -1 && age <= DriveRules.gpsMaxAgeSeconds
 }
 
+/// A parked phone often has a coordinate and still reports speed and course as unknown.
+/// That is not a missing location. A curve match needs both.
+func gpsStatusText(for fix: LocationFix, now: Date) -> String {
+    if gpsIsGood(fix, now: now) { return "GPS ready" }
+    let positioned = fix.horizontalAccuracyMeters >= 0
+        && fix.horizontalAccuracyMeters <= DriveRules.gpsAccuracyLimitMeters
+    let age = now.timeIntervalSince(fix.timestamp)
+    let fresh = age >= -1 && age <= DriveRules.gpsMaxAgeSeconds
+    let motionUnknown = fix.speedMps < 0 || fix.speedAccuracyMps < 0
+        || fix.courseDegrees < 0 || fix.courseDegrees > 360
+    if positioned && fresh && motionUnknown { return "Standing still" }
+    return "Waiting for location"
+}
+
 func canWarn(on curve: Curve) -> Bool {
     if !curve.qualityFlags.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return false }
     if curve.closedLoop { return false }
     if curve.radiusFeet < 50 { return false }
     if curve.roadClass.range(of: "private", options: .caseInsensitive) != nil { return false }
+    if curve.roadClass.range(of: "ramp", options: .caseInsensitive) != nil { return false }
     if isRampDesign(curve.roadDesign) { return false }
     return true
 }
@@ -333,7 +351,9 @@ struct TripMatcher {
                 distanceMeters: nil,
                 surface: nil,
                 surfaceUI: nil,
-                completed: []
+                completed: [],
+                gpsStatus: gpsStatusText(for: fix, now: moment),
+                measuredSpeedMPH: measuredSpeedMPH(speedMps: fix.speedMps)
             )
         }
 
@@ -471,6 +491,9 @@ struct TripMatcher {
             surfaceUI: focus?.surfaceUI,
             completed: completed,
             gpsGood: true,
+            gpsStatus: "GPS ready",
+            measuredSpeedMPH: measuredSpeedMPH(speedMps: fix.speedMps),
+            promptSpeedMPH: focus?.effective,
             screeningRange: focus?.range
         )
     }
@@ -649,11 +672,15 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         snapshot.paused = false
         sensorsWanted = startSensors
         guard startSensors else { return }
+        speech.holdForTrip()
         startSensorsIfNeeded()
+        DriveLiveActivity.begin(speaks: driverMode != .under18)
     }
 
     func endTrip() {
         paused = false
+        speech.releaseAfterTrip()
+        DriveLiveActivity.end()
         locationManager.stopUpdatingLocation()
         if motionManager.isDeviceMotionActive {
             motionManager.stopDeviceMotionUpdates()
@@ -675,6 +702,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
             motionManager.stopDeviceMotionUpdates()
         }
         snapshot.paused = true
+        DriveLiveActivity.notePaused(speaks: matcher.driverMode != .under18)
     }
 
     func resume() {
@@ -683,6 +711,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         snapshot.paused = false
         guard sensorsWanted else { return }
         startSensorsIfNeeded()
+        DriveLiveActivity.noteListening(speaks: matcher.driverMode != .under18)
     }
 
     func updateVision(_ caution: VisionCaution, camera: CameraEvidence?, acceptedAt: Date = Date()) {
@@ -733,9 +762,13 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         if !paused {
             switch update.prompt {
             case .speak:
+                speech.playCurveTap()
                 try? speech.speakWarning()
+                DriveLiveActivity.noteCurve(speaks: true)
             case .chime:
+                speech.playCurveTap()
                 try? speech.playChime()
+                DriveLiveActivity.noteCurve(speaks: true)
             case nil:
                 break
             }

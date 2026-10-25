@@ -226,7 +226,7 @@ final class SQLiteCurveStore: CurveStore {
 
     private func curve(from statement: OpaquePointer) -> Curve {
         let coordinates = coordinates(from: connection.text(statement, 16))
-        let surface = connection.text(statement, 3).lowercased() == "paved" ? RoadSurface.paved : RoadSurface.unpaved
+        let surface = roadSurface(from: connection.text(statement, 3))
         return Curve(
             id: connection.text(statement, 0),
             county: connection.text(statement, 1),

@@ -6,6 +6,23 @@ struct DebriefScreen: View {
     @AppStorage("rydar.uploadOptIn") private var uploadOptIn = true
     @State private var exportMessage: String?
 
+    /// The Settings switch can stay on while this trip sent nothing.
+    private var uploadSentence: String {
+        if trip.driverMode == .under18 {
+            return "This trip was not uploaded. An under-18 driver sends nothing."
+        }
+        if !uploadOptIn {
+            return "Anonymous passes are off on this iPhone."
+        }
+        if trip.isConnected && !trip.uploadConfigured {
+            return "Saved on this iPhone. This build has no upload address."
+        }
+        if trip.debrief.passes.isEmpty {
+            return "No passes from this trip to send."
+        }
+        return "Anonymous passes from this trip are sent. No name and no route."
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
@@ -42,21 +59,20 @@ struct DebriefScreen: View {
                 ForEach(trip.debrief.lateContexts) { context in
                     AuditCard {
                         Label("Earlier next time", systemImage: "clock.arrow.circlepath").font(.headline)
-                        Text(context.message).font(.subheadline)
+                        Text(trip.driverMode == .under18
+                             ? "This trip had a late approach. An under-18 driver still gets no prompt."
+                             : context.message)
+                            .font(.subheadline)
                         Text("\(context.surface.rawValue.capitalized) · \(isNightHour(context.hour) ? "night" : "day")")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
                 AuditCard {
-                    Text(uploadOptIn
-                         ? "Anonymous passes from this trip are sent. No name and no route."
-                         : "Anonymous passes are off on this iPhone.")
+                    Text(uploadSentence)
                         .font(.subheadline)
                         .accessibilityIdentifier("debriefUpload")
-                    Text("Turn this off in Settings. A count is published after 20 passes in more than one hour.")
-                        .font(.caption).foregroundStyle(.secondary)
-                    if trip.isConnected && !trip.uploadConfigured {
-                        Text("Saved here. No upload address in this build.")
+                    if trip.driverMode != .under18 {
+                        Text("Turn this off in Settings. A count is published after 20 passes in more than one hour.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     Button("Save export on this iPhone", systemImage: "square.and.arrow.down") {

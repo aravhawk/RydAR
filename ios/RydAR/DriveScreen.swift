@@ -33,7 +33,8 @@ struct DriveScreen: View {
                 } else {
                     Text("— m").font(.system(size: 64, weight: .bold, design: .rounded))
                 }
-                Text(trip.drive.nextCurve?.roadName ?? "Waiting for a matched curve")
+                Text(trip.drive.nextCurve?.roadName
+                     ?? (trip.drive.gpsStatus == "GPS ready" ? "No filed curve ahead" : "Waiting for a matched curve"))
                     .font(.title2.weight(.semibold))
                 if let curve = trip.drive.nextCurve {
                     SurfaceBadge(fileSurface: curve.surface, camera: trip.drive.cameraEvidence,
@@ -44,8 +45,25 @@ struct DriveScreen: View {
                 } else {
                     Label("Surface unconfirmed", systemImage: "road.lanes").foregroundStyle(.secondary)
                 }
-                Label(trip.drive.gpsStatus, systemImage: "location")
-                    .font(.subheadline).foregroundStyle(.secondary)
+                HStack(alignment: .firstTextBaseline) {
+                    if let mph = trip.drive.measuredSpeedMPH {
+                        Text("\(mph, specifier: "%.0f") mph")
+                            .font(.title3.monospacedDigit().bold())
+                            .accessibilityIdentifier("measuredSpeed")
+                        Text("measured").font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        Text("Speed unknown").font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Label(trip.drive.gpsStatus, systemImage: "location")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
+                if let measured = trip.drive.measuredSpeedMPH,
+                   let prompt = trip.drive.promptSpeedMPH,
+                   measured - prompt > 3 {
+                    Text("GPS speed is uncertain. A prompt uses the cautious reading, \(prompt, specifier: "%.0f") mph.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
             }
             Spacer(minLength: 0)
             AuditCard {

@@ -4,21 +4,55 @@ import Foundation
 protocol PromptPlaying: AnyObject {
     func speakWarning() throws
     func playChime() throws
+    func playCurveTap()
+    func holdForTrip()
+    func releaseAfterTrip()
 }
 
-/// Playback session, voice-prompt mode, ducking other audio. The only spoken sentence is `spokenWarning`.
+extension PromptPlaying {
+    func playCurveTap() {}
+    func holdForTrip() {}
+    func releaseAfterTrip() {}
+}
+
+/// Playback session, voice-prompt mode. Other navigation speech is interrupted so this alert is not queued behind it.
+/// The session stays active for the whole trip. The only spoken sentence is `spokenWarning`.
 final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegate {
     static let category: AVAudioSession.Category = .playback
     static let mode: AVAudioSession.Mode = .voicePrompt
-    static let options: AVAudioSession.CategoryOptions = [.duckOthers]
+    static let options: AVAudioSession.CategoryOptions = [.duckOthers, .interruptSpokenAudioAndMixWithOthers]
     static var line: String { spokenWarning }
 
     private let synthesizer = AVSpeechSynthesizer()
+    private let haptic = CurveHaptic()
     private var player: AVAudioPlayer?
+    private var holding = false
+    private var voice: AVSpeechSynthesisVoice?
 
     override init() {
         super.init()
         synthesizer.delegate = self
+    }
+
+    func holdForTrip() {
+        holding = true
+        voice = AVSpeechSynthesisVoice(language: "en-US")
+        haptic.prepare()
+        try? activateSession()
+    }
+
+    func playCurveTap() {
+        haptic.play()
+    }
+
+    func releaseAfterTrip() {
+        holding = false
+        haptic.stop()
+        player?.stop()
+        if synthesizer.isSpeaking {
+            synthesizer.stopSpeaking(at: .immediate)
+        }
+        releaseSession()
     }
 
     func activateSession() throws {
@@ -34,7 +68,9 @@ final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, 
             synthesizer.stopSpeaking(at: .immediate)
         }
         let utterance = AVSpeechUtterance(string: spokenWarning)
-        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+        utterance.voice = voice ?? AVSpeechSynthesisVoice(language: "en-US")
+        utterance.preUtteranceDelay = 0
+        utterance.postUtteranceDelay = 0
         synthesizer.speak(utterance)
     }
 
@@ -50,11 +86,11 @@ final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, 
     }
 
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        releaseSession()
+        if !holding { releaseSession() }
     }
 
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        releaseSession()
+        if !holding { releaseSession() }
     }
 
     private func releaseSession() {

@@ -5,6 +5,21 @@ enum RoadSurface: String {
     case unpaved
 }
 
+/// A GIS label that names a paved surface stays paved, including "p" and "paved: asphalt".
+/// A blank, unknown, gravel, or dirt label stays unpaved.
+func roadSurface(from label: String) -> RoadSurface {
+    let name = label.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    if name == "p" || name == "paved" || name.hasPrefix("paved ") || name.hasPrefix("paved:") {
+        return .paved
+    }
+    switch name {
+    case "asphalt", "concrete", "chipnseal", "chip seal", "chipseal":
+        return .paved
+    default:
+        return .unpaved
+    }
+}
+
 struct ScreeningRange: Equatable {
     let low: Double
     let high: Double
@@ -41,6 +56,12 @@ func screeningRange(radiusFeet: Double, surface: RoadSurface, tread: TreadChoice
 
 func effectiveSpeedMPH(speedMps: Double, accuracyMps: Double) -> Double {
     max(0, speedMps - accuracyMps) * 2.23694
+}
+
+/// The phone's reported speed. A prompt still uses effectiveSpeedMPH, which drops the uncertain part.
+func measuredSpeedMPH(speedMps: Double) -> Double? {
+    guard speedMps >= 0 else { return nil }
+    return speedMps * 2.23694
 }
 
 func radiusBand(feet: Double) -> String {

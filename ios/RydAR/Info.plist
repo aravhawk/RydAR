@@ -4,6 +4,8 @@
 <dict>
 	<key>RydARPassEndpoint</key>
 	<string>https://rydar.org/api/pass</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
