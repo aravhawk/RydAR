@@ -7,15 +7,15 @@ iPhone app for curve-speed screening on Benton and Washington county roads, plus
 - iOS 17, SwiftUI, MapKit, one SQLite file for curves and trips
 - Python for the curve importer and the training script
 - Cloudflare Worker, D1, and static files for the public page and anonymous passes
-- One vision model with three heads. Fine-tuned in PyTorch on a Daytona GPU, converted to Core ML on a Mac, and bundled in the app. See `ml/README.md`. The curve database is also bundled. A drive does not download data. An on-device timing memory can speak earlier. Nothing in the app predicts a speed.
+- One vision model with three heads. Fine-tuned in PyTorch on Google Colab from Mac A, converted to Core ML on Mac A, and bundled in the app. See `ml/README.md`. The curve database is also bundled. A drive does not download data. An on-device timing memory can speak earlier. Nothing in the app predicts a speed.
 
 ## Who works where
 
 | Computer | Open | Do not open |
 |---|---|---|
-| Mac A (paid Apple team, the phone) | `ios/CurveAudit.xcodeproj` | |
+| Mac A (this Mac: paid Apple team, the phone, Colab) | `ios/CurveAudit.xcodeproj`, `ml/train_colab.ipynb` | the website |
 | Mac B | the same Xcode project, simulator | a second copy of `Screening.swift` |
-| Windows | `tools/`, `web/`, `ml/train_surface.py` | the Xcode project |
+| Windows | `tools/`, `web/` | the Xcode project, the Colab notebook |
 
 `main` stays buildable. One person owns a file at a time.
 
@@ -55,4 +55,4 @@ Paste the printed id into `wrangler.jsonc`, then `npm run types`.
 
 ## Model
 
-Train the camera model on Daytona with `ml/train_surface.py`, then convert it on a Mac. Instructions are in `ml/README.md`. The phone already contains `curves.sqlite`. Do not make it rebuild curves or download them. Launch does not load every curve or the Core ML file. Dash mode loads the model. A drive queries the curves ahead of the car.
+Train the camera model from Mac A with `ml/train_colab.ipynb`, then convert the checkpoint on Mac A. Instructions are in `ml/README.md`. The phone already contains `curves.sqlite`. Do not make it rebuild curves or download them. Launch does not load every curve or the Core ML file. Dash mode loads the model. A drive queries the curves ahead of the car. The overnight task list is `docs/BUILD_PLAN.md`.

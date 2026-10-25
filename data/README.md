@@ -1,6 +1,6 @@
 # CurveAudit AR — research data (frozen Oct 24, 2026)
 
-The product spec in this repo is `docs/CurveAudit-AR-Product-Brief.md`. If this folder and that file disagree, the **build contract** at the top of the brief wins.
+The product spec in this repo is `docs/CurveAudit-AR-Product-Brief.md`. If this folder and that file disagree, the **build contract** at the top of the brief wins. This folder is the copy of record. The Downloads copy of these files has been removed.
 
 This folder is the evidence and the prototype curve file. It is not the app.
 

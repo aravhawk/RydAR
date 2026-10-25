@@ -56,6 +56,19 @@ final class ScreeningTests: XCTestCase {
         XCTAssertEqual(kept.1, .conflictKeptUnpaved)
     }
 
+    func testContextKeyUsesSurfaceRadiusAndNight() {
+        XCTAssertEqual(radiusBand(feet: 149), "under-150")
+        XCTAssertEqual(radiusBand(feet: 150), "150-300")
+        XCTAssertEqual(radiusBand(feet: 300), "300-600")
+        XCTAssertTrue(isNightHour(19))
+        XCTAssertTrue(isNightHour(5))
+        XCTAssertFalse(isNightHour(6))
+        XCTAssertEqual(
+            approachContextKey(surface: .unpaved, radiusFeet: 120, hour: 21),
+            "unpaved|under-150|night"
+        )
+    }
+
     func testLookAheadNeverShrinksAndCapsAt450() {
         let calm = ApproachMemory(latePasses: 0, earlyPasses: 0)
         let none = VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false)

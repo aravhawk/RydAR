@@ -26,7 +26,7 @@ The timing memory has no split. It starts from a prior of two late and two early
 
 ## Train, then convert
 
-Run `ml/train_surface.py` on a Daytona NVIDIA GPU. One GPU is enough. Download `roadsurface.pt` and the metrics file before the sandbox stops. Daytona deletes a GPU sandbox when it stops.
+Mac A opens `ml/train_colab.ipynb` in Google Colab. No API key. The repo is private, so the notebook tells you to upload a zip of the training scripts. Choose an H100 runtime if the menu allows it. On Colab Pro, H100 is often greyed out. Choose A100 and start. Download `roadsurface.pt` and the metrics file to this Mac when the run finishes. A Colab runtime can still be deleted.
 
 On a Mac:
 

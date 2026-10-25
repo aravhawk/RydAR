@@ -29,6 +29,22 @@ func effectiveSpeedMPH(speedMps: Double, accuracyMps: Double) -> Double {
     max(0, speedMps - accuracyMps) * 2.23694
 }
 
+func radiusBand(feet: Double) -> String {
+    if feet < 150 { return "under-150" }
+    if feet < 300 { return "150-300" }
+    return "300-600"
+}
+
+/// Night is 7:00 pm through 5:59 am, local time.
+func isNightHour(_ hour: Int) -> Bool {
+    hour >= 19 || hour < 6
+}
+
+func approachContextKey(surface: RoadSurface, radiusFeet: Double, hour: Int) -> String {
+    let when = isNightHour(hour) ? "night" : "day"
+    return "\(surface.rawValue)|\(radiusBand(feet: radiusFeet))|\(when)"
+}
+
 func shouldSpeak(effectiveSpeed: Double, range: ScreeningRange) -> Bool {
     effectiveSpeed > range.low
 }

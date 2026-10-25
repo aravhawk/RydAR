@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Fine-tune one MobileNetV3-Small with three heads on RSCD.
 
-Run this on a Daytona NVIDIA GPU. Create ML cannot run there, and it cannot
-train three heads. Convert the checkpoint on a Mac with convert_coreml.py.
+Run this from Google Colab on an NVIDIA GPU. Mac A opens the notebook.
+Create ML cannot run there, and it cannot train three heads. Convert the
+checkpoint on Mac A with convert_coreml.py.
 
 Heads, read from the RSCD folder name:
   material: paved, unpaved, cant_tell
@@ -154,7 +155,7 @@ def main() -> int:
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if device.type != "cuda":
-        print("No CUDA device. Run this on a Daytona NVIDIA GPU.", file=sys.stderr)
+        print("No CUDA device. In Colab: Runtime, Change runtime type, H100 if it is selectable, otherwise A100.", file=sys.stderr)
     model = RoadNet(pretrained=True).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     losses = [
@@ -189,6 +190,7 @@ def main() -> int:
     best_score = -1.0
     best_state = None
     history = []
+    args.out.parent.mkdir(parents=True, exist_ok=True)
     for epoch in range(args.epochs):
         model.train()
         total = 0.0
@@ -213,10 +215,18 @@ def main() -> int:
                 best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
         history.append(row)
         print(json.dumps(row))
+        torch.save(
+            {
+                "state_dict": model.state_dict(),
+                "material_labels": list(MATERIAL),
+                "friction_labels": list(FRICTION),
+                "uneven_labels": list(UNEVEN),
+            },
+            args.out,
+        )
 
     if best_state is not None:
         model.load_state_dict(best_state)
-    args.out.parent.mkdir(parents=True, exist_ok=True)
     blob = {
         "state_dict": model.state_dict(),
         "material_labels": list(MATERIAL),

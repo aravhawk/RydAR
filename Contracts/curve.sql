@@ -39,9 +39,23 @@ CREATE TABLE trip_passes (
   id TEXT PRIMARY KEY,
   trip_id TEXT NOT NULL,
   curve_id TEXT NOT NULL,
+  direction TEXT,
   v_eff_mph REAL,
   v_lo_mph REAL,
   v_hi_mph REAL,
   spoke INTEGER NOT NULL DEFAULT 0,
+  hour_bucket INTEGER,
+  late INTEGER NOT NULL DEFAULT 0,
+  surface_used TEXT,
+  radius_band TEXT,
+  look_ahead_m REAL,
   FOREIGN KEY (trip_id) REFERENCES trips (id)
+);
+
+-- On-device timing memory. Counts only. The prior of two late and two early
+-- is applied in code, not stored as rows.
+CREATE TABLE approach_memory (
+  context_key TEXT PRIMARY KEY,
+  late_passes INTEGER NOT NULL DEFAULT 0,
+  early_passes INTEGER NOT NULL DEFAULT 0
 );
