@@ -14,6 +14,8 @@ struct Curve: Identifiable, Equatable {
     var deflectionDegrees: Double
     var qualityFlags: String
     var roadClass: String
+    /// `rd_design` from the curve file. Empty when a caller does not know it.
+    var roadDesign: String = ""
     var closedLoop: Bool
     var latitude: Double
     var longitude: Double
