@@ -5,6 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Curves in Arkansas | RydAR</title>
   <meta name="description" content="Curves on Arkansas roads. Candidates for a road department to look at. Geometry only.">
+  <script>
+    (() => {
+      const saved = localStorage.getItem("rydar.theme");
+      const theme = saved === "dark" || saved === "light"
+        ? saved
+        : (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.dataset.theme = theme;
+    })();
+    window.rydarFiles = [
+      "/data/arkansas-counties.geojson",
+      "/data/curves-arkansas-1.geojson",
+      "/data/curves-arkansas-2.geojson",
+      "/data/curves-arkansas-3.geojson",
+      "/data/curves-arkansas-4.geojson",
+    ].map((url) => fetch(url).then((res) => {
+      if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+      return res.json();
+    }));
+  </script>
   <link rel="icon" href="/favicon.ico" sizes="32x32">
   <link rel="icon" href="/logo.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -21,7 +40,23 @@
       --unpaved: #c47a2b;
       --accent: #30b0c7;
       --focus: #30b0c7;
+      --glass: rgba(242, 242, 247, 0.94);
+      --hint: rgba(255, 255, 255, 0.94);
+      --hover: #e5e5ea;
       --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color-scheme: light;
+    }
+    html[data-theme="dark"] {
+      --sheet: #101416;
+      --panel: #1c1c1e;
+      --card: #2c2c2e;
+      --ink: #f2f2f7;
+      --muted: #aeaeb2;
+      --rule: #3a3a3c;
+      --glass: rgba(18, 20, 22, 0.92);
+      --hint: rgba(28, 28, 30, 0.94);
+      --hover: #3a3a3c;
+      color-scheme: dark;
     }
     * { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; }
@@ -29,7 +64,6 @@
       background: var(--sheet);
       color: var(--ink);
       font: 15px/1.45 var(--sans);
-      color-scheme: light;
     }
     :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
@@ -45,7 +79,7 @@
       flex-direction: column;
       gap: 12px;
       padding: 20px 16px 16px;
-      background: rgba(242, 242, 247, 0.94);
+      background: var(--glass);
       backdrop-filter: blur(18px);
       border-radius: 28px;
       box-shadow: 0 16px 40px rgba(28, 28, 30, 0.14);
@@ -140,7 +174,18 @@
       padding: 10px 12px;
       cursor: pointer;
     }
-    ul.results button:hover { background: #e5e5ea; }
+    ul.results button:hover { background: var(--hover); }
+    button.theme {
+      margin-left: auto;
+      min-height: 36px;
+      padding: 0 12px;
+      border: 0;
+      border-radius: 999px;
+      background: var(--card);
+      color: var(--ink);
+      font: 600 0.82rem/1 var(--sans);
+      cursor: pointer;
+    }
     ul.results .meta { display: block; color: var(--muted); font-size: 0.8rem; font-weight: 500; margin-top: 2px; }
 
     #map { position: absolute; inset: 0; }
@@ -150,7 +195,8 @@
       left: calc(min(23rem, 100vw - 32px) + 32px);
       z-index: 1;
       margin: 0;
-      background: rgba(255, 255, 255, 0.94);
+      background: var(--hint);
+      color: var(--ink);
       border-radius: 999px;
       padding: 8px 14px;
       font-size: 0.86rem;
@@ -169,6 +215,7 @@
     .maplibregl-ctrl-bottom-right .maplibregl-ctrl { margin: 0; }
     .maplibregl-popup { z-index: 4; }
     .maplibregl-popup-content {
+      background: var(--card);
       font: 14px/1.45 var(--sans);
       color: var(--ink);
       padding: 16px 18px;
@@ -180,6 +227,10 @@
     .maplibregl-popup-content p { margin: 0 0 6px; }
     .maplibregl-popup-content p:last-child { margin-bottom: 0; }
     .maplibregl-popup-content .stats { border-top: 1px solid var(--rule); padding-top: 8px; margin-top: 8px; }
+    .maplibregl-popup-anchor-top .maplibregl-popup-tip { border-bottom-color: var(--card); }
+    .maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: var(--card); }
+    .maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: var(--card); }
+    .maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: var(--card); }
 
     @media (max-width: 760px) {
       aside {
@@ -208,6 +259,7 @@
       <div class="title-row">
         <img class="mark" src="/logo.svg" width="40" height="40" alt="">
         <h1>RydAR</h1>
+        <button type="button" class="theme" id="theme">Dark</button>
       </div>
       <p class="lead">Arkansas roads that bend tighter than a 600-foot radius. A candidate list, not a ranking.</p>
     </header>
@@ -272,13 +324,18 @@
     let popup = null;
     let replacingPopup = false;
 
+    const MAP_STYLES = {
+      light: "https://tiles.openfreemap.org/styles/positron",
+      dark: "https://tiles.openfreemap.org/styles/dark",
+    };
+    let countyGeo = null;
+    let curveGeo = null;
+    let styleToken = 0;
+    const activeTheme = () => (document.documentElement.dataset.theme === "dark" ? "dark" : "light");
+
     const map = new Map({
       container: "map",
-      style: {
-        version: 8,
-        sources: {},
-        layers: [{ id: "sheet", type: "background", paint: { "background-color": "#e7eef1" } }],
-      },
+      style: MAP_STYLES[activeTheme()],
       bounds: [[-94.8, 33.0], [-89.6, 36.6]],
       fitBoundsOptions: { padding: { top: 24, right: 24, bottom: 24, left: 400 } },
       attributionControl: false,
@@ -289,7 +346,7 @@
     map.addControl(new ScaleControl({ unit: "imperial" }), "bottom-right");
     map.addControl(new AttributionControl({
       compact: false,
-      customAttribution: "Arkansas GIS Office · U.S. Census Bureau",
+      customAttribution: "OpenFreeMap · OpenStreetMap · Arkansas GIS Office · U.S. Census Bureau",
     }), "bottom-right");
     map.touchZoomRotate.disableRotation();
     const mapReady = new Promise((resolve) => map.once("load", resolve));
@@ -354,21 +411,28 @@
       setStatus(`Showing ${shown.toLocaleString()} curves in ${where}`);
     }
 
-    function addCounties(geojson) {
+    function addCounties(geojson, refit = true) {
+      countyGeo = geojson;
       countyFeatures = geojson.features;
-      for (const feature of countyFeatures) {
-        const option = document.createElement("option");
-        option.value = feature.properties.county;
-        option.textContent = `${feature.properties.county} County`;
-        countySelect.appendChild(option);
+      if (countySelect.options.length < 2) {
+        for (const feature of countyFeatures) {
+          const option = document.createElement("option");
+          option.value = feature.properties.county;
+          option.textContent = `${feature.properties.county} County`;
+          countySelect.appendChild(option);
+        }
       }
+      if (map.getLayer("counties-fill")) map.removeLayer("counties-fill");
+      if (map.getLayer("counties-line")) map.removeLayer("counties-line");
+      if (map.getSource("counties")) map.removeSource("counties");
       map.addSource("counties", { type: "geojson", data: geojson, promoteId: "county" });
       map.addLayer({
         id: "counties-fill",
         type: "fill",
         source: "counties",
         paint: {
-          "fill-color": ["case", ["boolean", ["feature-state", "selected"], false], "#d4f3f7", "#f7fbfc"],
+          "fill-color": "#30b0c7",
+          "fill-opacity": ["case", ["boolean", ["feature-state", "selected"], false], 0.22, 0.04],
         },
       });
       map.addLayer({
@@ -376,17 +440,54 @@
         type: "line",
         source: "counties",
         paint: {
-          "line-color": ["case", ["boolean", ["feature-state", "selected"], false], "#30b0c7", "#c5ced3"],
+          "line-color": ["case", ["boolean", ["feature-state", "selected"], false], "#30b0c7", activeTheme() === "dark" ? "#8aa0a8" : "#c5ced3"],
           "line-width": ["case", ["boolean", ["feature-state", "selected"], false], 2.4, 1.1],
         },
       });
+      if (state.county) map.setFeatureState({ source: "counties", id: state.county }, { selected: true });
+      if (!refit) return;
       const bounds = new LngLatBounds();
       for (const feature of countyFeatures) bounds.extend(boundsOf(feature));
       map.resize();
       frame(bounds, 8);
     }
 
+    function redrawOverlays() {
+      if (countyGeo) addCounties(countyGeo, false);
+      if (curveGeo) addCurves(curveGeo);
+      applyFilters();
+    }
+
+    const themeButton = document.getElementById("theme");
+    function labelTheme() {
+      const dark = activeTheme() === "dark";
+      themeButton.textContent = dark ? "Light" : "Dark";
+      themeButton.setAttribute("aria-pressed", String(dark));
+    }
+    function useTheme(theme, persist) {
+      document.documentElement.dataset.theme = theme;
+      if (persist) localStorage.setItem("rydar.theme", theme);
+      labelTheme();
+      const token = ++styleToken;
+      map.setStyle(MAP_STYLES[theme]);
+      map.once("style.load", () => {
+        if (token !== styleToken) return;
+        redrawOverlays();
+      });
+    }
+    labelTheme();
+    themeButton.addEventListener("click", () => {
+      useTheme(activeTheme() === "dark" ? "light" : "dark", true);
+    });
+    matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
+      if (localStorage.getItem("rydar.theme")) return;
+      useTheme(event.matches ? "dark" : "light", false);
+    });
+
     function addCurves(geojson) {
+      curveGeo = geojson;
+      if (map.getLayer("arkansas")) map.removeLayer("arkansas");
+      if (map.getSource("arkansas")) map.removeSource("arkansas");
       map.addSource("arkansas", { type: "geojson", data: geojson, promoteId: "id" });
       map.addLayer({
         id: "arkansas",
@@ -397,7 +498,7 @@
         paint: {
           "line-color": [
             "case",
-            ["boolean", ["feature-state", "selected"], false], "#15252d",
+            ["boolean", ["feature-state", "selected"], false], activeTheme() === "dark" ? "#f2f2f7" : "#15252d",
             ["==", ["get", "surface"], "unpaved"], "#c47a2b",
             "#30b0c7",
           ],
@@ -408,22 +509,25 @@
     }
 
     async function loadMap() {
-      await mapReady;
-      const countiesRes = await fetch("/data/arkansas-counties.geojson");
-      if (!countiesRes.ok) throw new Error(`counties: HTTP ${countiesRes.status}`);
-      addCounties(await countiesRes.json());
-      setStatus("County lines are up. Loading curves.");
-      const parts = [];
-      for (let i = 0; i < CURVE_FILES.length; i += 1) {
-        setStatus(`Loading curves, part ${i + 1} of ${CURVE_FILES.length}`);
-        const res = await fetch(`/data/${CURVE_FILES[i]}`);
-        if (!res.ok) throw new Error(`${CURVE_FILES[i]}: HTTP ${res.status}`);
-        parts.push(await res.json());
-      }
-      features = parts.flatMap((part) => part.features);
-      addCurves({ type: "FeatureCollection", features });
-      updateCount();
-      runSearch();
+      const files = window.rydarFiles;
+      let arrived = 0;
+      const curves = files.slice(1).map((file) => file.then((geojson) => {
+        arrived += 1;
+        setStatus(`Loading curves, part ${arrived} of ${CURVE_FILES.length}`);
+        return geojson;
+      }));
+      const countiesReady = Promise.all([files[0], mapReady]).then(([geojson]) => {
+        addCounties(geojson);
+        if (!features.length) setStatus("County lines are up. Loading curves.");
+      });
+      const curvesReady = Promise.all([...curves, mapReady]).then((results) => {
+        const parts = results.slice(0, CURVE_FILES.length);
+        features = parts.flatMap((part) => part.features);
+        addCurves({ type: "FeatureCollection", features });
+        updateCount();
+        runSearch();
+      });
+      await Promise.all([countiesReady, curvesReady]);
     }
 
     function screeningMPH(radiusFeet, superelevation, friction) {

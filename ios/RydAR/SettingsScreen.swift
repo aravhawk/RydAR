@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsScreen: View {
     @ObservedObject var trip: TripScreenBridge
+    @AppStorage("rydar.appearance") private var appearance = AppearancePreference.system.rawValue
     @AppStorage("rydar.promptStyle") private var promptStyle = PromptStyle.normal.rawValue
     @AppStorage("rydar.uploadOptIn") private var uploadOptIn = true
     @AppStorage("rydar.dashEnabled") private var dashEnabled = true
@@ -12,6 +13,13 @@ struct SettingsScreen: View {
 
     var body: some View {
         Form {
+            Section {
+                Picker("Appearance", selection: $appearance) {
+                    ForEach(AppearancePreference.allCases) { choice in
+                        Text(choice.rawValue).tag(choice.rawValue)
+                    }
+                }.accessibilityIdentifier("appearance")
+            } header: { Text("Appearance") }
             Section {
                 Picker("Prompt style", selection: $promptStyle) {
                     ForEach(PromptStyle.allCases) { style in Text(style.rawValue).tag(style.rawValue) }

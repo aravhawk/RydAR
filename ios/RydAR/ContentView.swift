@@ -6,6 +6,7 @@ struct ContentView: View {
     private let isSampleStore: Bool
     @StateObject private var trip: TripScreenBridge
     @AppStorage("rydar.onboardingComplete") private var onboarded = false
+    @AppStorage("rydar.appearance") private var appearance = AppearancePreference.system.rawValue
     @AppStorage("rydar.promptStyle") private var promptStyle = PromptStyle.normal.rawValue
     @AppStorage("rydar.uploadOptIn") private var uploadOptIn = true
     @AppStorage(TreadStore.choiceKey) private var treadRaw = ""
@@ -40,6 +41,7 @@ struct ContentView: View {
             }
         }
         .tint(AuditTheme.accent)
+        .preferredColorScheme(AppearancePreference(rawValue: appearance)?.scheme)
         .sheet(isPresented: $showDriverGate) {
             DriverGateScreen { mode in
                 trip.start(mode: mode, style: PromptStyle(rawValue: promptStyle) ?? .normal,
