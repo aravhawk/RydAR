@@ -25,7 +25,9 @@ class RoadNet(nn.Module):
         import timm
 
         self.backbone = timm.create_model(BACKBONE, pretrained=pretrained, num_classes=0)
-        width = self.backbone.num_features
+        # timm's num_features is the last stage, 960. forward() still applies the
+        # pretrained 1x1 head and returns the pooled 1280-d ImageNet vector.
+        width = int(self.backbone.conv_head.out_channels)
         self.trunk = nn.Sequential(
             nn.Linear(width, 256),
             nn.Hardswish(),
