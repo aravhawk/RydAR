@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>RydARPassEndpoint</key>
-	<string>https://rydar-three.vercel.app/api/pass</string>
+	<string>https://rydar.org/api/pass</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>

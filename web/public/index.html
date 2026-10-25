@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Curves in Arkansas | RydAR</title>
   <meta name="description" content="Curves on Arkansas roads. Candidates for a road department to look at. Geometry only.">
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/logo.svg">
   <link rel="stylesheet" href="/vendor/maplibre-gl/maplibre-gl.css">
   <style>
     :root {
@@ -47,7 +49,9 @@
       border-radius: 28px;
       box-shadow: 0 16px 40px rgba(28, 28, 30, 0.14);
     }
-    .brand { display: flex; flex-direction: column; gap: 6px; padding: 2px 6px 2px; }
+    .brand { display: flex; flex-direction: column; gap: 8px; padding: 2px 4px 0; }
+    .title-row { display: flex; align-items: center; gap: 10px; }
+    .mark { width: 40px; height: 40px; flex: none; display: block; }
     h1 {
       font: 700 2rem/1.05 var(--sans);
       letter-spacing: -0.045em;
@@ -190,7 +194,10 @@
 <body>
   <aside aria-label="Map controls and notes">
     <header class="brand">
-      <h1>RydAR</h1>
+      <div class="title-row">
+        <img class="mark" src="/logo.svg" width="40" height="40" alt="">
+        <h1>RydAR</h1>
+      </div>
       <p class="lead">Arkansas roads that bend tighter than a 600-foot radius. A candidate list, not a ranking.</p>
     </header>
 
