@@ -13,6 +13,13 @@ export default {
     if (request.method === "POST" && url.pathname === "/api/pass") {
       return storePass(request, env);
     }
+    if (request.method === "GET" && url.pathname.startsWith("/api/curves/")) {
+      const county = decodeURIComponent(url.pathname.slice("/api/curves/".length)).replace(/\.geojson$/, "");
+      if (countyPrefix(county) === null) {
+        return Response.json({ error: "unknown county" }, { status: 404 });
+      }
+      return countyGeometry(request, env, county.toLowerCase());
+    }
     if (request.method === "GET" && url.pathname.startsWith("/api/export/")) {
       const county = decodeURIComponent(url.pathname.slice("/api/export/".length)).replace(/\.csv$/, "");
       const prefix = countyPrefix(county);
@@ -27,6 +34,19 @@ export default {
     return env.ASSETS.fetch(request);
   },
 } satisfies ExportedHandler<Env>;
+
+async function countyGeometry(request: Request, env: Env, county: string): Promise<Response> {
+  const asset = await env.ASSETS.fetch(new URL(`/data/curves-${county}.geojson`, request.url));
+  if (!asset.ok) {
+    return Response.json({ error: "curve file missing" }, { status: 404 });
+  }
+  return new Response(asset.body, {
+    headers: {
+      "content-type": "application/geo+json; charset=utf-8",
+      "cache-control": "public, max-age=3600",
+    },
+  });
+}
 
 async function storePass(request: Request, env: Env): Promise<Response> {
   let body: PassBody;
@@ -74,7 +94,7 @@ async function exportCounty(env: Env, prefix: string): Promise<Response> {
      WHERE curve_id LIKE ?
      GROUP BY curve_id
      HAVING n >= 20 AND hours >= 2
-     ORDER BY n DESC`,
+     ORDER BY curve_id`,
   )
     .bind(`${prefix}%`)
     .all<{ curve_id: string; n: number; hours: number }>();
@@ -87,14 +107,29 @@ async function exportCounty(env: Env, prefix: string): Promise<Response> {
   });
 }
 
+// Benton curve ids start with 007-, Washington with 143-.
+const CURVE_ID = /^(007|143)-\d{1,7}-\d{1,7}$/;
+
 function isPass(value: unknown): value is PassBody {
   if (typeof value !== "object" || value === null) return false;
   const row = value as Record<string, unknown>;
+  const latAccel = row.lat_accel_band;
   return (
     typeof row.curve_id === "string" &&
+    CURVE_ID.test(row.curve_id) &&
     typeof row.direction === "string" &&
-    typeof row.speed_band_mph === "number" &&
-    typeof row.hour_bucket === "number" &&
-    typeof row.app_version === "string"
+    row.direction.length >= 1 &&
+    row.direction.length <= 8 &&
+    Number.isInteger(row.speed_band_mph) &&
+    (row.speed_band_mph as number) >= 0 &&
+    (row.speed_band_mph as number) <= 150 &&
+    (row.speed_band_mph as number) % 5 === 0 &&
+    Number.isInteger(row.hour_bucket) &&
+    (row.hour_bucket as number) >= 0 &&
+    (row.hour_bucket as number) <= 23 &&
+    typeof row.app_version === "string" &&
+    row.app_version.length >= 1 &&
+    row.app_version.length <= 32 &&
+    (latAccel === undefined || latAccel === null || Number.isInteger(latAccel))
   );
 }
