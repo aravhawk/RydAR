@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		LA0000000000000000000005 /* RydARLiveActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = LA0000000000000000000002 /* RydARLiveActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		CA000000000000000000000A /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -23,15 +27,25 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		LA0000000000000000000009 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				LA0000000000000000000005 /* RydARLiveActivity.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		CA0000000000000000000004 /* RydAR.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RydAR.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CA0000000000000000000005 /* RydARTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RydARTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		LA0000000000000000000002 /* RydARLiveActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RydARLiveActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
-
-/* Begin PBXBuildFile section */
-		LA0000000000000000000005 /* RydARLiveActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = LA0000000000000000000002 /* RydARLiveActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-/* End PBXBuildFile section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
 		CA000000000000000000000B /* Exceptions for "RydAR" folder in "RydAR" target */ = {
@@ -64,17 +78,17 @@
 			path = RydARTests;
 			sourceTree = "<group>";
 		};
-		LA000000000000000000000B /* Shared */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Shared;
-			sourceTree = "<group>";
-		};
 		LA000000000000000000000A /* RydARLiveActivity */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				LA000000000000000000000C /* Exceptions for "RydARLiveActivity" folder in "RydARLiveActivity" target */,
 			);
 			path = RydARLiveActivity;
+			sourceTree = "<group>";
+		};
+		LA000000000000000000000B /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -266,20 +280,6 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
-/* Begin PBXCopyFilesBuildPhase section */
-		LA0000000000000000000009 /* Embed Foundation Extensions */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 13;
-			files = (
-				LA0000000000000000000005 /* RydARLiveActivity.appex in Embed Foundation Extensions */,
-			);
-			name = "Embed Foundation Extensions";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
-
 /* Begin PBXSourcesBuildPhase section */
 		CA000000000000000000000E /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -325,6 +325,7 @@
 				COREML_CODEGEN_LANGUAGE = None;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = XLR6H6DKHH;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RydAR/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = RydAR;
@@ -355,6 +356,7 @@
 				COREML_CODEGEN_LANGUAGE = None;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = XLR6H6DKHH;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RydAR/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = RydAR;
@@ -518,20 +520,20 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		LA000000000000000000000D /* Build configuration list for PBXNativeTarget "RydARLiveActivity" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				LA000000000000000000000E /* Debug */,
-				LA000000000000000000000F /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		CA0000000000000000000015 /* Build configuration list for PBXProject "RydAR" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CA0000000000000000000018 /* Debug */,
 				CA0000000000000000000019 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		LA000000000000000000000D /* Build configuration list for PBXNativeTarget "RydARLiveActivity" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				LA000000000000000000000E /* Debug */,
+				LA000000000000000000000F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
