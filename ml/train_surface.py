@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Backup trainer: fine-tune MobileNetV3-Small on RSCD (Mendeley, CC BY 4.0).
+"""Fine-tune MobileNetV3-Small on RSCD (Mendeley, CC BY 4.0).
 
-Use this on Google Colab only if the Create ML model is too weak.
-The first training path is ml/README.md, on the Mac.
+Run this on a Daytona NVIDIA GPU. Create ML cannot run there. Convert the
+checkpoint on a Mac with convert_coreml.py. The phone only runs that file.
 
 The shipped model uses only this dataset. Do not point --data at the
 CC BY-NC million-image release or at StreetSurfaceVis.
@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import sys
 from pathlib import Path
 
@@ -77,7 +78,23 @@ def main() -> int:
 
     rows = index_images(args.data, args.cant_tell)
     counts = {label: sum(1 for _, y in rows if y == label) for label in LABELS}
-    print(json.dumps({"images": counts, "total": len(rows)}))
+    # 10% stratified holdout for early stopping. The official test sequences
+    # are not in the train-set folder and must not be passed as --data.
+    random.seed(17)
+    train_rows = []
+    val_rows = []
+    for label in LABELS:
+        group = [row for row in rows if row[1] == label]
+        random.shuffle(group)
+        cut = max(1, len(group) // 10) if group else 0
+        val_rows.extend(group[:cut])
+        train_rows.extend(group[cut:])
+    print(json.dumps({
+        "images": counts,
+        "train": len(train_rows),
+        "validation": len(val_rows),
+        "test": "RSCD 12 sequences, 2880 patches, not loaded here",
+    }))
     if counts["paved"] == 0 or counts["unpaved"] == 0:
         print("Need both paved and unpaved images. Check the folder names.", file=sys.stderr)
         return 1
@@ -104,11 +121,11 @@ def main() -> int:
             transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
         ]
     )
-    loader = DataLoader(Roads(rows, transform), batch_size=args.batch, shuffle=True, num_workers=2)
+    loader = DataLoader(Roads(train_rows, transform), batch_size=args.batch, shuffle=True, num_workers=2)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if device.type != "cuda":
-        print("No CUDA device. Run this backup on Google Colab.", file=sys.stderr)
+        print("No CUDA device. Run this on a Daytona NVIDIA GPU.", file=sys.stderr)
     model = models.mobilenet_v3_small(weights=models.MobileNet_V3_Small_Weights.DEFAULT)
     model.classifier[-1] = nn.Linear(model.classifier[-1].in_features, len(LABELS))
     model = model.to(device)
