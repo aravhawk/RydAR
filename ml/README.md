@@ -1,35 +1,30 @@
 # Road-surface model
 
-The phone does not train. This folder trains a three-class classifier and a Mac converts it to Core ML.
+The phone does not train. Core ML is the file the phone loads.
 
-## What the model is
+## Train on the Mac first
 
-- Labels: `paved`, `unpaved`, `cant_tell`
-- Network: torchvision MobileNetV3-Small, fine-tuned from ImageNet
-- Training images: RSCD on Mendeley, DOI `10.17632/w86hvkrzc5`, CC BY 4.0. 370,151 road crops, 240×360.
-- Do not use the million-image RSXD release. That license is CC BY-NC.
-- Do not train the shipped file on StreetSurfaceVis. That license is CC BY-SA.
-- The model does not predict wet, ice, snow, or friction.
+Create ML trains a small classifier on top of Apple's Image Feature Print. It does not fine-tune a big network, which is why a powerful Mac is the right machine and why the result is already a Core ML model.
 
-## Where it runs
+1. Download RSCD from Mendeley, DOI `10.17632/w86hvkrzc5`, CC BY 4.0. Do not use the million-image RSXD release (CC BY-NC) or StreetSurfaceVis (CC BY-SA).
+2. Sort it:
 
-1. Download RSCD Mendeley onto the training machine. Do not commit the images.
-2. Train on a Daytona NVIDIA GPU sandbox. One GPU is enough. An H100 is not required. Colab is the fallback if Daytona is down. A Mac is the fallback only if both GPUs are unavailable, and then the result will not match this script.
-3. Daytona deletes the sandbox when it stops. Download `roadsurface.pt` and `metrics.json` first.
-4. On a Mac, with the repo and a Python environment that has `torch`, `torchvision`, and `coremltools`:
+```bash
+python3 ml/prepare_createml_folders.py --data /path/to/RSCD/train-set --out ml/data/createml
+```
+
+3. Open the Create ML app. New Project, Image Classification. Training data is `ml/data/createml`. Feature extractor is Image Feature Print V2. Turn on crop, blur, exposure, and noise.
+4. Train, then export `RoadSurface.mlmodel` into `ios/CurveAudit/`.
+5. Check it on RSCD's 12 test sequences before quoting an accuracy number.
+
+Labels are `paved`, `unpaved`, and `cant_tell`. Snow and ice folders are skipped. The model does not predict wetness or friction.
+
+## Colab is the backup
+
+Use `ml/train_surface.py` only if the Create ML model is weak. That script fine-tunes MobileNetV3-Small in PyTorch. Run it on Google Colab's free GPU. A balanced subset is enough if the full 370,151 images do not fit the session. Download `roadsurface.pt` before the session ends, then on a Mac:
 
 ```bash
 python3 ml/convert_coreml.py ml/runs/roadsurface.pt ios/CurveAudit/RoadSurface.mlpackage
 ```
 
-5. The iPhone app loads that package in Dash mode only. Frames are not saved.
-
-## Train
-
-```bash
-python3 ml/train_surface.py --data /path/to/RSCD/train-set --epochs 5 --out ml/runs/roadsurface.pt
-```
-
-Folder names are classified by words in the name: asphalt or concrete become paved, gravel or mud become unpaved, snow or ice are skipped. Anything else is printed and left out. Point `--cant-tell` at a folder of non-road crops if you have one.
-
-Put the metrics file next to the checkpoint. The video may quote only numbers that are in that file.
+Daytona can run the same script. It is not the plan. Colab costs nothing, and this backup does not need a larger GPU.

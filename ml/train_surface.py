@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Fine-tune MobileNetV3-Small on RSCD (Mendeley, CC BY 4.0).
+"""Backup trainer: fine-tune MobileNetV3-Small on RSCD (Mendeley, CC BY 4.0).
 
-Run this on a Daytona NVIDIA GPU sandbox or on Colab. Do not run it on the
-phone. Download the checkpoint before a Daytona sandbox stops.
+Use this on Google Colab only if the Create ML model is too weak.
+The first training path is ml/README.md, on the Mac.
 
 The shipped model uses only this dataset. Do not point --data at the
 CC BY-NC million-image release or at StreetSurfaceVis.
@@ -108,7 +108,7 @@ def main() -> int:
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if device.type != "cuda":
-        print("No CUDA device. This script is meant for Daytona or Colab.", file=sys.stderr)
+        print("No CUDA device. Run this backup on Google Colab.", file=sys.stderr)
     model = models.mobilenet_v3_small(weights=models.MobileNet_V3_Small_Weights.DEFAULT)
     model.classifier[-1] = nn.Linear(model.classifier[-1].in_features, len(LABELS))
     model = model.to(device)

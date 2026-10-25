@@ -7,7 +7,7 @@ iPhone app for curve-speed screening on Benton and Washington county roads, plus
 - iOS 17, SwiftUI, MapKit, one SQLite file for curves and trips
 - Python for the curve importer and the training script
 - Cloudflare Worker, D1, and static files for the public page and anonymous passes
-- One vision model. Trained in PyTorch on a Daytona NVIDIA GPU. Converted to Core ML on a Mac. Run on the phone. See `ml/README.md`.
+- One vision model. Trained on a Mac with Create ML. The phone runs the Core ML file. A Colab PyTorch training run is the backup. See `ml/README.md`.
 
 ## Who works where
 
@@ -55,4 +55,4 @@ Paste the printed id into `wrangler.jsonc`, then `npm run types`.
 
 ## Model
 
-Do not train on a Mac unless Daytona and Colab are both unavailable. Instructions are in `ml/README.md`.
+Train the camera model on a Mac with Create ML. Instructions are in `ml/README.md`.
