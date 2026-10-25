@@ -4,6 +4,7 @@ struct SettingsScreen: View {
     @ObservedObject var trip: TripScreenBridge
     @AppStorage("curveaudit.promptStyle") private var promptStyle = PromptStyle.normal.rawValue
     @AppStorage("curveaudit.uploadOptIn") private var uploadOptIn = false
+    @AppStorage("curveaudit.dashEnabled") private var dashEnabled = false
     @AppStorage("curveaudit.onboardingComplete") private var onboarded = false
     @State private var confirmDelete = false
     @State private var deleteError: String?
@@ -28,6 +29,9 @@ struct SettingsScreen: View {
             } header: { Text("Privacy") }
             Section {
                 LabeledContent("Driver choice", value: "Ask every trip")
+                Toggle("Dash mode", isOn: $dashEnabled).accessibilityIdentifier("dashMode")
+                Text("Parked setting. Co-pilot is the default and leaves the camera off.")
+                    .font(.footnote).foregroundStyle(.secondary)
                 Text("Nothing is pre-selected. Set up the phone while parked. Camera stays off in Co-pilot mode.")
                     .font(.footnote).foregroundStyle(.secondary)
             } header: { Text("Trip setup") }
@@ -47,6 +51,7 @@ struct SettingsScreen: View {
         .confirmationDialog("Delete all local data?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete all data", role: .destructive) {
                 uploadOptIn = false
+                dashEnabled = false
                 trip.onUploadPreference?(false)
                 do {
                     try trip.deleteAllData()

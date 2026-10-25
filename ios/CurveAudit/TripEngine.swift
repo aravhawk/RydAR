@@ -591,6 +591,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
     private var sensorsWanted = true
     private var latestVision = VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false)
     private var latestCamera: CameraEvidence?
+    private var cameraAcceptedAt: Date?
     private var horizontalGs: [Double] = []
     private var lastSpeedSample: (speed: Double, time: Date)?
     private let motionQueue: OperationQueue = {
@@ -629,6 +630,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         paused = false
         latestVision = VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false)
         latestCamera = nil
+        cameraAcceptedAt = nil
         snapshot.driverMode = driverMode
         snapshot.tripID = tripID
         snapshot.paused = false
@@ -647,6 +649,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         tripID = nil
         latestVision = VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false)
         latestCamera = nil
+        cameraAcceptedAt = nil
         snapshot.driverMode = nil
         snapshot.tripID = nil
         snapshot.paused = false
@@ -669,9 +672,10 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         startSensorsIfNeeded()
     }
 
-    func updateVision(_ caution: VisionCaution, camera: CameraEvidence?) {
+    func updateVision(_ caution: VisionCaution, camera: CameraEvidence?, acceptedAt: Date = Date()) {
         latestVision = caution
         latestCamera = camera
+        cameraAcceptedAt = camera == nil ? nil : acceptedAt
     }
 
     @discardableResult
@@ -700,7 +704,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
                 (try? self.passLog.passesUnderRange(curveID: identifier)) ?? 0
             },
             vision: latestVision,
-            camera: latestCamera,
+            camera: cameraForIngest(at: moment),
             braking: braking,
             now: moment
         )
@@ -729,6 +733,17 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
             : nil
         onHandled?(update, matched)
         return update
+    }
+
+    private func cameraForIngest(at moment: Date) -> CameraEvidence? {
+        guard let latestCamera, let cameraAcceptedAt else { return nil }
+        return CameraEvidence(
+            label: latestCamera.label,
+            confidence: latestCamera.confidence,
+            age: max(0, moment.timeIntervalSince(cameraAcceptedAt)),
+            onMatchedRoadROI: latestCamera.onMatchedRoadROI,
+            persistent: latestCamera.persistent
+        )
     }
 
     /// Deletes trips, passes, and timing memory. The curve table stays. Sensors stop.

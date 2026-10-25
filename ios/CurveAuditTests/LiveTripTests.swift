@@ -3,6 +3,11 @@ import XCTest
 
 @MainActor
 final class LiveTripTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        UserDefaults.standard.removeObject(forKey: DashPreference.key)
+    }
+
     func testStartStoresStyleAndUploadAndLeavesDashOff() throws {
         let harness = try makeHarness()
         harness.bridge.start(mode: .adult, style: .chimeOnly, uploadOptIn: true)

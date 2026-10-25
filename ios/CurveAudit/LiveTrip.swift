@@ -71,28 +71,47 @@ final class LiveTripSession {
     let engine: TripEngine
     let bridge: TripScreenBridge
     let curves: SQLiteCurveStore
+    let camera: DashRunning
     private let startSensors: Bool
+    private var reading = DashReading(camera: nil, vision: .quiet, state: .off, acceptedAt: nil)
+    private var lastUpdate: TripUpdate?
+    private var lastCurve: Curve?
 
-    init(engine: TripEngine, bridge: TripScreenBridge, curves: SQLiteCurveStore, startSensors: Bool = true) {
+    init(
+        engine: TripEngine,
+        bridge: TripScreenBridge,
+        curves: SQLiteCurveStore,
+        startSensors: Bool = true,
+        camera: DashRunning? = nil
+    ) {
         self.engine = engine
         self.bridge = bridge
         self.curves = curves
         self.startSensors = startSensors
+        self.camera = camera ?? DashCamera()
         connect()
     }
 
     private func connect() {
         engine.dashEnabled = false
+        camera.onChange = { [weak self] reading in
+            self?.apply(reading)
+        }
         let onStart: (DriverMode, PromptStyle, Bool) -> Void = { [weak self] mode, style, upload in
             guard let self else { return }
             self.engine.promptStyle = style
             self.engine.uploadOptIn = upload
-            self.engine.dashEnabled = false
+            self.engine.dashEnabled = DashPreference.isOn
+            self.reading = DashReading(camera: nil, vision: .quiet, state: self.engine.dashEnabled ? .unconfirmed : .off, acceptedAt: nil)
+            self.lastUpdate = nil
+            self.lastCurve = nil
             do {
                 try self.engine.beginTrip(driverMode: mode, startSensors: self.startSensors)
             } catch {
                 print("Trip did not start: \(error)")
             }
+            self.syncCamera(mode: mode, paused: false)
+            self.publishIdle()
         }
         let onPause: (Bool) -> Void = { [weak self] paused in
             guard let self else { return }
@@ -101,6 +120,7 @@ final class LiveTripSession {
             } else {
                 self.engine.resume()
             }
+            self.syncCamera(mode: self.engine.snapshot.driverMode, paused: paused)
             self.publishPause(paused)
         }
         let onFinish: () -> Void = { [weak self] in
@@ -111,6 +131,9 @@ final class LiveTripSession {
         }
         let onDelete: () throws -> Void = { [weak self] in
             guard let self else { return }
+            self.camera.stop()
+            DashPreference.isOn = false
+            self.reading = DashReading(camera: nil, vision: .quiet, state: .off, acceptedAt: nil)
             try self.engine.deletePassHistory()
         }
         engine.onHandled = { [weak self] update, curve in
@@ -125,24 +148,80 @@ final class LiveTripSession {
         }
     }
 
+    private func syncCamera(mode: DriverMode?, paused: Bool) {
+        let allows = driveGate(
+            mode: mode,
+            speedMps: 0,
+            dashEnabled: engine.dashEnabled,
+            uploadOptIn: engine.uploadOptIn
+        ).allowsCamera
+        if paused {
+            camera.pause()
+            return
+        }
+        if allows {
+            camera.start()
+        } else {
+            camera.stop()
+            engine.updateVision(.quiet, camera: nil)
+        }
+    }
+
     private func finish() {
+        camera.stop()
         let debrief = (try? engine.debrief(curves: curves)) ?? TripScreenDebrief()
         engine.endTrip()
+        reading = DashReading(camera: nil, vision: .quiet, state: .off, acceptedAt: nil)
         publishDebrief(debrief)
     }
 
+    private func apply(_ reading: DashReading) {
+        self.reading = reading
+        engine.updateVision(reading.vision, camera: reading.camera, acceptedAt: reading.acceptedAt ?? Date())
+        if let lastUpdate {
+            publishDrive(lastUpdate, curve: lastCurve)
+        } else {
+            publishIdle()
+        }
+    }
+
     private func publishDrive(_ update: TripUpdate, curve: Curve?) {
+        lastUpdate = update
+        lastCurve = curve
+        camera.noteMatchedSurface(update.gpsGood ? curve?.surface : nil)
         let showCurve = update.gpsGood && curve != nil
-        let snapshot = DriveScreenSnapshot(
-            nextCurve: showCurve ? curve : nil,
-            distanceMeters: showCurve ? update.distanceMeters : nil,
-            cameraEvidence: nil,
+        assignDrive(snapshot(
+            curve: showCurve ? curve : nil,
+            distance: showCurve ? update.distanceMeters : nil,
+            gps: update.gpsGood ? "GPS ready" : "Waiting for location",
+            paused: engine.snapshot.paused
+        ))
+    }
+
+    private func publishIdle() {
+        assignDrive(snapshot(curve: nil, distance: nil, gps: "Waiting for location", paused: engine.snapshot.paused))
+    }
+
+    private func snapshot(curve: Curve?, distance: Double?, gps: String, paused: Bool) -> DriveScreenSnapshot {
+        DriveScreenSnapshot(
+            nextCurve: curve,
+            distanceMeters: distance,
+            cameraEvidence: reading.camera,
             cameraThreshold: DriveRules.cameraConfidence,
-            cameraStatus: "Off · Co-pilot mode",
-            gpsStatus: update.gpsGood ? "GPS ready" : "Waiting for location",
-            isPaused: engine.snapshot.paused
+            cameraStatus: cameraStatus,
+            gpsStatus: gps,
+            isPaused: paused
         )
-        assignDrive(snapshot)
+    }
+
+    private var cameraStatus: String {
+        guard engine.dashEnabled else { return "Off · Co-pilot mode" }
+        switch reading.state {
+        case .running:
+            return "Dash · camera on"
+        case .off, .unconfirmed:
+            return "Surface unconfirmed"
+        }
     }
 
     private func publishPause(_ paused: Bool) {
