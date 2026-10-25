@@ -1,0 +1,19 @@
+geography,RUR_URB,all_fatal_crashes,curve_crashes,curve_share_pct
+Benton,Rural,92,40,43.5
+Benton,Urban,147,40,27.2
+Carroll,Rural,71,41,57.7
+Carroll,Urban,3,1,33.3
+Crawford,Rural,50,22,44.0
+Crawford,Urban,32,4,12.5
+Madison,Rural,51,26,51.0
+Madison,Urban,1,1,100.0
+Washington,Rural,75,35,46.7
+Washington,Urban,167,33,19.8
+AR-3 five-county total,Rural,339,164,48.4
+AR-3 five-county total,Urban,350,79,22.6
+"Sebastian (separate, NOT in AR-3)",Rural,31,14,45.2
+"Sebastian (separate, NOT in AR-3)",Urban,113,25,22.1
+Arkansas statewide,Rural,3359,1310,39.0
+Arkansas statewide,Urban,1964,450,22.9
+United States (50 states + DC),Rural,152547,47693,31.3
+United States (50 states + DC),Urban,204387,34979,17.1

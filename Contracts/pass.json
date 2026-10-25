@@ -1,0 +1,8 @@
+{
+  "curve_id": "007-2-3",
+  "direction": "N",
+  "speed_band_mph": 25,
+  "hour_bucket": 14,
+  "app_version": "0.1.0",
+  "lat_accel_band": null
+}

@@ -1,0 +1,235 @@
+geography,measure,n,denominator,share_pct,n_or_denom_below_10,formula
+Benton,Curve crashes (denominator),80,80,100.0,False,n curve crashes
+Benton,"Single-vehicle, no non-motorist (VE_FORMS=1 & PERNOTMVIT=0)",49,80,61.2,False,/ curve crashes
+Benton,"Single-vehicle run-off-road (above & REL_ROAD in 2,3,4,6,8)",39,80,48.8,False,/ curve crashes
+Benton,  ...run-off-road as share of SINGLE-VEHICLE curve crashes,39,49,79.6,False,/ single-vehicle curve crashes
+Benton,Any vehicle PCRASH5 = Departed/Remained off roadway,49,80,61.2,False,/ curve crashes
+Benton,"Rollover (any vehicle, ROLLOVER in 1,2,3,9)",25,80,31.2,False,/ curve crashes
+Benton,"Night: LGT_COND in Dark-lighted/unlighted/unknown (3,2,6)",33,80,41.2,False,/ curve crashes
+Benton,Wet surface (any vehicle VSURCOND=2),15,80,18.8,False,/ curve crashes
+Benton,"Non-dry surface (VSURCOND 2,3,4,6,7,10)",17,80,21.2,False,/ curve crashes
+Benton,Rain (WEATHER=2),11,80,13.8,False,/ curve crashes
+Benton,"Speeding-related (any vehicle SPEEDREL in 2,3,4,5)",34,80,42.5,False,/ curve crashes
+Benton,ROUTE: Interstate,5,80,6.2,True,/ curve crashes
+Benton,ROUTE: US Highway,12,80,15.0,False,/ curve crashes
+Benton,ROUTE: State Highway,39,80,48.8,False,/ curve crashes
+Benton,ROUTE: County Road,13,80,16.2,False,/ curve crashes
+Benton,ROUTE: Local Street,11,80,13.8,False,/ curve crashes
+Benton,ROUTE: Other/Not signed/Unknown,0,80,0.0,True,/ curve crashes
+Benton,RUR_URB: Rural,40,80,50.0,False,/ curve crashes
+Benton,RUR_URB: Urban,40,80,50.0,False,/ curve crashes
+Benton,RUR_URB: Other/Unknown,0,80,0.0,True,/ curve crashes
+Benton,Undivided two-way (any vehicle VTRAFWAY=1),66,80,82.5,False,/ curve crashes
+Benton,RD_OWNER: State Highway Agency (ARDOT),55,80,68.8,False,/ curve crashes
+Benton,RD_OWNER: County Highway Agency,13,80,16.2,False,/ curve crashes
+Benton,RD_OWNER: City/Municipal Agency,3,80,3.8,True,/ curve crashes
+Benton,RD_OWNER: Town/Township Agency,6,80,7.5,True,/ curve crashes
+Benton,RD_OWNER: Other/Not in inventory/Unknown,3,80,3.8,True,/ curve crashes
+Carroll,Curve crashes (denominator),42,42,100.0,False,n curve crashes
+Carroll,"Single-vehicle, no non-motorist (VE_FORMS=1 & PERNOTMVIT=0)",26,42,61.9,False,/ curve crashes
+Carroll,"Single-vehicle run-off-road (above & REL_ROAD in 2,3,4,6,8)",20,42,47.6,False,/ curve crashes
+Carroll,  ...run-off-road as share of SINGLE-VEHICLE curve crashes,20,26,76.9,False,/ single-vehicle curve crashes
+Carroll,Any vehicle PCRASH5 = Departed/Remained off roadway,23,42,54.8,False,/ curve crashes
+Carroll,"Rollover (any vehicle, ROLLOVER in 1,2,3,9)",12,42,28.6,False,/ curve crashes
+Carroll,"Night: LGT_COND in Dark-lighted/unlighted/unknown (3,2,6)",9,42,21.4,True,/ curve crashes
+Carroll,Wet surface (any vehicle VSURCOND=2),6,42,14.3,True,/ curve crashes
+Carroll,"Non-dry surface (VSURCOND 2,3,4,6,7,10)",6,42,14.3,True,/ curve crashes
+Carroll,Rain (WEATHER=2),4,42,9.5,True,/ curve crashes
+Carroll,"Speeding-related (any vehicle SPEEDREL in 2,3,4,5)",16,42,38.1,False,/ curve crashes
+Carroll,ROUTE: Interstate,0,42,0.0,True,/ curve crashes
+Carroll,ROUTE: US Highway,17,42,40.5,False,/ curve crashes
+Carroll,ROUTE: State Highway,20,42,47.6,False,/ curve crashes
+Carroll,ROUTE: County Road,4,42,9.5,True,/ curve crashes
+Carroll,ROUTE: Local Street,1,42,2.4,True,/ curve crashes
+Carroll,ROUTE: Other/Not signed/Unknown,0,42,0.0,True,/ curve crashes
+Carroll,RUR_URB: Rural,41,42,97.6,False,/ curve crashes
+Carroll,RUR_URB: Urban,1,42,2.4,True,/ curve crashes
+Carroll,RUR_URB: Other/Unknown,0,42,0.0,True,/ curve crashes
+Carroll,Undivided two-way (any vehicle VTRAFWAY=1),39,42,92.9,False,/ curve crashes
+Carroll,RD_OWNER: State Highway Agency (ARDOT),34,42,81.0,False,/ curve crashes
+Carroll,RD_OWNER: County Highway Agency,5,42,11.9,True,/ curve crashes
+Carroll,RD_OWNER: City/Municipal Agency,0,42,0.0,True,/ curve crashes
+Carroll,RD_OWNER: Town/Township Agency,0,42,0.0,True,/ curve crashes
+Carroll,RD_OWNER: Other/Not in inventory/Unknown,3,42,7.1,True,/ curve crashes
+Crawford,Curve crashes (denominator),26,26,100.0,False,n curve crashes
+Crawford,"Single-vehicle, no non-motorist (VE_FORMS=1 & PERNOTMVIT=0)",22,26,84.6,False,/ curve crashes
+Crawford,"Single-vehicle run-off-road (above & REL_ROAD in 2,3,4,6,8)",19,26,73.1,False,/ curve crashes
+Crawford,  ...run-off-road as share of SINGLE-VEHICLE curve crashes,19,22,86.4,False,/ single-vehicle curve crashes
+Crawford,Any vehicle PCRASH5 = Departed/Remained off roadway,21,26,80.8,False,/ curve crashes
+Crawford,"Rollover (any vehicle, ROLLOVER in 1,2,3,9)",9,26,34.6,True,/ curve crashes
+Crawford,"Night: LGT_COND in Dark-lighted/unlighted/unknown (3,2,6)",8,26,30.8,True,/ curve crashes
+Crawford,Wet surface (any vehicle VSURCOND=2),4,26,15.4,True,/ curve crashes
+Crawford,"Non-dry surface (VSURCOND 2,3,4,6,7,10)",4,26,15.4,True,/ curve crashes
+Crawford,Rain (WEATHER=2),3,26,11.5,True,/ curve crashes
+Crawford,"Speeding-related (any vehicle SPEEDREL in 2,3,4,5)",9,26,34.6,True,/ curve crashes
+Crawford,ROUTE: Interstate,4,26,15.4,True,/ curve crashes
+Crawford,ROUTE: US Highway,6,26,23.1,True,/ curve crashes
+Crawford,ROUTE: State Highway,8,26,30.8,True,/ curve crashes
+Crawford,ROUTE: County Road,4,26,15.4,True,/ curve crashes
+Crawford,ROUTE: Local Street,3,26,11.5,True,/ curve crashes
+Crawford,ROUTE: Other/Not signed/Unknown,1,26,3.8,True,/ curve crashes
+Crawford,RUR_URB: Rural,22,26,84.6,False,/ curve crashes
+Crawford,RUR_URB: Urban,4,26,15.4,True,/ curve crashes
+Crawford,RUR_URB: Other/Unknown,0,26,0.0,True,/ curve crashes
+Crawford,Undivided two-way (any vehicle VTRAFWAY=1),22,26,84.6,False,/ curve crashes
+Crawford,RD_OWNER: State Highway Agency (ARDOT),18,26,69.2,False,/ curve crashes
+Crawford,RD_OWNER: County Highway Agency,5,26,19.2,True,/ curve crashes
+Crawford,RD_OWNER: City/Municipal Agency,0,26,0.0,True,/ curve crashes
+Crawford,RD_OWNER: Town/Township Agency,2,26,7.7,True,/ curve crashes
+Crawford,RD_OWNER: Other/Not in inventory/Unknown,1,26,3.8,True,/ curve crashes
+Madison,Curve crashes (denominator),27,27,100.0,False,n curve crashes
+Madison,"Single-vehicle, no non-motorist (VE_FORMS=1 & PERNOTMVIT=0)",17,27,63.0,False,/ curve crashes
+Madison,"Single-vehicle run-off-road (above & REL_ROAD in 2,3,4,6,8)",14,27,51.9,False,/ curve crashes
+Madison,  ...run-off-road as share of SINGLE-VEHICLE curve crashes,14,17,82.4,False,/ single-vehicle curve crashes
+Madison,Any vehicle PCRASH5 = Departed/Remained off roadway,14,27,51.9,False,/ curve crashes
+Madison,"Rollover (any vehicle, ROLLOVER in 1,2,3,9)",8,27,29.6,True,/ curve crashes
+Madison,"Night: LGT_COND in Dark-lighted/unlighted/unknown (3,2,6)",6,27,22.2,True,/ curve crashes
+Madison,Wet surface (any vehicle VSURCOND=2),1,27,3.7,True,/ curve crashes
+Madison,"Non-dry surface (VSURCOND 2,3,4,6,7,10)",1,27,3.7,True,/ curve crashes
+Madison,Rain (WEATHER=2),1,27,3.7,True,/ curve crashes
+Madison,"Speeding-related (any vehicle SPEEDREL in 2,3,4,5)",8,27,29.6,True,/ curve crashes
+Madison,ROUTE: Interstate,0,27,0.0,True,/ curve crashes
+Madison,ROUTE: US Highway,7,27,25.9,True,/ curve crashes
+Madison,ROUTE: State Highway,18,27,66.7,False,/ curve crashes
+Madison,ROUTE: County Road,1,27,3.7,True,/ curve crashes
+Madison,ROUTE: Local Street,1,27,3.7,True,/ curve crashes
+Madison,ROUTE: Other/Not signed/Unknown,0,27,0.0,True,/ curve crashes
+Madison,RUR_URB: Rural,26,27,96.3,False,/ curve crashes
+Madison,RUR_URB: Urban,1,27,3.7,True,/ curve crashes
+Madison,RUR_URB: Other/Unknown,0,27,0.0,True,/ curve crashes
+Madison,Undivided two-way (any vehicle VTRAFWAY=1),25,27,92.6,False,/ curve crashes
+Madison,RD_OWNER: State Highway Agency (ARDOT),24,27,88.9,False,/ curve crashes
+Madison,RD_OWNER: County Highway Agency,1,27,3.7,True,/ curve crashes
+Madison,RD_OWNER: City/Municipal Agency,0,27,0.0,True,/ curve crashes
+Madison,RD_OWNER: Town/Township Agency,1,27,3.7,True,/ curve crashes
+Madison,RD_OWNER: Other/Not in inventory/Unknown,1,27,3.7,True,/ curve crashes
+Washington,Curve crashes (denominator),68,68,100.0,False,n curve crashes
+Washington,"Single-vehicle, no non-motorist (VE_FORMS=1 & PERNOTMVIT=0)",50,68,73.5,False,/ curve crashes
+Washington,"Single-vehicle run-off-road (above & REL_ROAD in 2,3,4,6,8)",41,68,60.3,False,/ curve crashes
+Washington,  ...run-off-road as share of SINGLE-VEHICLE curve crashes,41,50,82.0,False,/ single-vehicle curve crashes
+Washington,Any vehicle PCRASH5 = Departed/Remained off roadway,48,68,70.6,False,/ curve crashes
+Washington,"Rollover (any vehicle, ROLLOVER in 1,2,3,9)",18,68,26.5,False,/ curve crashes
+Washington,"Night: LGT_COND in Dark-lighted/unlighted/unknown (3,2,6)",28,68,41.2,False,/ curve crashes
+Washington,Wet surface (any vehicle VSURCOND=2),8,68,11.8,True,/ curve crashes
+Washington,"Non-dry surface (VSURCOND 2,3,4,6,7,10)",10,68,14.7,False,/ curve crashes
+Washington,Rain (WEATHER=2),8,68,11.8,True,/ curve crashes
+Washington,"Speeding-related (any vehicle SPEEDREL in 2,3,4,5)",19,68,27.9,False,/ curve crashes
+Washington,ROUTE: Interstate,14,68,20.6,False,/ curve crashes
+Washington,ROUTE: US Highway,14,68,20.6,False,/ curve crashes
+Washington,ROUTE: State Highway,18,68,26.5,False,/ curve crashes
+Washington,ROUTE: County Road,14,68,20.6,False,/ curve crashes
+Washington,ROUTE: Local Street,8,68,11.8,True,/ curve crashes
+Washington,ROUTE: Other/Not signed/Unknown,0,68,0.0,True,/ curve crashes
+Washington,RUR_URB: Rural,35,68,51.5,False,/ curve crashes
+Washington,RUR_URB: Urban,33,68,48.5,False,/ curve crashes
+Washington,RUR_URB: Other/Unknown,0,68,0.0,True,/ curve crashes
+Washington,Undivided two-way (any vehicle VTRAFWAY=1),40,68,58.8,False,/ curve crashes
+Washington,RD_OWNER: State Highway Agency (ARDOT),44,68,64.7,False,/ curve crashes
+Washington,RD_OWNER: County Highway Agency,15,68,22.1,False,/ curve crashes
+Washington,RD_OWNER: City/Municipal Agency,4,68,5.9,True,/ curve crashes
+Washington,RD_OWNER: Town/Township Agency,3,68,4.4,True,/ curve crashes
+Washington,RD_OWNER: Other/Not in inventory/Unknown,2,68,2.9,True,/ curve crashes
+AR-3 five-county total,Curve crashes (denominator),243,243,100.0,False,n curve crashes
+AR-3 five-county total,"Single-vehicle, no non-motorist (VE_FORMS=1 & PERNOTMVIT=0)",164,243,67.5,False,/ curve crashes
+AR-3 five-county total,"Single-vehicle run-off-road (above & REL_ROAD in 2,3,4,6,8)",133,243,54.7,False,/ curve crashes
+AR-3 five-county total,  ...run-off-road as share of SINGLE-VEHICLE curve crashes,133,164,81.1,False,/ single-vehicle curve crashes
+AR-3 five-county total,Any vehicle PCRASH5 = Departed/Remained off roadway,155,243,63.8,False,/ curve crashes
+AR-3 five-county total,"Rollover (any vehicle, ROLLOVER in 1,2,3,9)",72,243,29.6,False,/ curve crashes
+AR-3 five-county total,"Night: LGT_COND in Dark-lighted/unlighted/unknown (3,2,6)",84,243,34.6,False,/ curve crashes
+AR-3 five-county total,Wet surface (any vehicle VSURCOND=2),34,243,14.0,False,/ curve crashes
+AR-3 five-county total,"Non-dry surface (VSURCOND 2,3,4,6,7,10)",38,243,15.6,False,/ curve crashes
+AR-3 five-county total,Rain (WEATHER=2),27,243,11.1,False,/ curve crashes
+AR-3 five-county total,"Speeding-related (any vehicle SPEEDREL in 2,3,4,5)",86,243,35.4,False,/ curve crashes
+AR-3 five-county total,ROUTE: Interstate,23,243,9.5,False,/ curve crashes
+AR-3 five-county total,ROUTE: US Highway,56,243,23.0,False,/ curve crashes
+AR-3 five-county total,ROUTE: State Highway,103,243,42.4,False,/ curve crashes
+AR-3 five-county total,ROUTE: County Road,36,243,14.8,False,/ curve crashes
+AR-3 five-county total,ROUTE: Local Street,24,243,9.9,False,/ curve crashes
+AR-3 five-county total,ROUTE: Other/Not signed/Unknown,1,243,0.4,True,/ curve crashes
+AR-3 five-county total,RUR_URB: Rural,164,243,67.5,False,/ curve crashes
+AR-3 five-county total,RUR_URB: Urban,79,243,32.5,False,/ curve crashes
+AR-3 five-county total,RUR_URB: Other/Unknown,0,243,0.0,True,/ curve crashes
+AR-3 five-county total,Undivided two-way (any vehicle VTRAFWAY=1),192,243,79.0,False,/ curve crashes
+AR-3 five-county total,RD_OWNER: State Highway Agency (ARDOT),175,243,72.0,False,/ curve crashes
+AR-3 five-county total,RD_OWNER: County Highway Agency,39,243,16.0,False,/ curve crashes
+AR-3 five-county total,RD_OWNER: City/Municipal Agency,7,243,2.9,True,/ curve crashes
+AR-3 five-county total,RD_OWNER: Town/Township Agency,12,243,4.9,False,/ curve crashes
+AR-3 five-county total,RD_OWNER: Other/Not in inventory/Unknown,10,243,4.1,False,/ curve crashes
+"Sebastian (separate, NOT in AR-3)",Curve crashes (denominator),39,39,100.0,False,n curve crashes
+"Sebastian (separate, NOT in AR-3)","Single-vehicle, no non-motorist (VE_FORMS=1 & PERNOTMVIT=0)",28,39,71.8,False,/ curve crashes
+"Sebastian (separate, NOT in AR-3)","Single-vehicle run-off-road (above & REL_ROAD in 2,3,4,6,8)",24,39,61.5,False,/ curve crashes
+"Sebastian (separate, NOT in AR-3)",  ...run-off-road as share of SINGLE-VEHICLE curve crashes,24,28,85.7,False,/ single-vehicle curve crashes
+"Sebastian (separate, NOT in AR-3)",Any vehicle PCRASH5 = Departed/Remained off roadway,28,39,71.8,False,/ curve crashes
+"Sebastian (separate, NOT in AR-3)","Rollover (any vehicle, ROLLOVER in 1,2,3,9)",13,39,33.3,False,/ curve crashes
+"Sebastian (separate, NOT in AR-3)","Night: LGT_COND in Dark-lighted/unlighted/unknown (3,2,6)",19,39,48.7,False,/ curve crashes
+"Sebastian (separate, NOT in AR-3)",Wet surface (any vehicle VSURCOND=2),2,39,5.1,True,/ curve crashes
+"Sebastian (separate, NOT in AR-3)","Non-dry surface (VSURCOND 2,3,4,6,7,10)",2,39,5.1,True,/ curve crashes
+"Sebastian (separate, NOT in AR-3)",Rain (WEATHER=2),2,39,5.1,True,/ curve crashes
+"Sebastian (separate, NOT in AR-3)","Speeding-related (any vehicle SPEEDREL in 2,3,4,5)",18,39,46.2,False,/ curve crashes
+"Sebastian (separate, NOT in AR-3)",ROUTE: Interstate,3,39,7.7,True,/ curve crashes
+"Sebastian (separate, NOT in AR-3)",ROUTE: US Highway,10,39,25.6,False,/ curve crashes
+"Sebastian (separate, NOT in AR-3)",ROUTE: State Highway,13,39,33.3,False,/ curve crashes
+"Sebastian (separate, NOT in AR-3)",ROUTE: County Road,7,39,17.9,True,/ curve crashes
+"Sebastian (separate, NOT in AR-3)",ROUTE: Local Street,6,39,15.4,True,/ curve crashes
+"Sebastian (separate, NOT in AR-3)",ROUTE: Other/Not signed/Unknown,0,39,0.0,True,/ curve crashes
+"Sebastian (separate, NOT in AR-3)",RUR_URB: Rural,14,39,35.9,False,/ curve crashes
+"Sebastian (separate, NOT in AR-3)",RUR_URB: Urban,25,39,64.1,False,/ curve crashes
+"Sebastian (separate, NOT in AR-3)",RUR_URB: Other/Unknown,0,39,0.0,True,/ curve crashes
+"Sebastian (separate, NOT in AR-3)",Undivided two-way (any vehicle VTRAFWAY=1),29,39,74.4,False,/ curve crashes
+"Sebastian (separate, NOT in AR-3)",RD_OWNER: State Highway Agency (ARDOT),24,39,61.5,False,/ curve crashes
+"Sebastian (separate, NOT in AR-3)",RD_OWNER: County Highway Agency,8,39,20.5,True,/ curve crashes
+"Sebastian (separate, NOT in AR-3)",RD_OWNER: City/Municipal Agency,2,39,5.1,True,/ curve crashes
+"Sebastian (separate, NOT in AR-3)",RD_OWNER: Town/Township Agency,3,39,7.7,True,/ curve crashes
+"Sebastian (separate, NOT in AR-3)",RD_OWNER: Other/Not in inventory/Unknown,2,39,5.1,True,/ curve crashes
+Arkansas statewide,Curve crashes (denominator),1760,1760,100.0,False,n curve crashes
+Arkansas statewide,"Single-vehicle, no non-motorist (VE_FORMS=1 & PERNOTMVIT=0)",1205,1760,68.5,False,/ curve crashes
+Arkansas statewide,"Single-vehicle run-off-road (above & REL_ROAD in 2,3,4,6,8)",1022,1760,58.1,False,/ curve crashes
+Arkansas statewide,  ...run-off-road as share of SINGLE-VEHICLE curve crashes,1022,1205,84.8,False,/ single-vehicle curve crashes
+Arkansas statewide,Any vehicle PCRASH5 = Departed/Remained off roadway,1152,1760,65.5,False,/ curve crashes
+Arkansas statewide,"Rollover (any vehicle, ROLLOVER in 1,2,3,9)",635,1760,36.1,False,/ curve crashes
+Arkansas statewide,"Night: LGT_COND in Dark-lighted/unlighted/unknown (3,2,6)",719,1760,40.9,False,/ curve crashes
+Arkansas statewide,Wet surface (any vehicle VSURCOND=2),269,1760,15.3,False,/ curve crashes
+Arkansas statewide,"Non-dry surface (VSURCOND 2,3,4,6,7,10)",280,1760,15.9,False,/ curve crashes
+Arkansas statewide,Rain (WEATHER=2),170,1760,9.7,False,/ curve crashes
+Arkansas statewide,"Speeding-related (any vehicle SPEEDREL in 2,3,4,5)",576,1760,32.7,False,/ curve crashes
+Arkansas statewide,ROUTE: Interstate,139,1760,7.9,False,/ curve crashes
+Arkansas statewide,ROUTE: US Highway,404,1760,23.0,False,/ curve crashes
+Arkansas statewide,ROUTE: State Highway,821,1760,46.6,False,/ curve crashes
+Arkansas statewide,ROUTE: County Road,262,1760,14.9,False,/ curve crashes
+Arkansas statewide,ROUTE: Local Street,130,1760,7.4,False,/ curve crashes
+Arkansas statewide,ROUTE: Other/Not signed/Unknown,4,1760,0.2,True,/ curve crashes
+Arkansas statewide,RUR_URB: Rural,1310,1760,74.4,False,/ curve crashes
+Arkansas statewide,RUR_URB: Urban,450,1760,25.6,False,/ curve crashes
+Arkansas statewide,RUR_URB: Other/Unknown,0,1760,0.0,True,/ curve crashes
+Arkansas statewide,Undivided two-way (any vehicle VTRAFWAY=1),1405,1760,79.8,False,/ curve crashes
+Arkansas statewide,RD_OWNER: State Highway Agency (ARDOT),1334,1760,75.8,False,/ curve crashes
+Arkansas statewide,RD_OWNER: County Highway Agency,262,1760,14.9,False,/ curve crashes
+Arkansas statewide,RD_OWNER: City/Municipal Agency,51,1760,2.9,False,/ curve crashes
+Arkansas statewide,RD_OWNER: Town/Township Agency,56,1760,3.2,False,/ curve crashes
+Arkansas statewide,RD_OWNER: Other/Not in inventory/Unknown,57,1760,3.2,False,/ curve crashes
+United States (50 states + DC),Curve crashes (denominator),82979,82979,100.0,False,n curve crashes
+United States (50 states + DC),"Single-vehicle, no non-motorist (VE_FORMS=1 & PERNOTMVIT=0)",54826,82979,66.1,False,/ curve crashes
+United States (50 states + DC),"Single-vehicle run-off-road (above & REL_ROAD in 2,3,4,6,8)",48609,82979,58.6,False,/ curve crashes
+United States (50 states + DC),  ...run-off-road as share of SINGLE-VEHICLE curve crashes,48609,54826,88.7,False,/ single-vehicle curve crashes
+United States (50 states + DC),Any vehicle PCRASH5 = Departed/Remained off roadway,55238,82979,66.6,False,/ curve crashes
+United States (50 states + DC),"Rollover (any vehicle, ROLLOVER in 1,2,3,9)",27082,82979,32.6,False,/ curve crashes
+United States (50 states + DC),"Night: LGT_COND in Dark-lighted/unlighted/unknown (3,2,6)",39192,82979,47.2,False,/ curve crashes
+United States (50 states + DC),Wet surface (any vehicle VSURCOND=2),10975,82979,13.2,False,/ curve crashes
+United States (50 states + DC),"Non-dry surface (VSURCOND 2,3,4,6,7,10)",12790,82979,15.4,False,/ curve crashes
+United States (50 states + DC),Rain (WEATHER=2),6297,82979,7.6,False,/ curve crashes
+United States (50 states + DC),"Speeding-related (any vehicle SPEEDREL in 2,3,4,5)",34714,82979,41.8,False,/ curve crashes
+United States (50 states + DC),ROUTE: Interstate,8674,82979,10.5,False,/ curve crashes
+United States (50 states + DC),ROUTE: US Highway,10720,82979,12.9,False,/ curve crashes
+United States (50 states + DC),ROUTE: State Highway,27141,82979,32.7,False,/ curve crashes
+United States (50 states + DC),ROUTE: County Road,15157,82979,18.3,False,/ curve crashes
+United States (50 states + DC),ROUTE: Local Street,11168,82979,13.5,False,/ curve crashes
+United States (50 states + DC),ROUTE: Other/Not signed/Unknown,10119,82979,12.2,False,/ curve crashes
+United States (50 states + DC),RUR_URB: Rural,47693,82979,57.5,False,/ curve crashes
+United States (50 states + DC),RUR_URB: Urban,34979,82979,42.2,False,/ curve crashes
+United States (50 states + DC),RUR_URB: Other/Unknown,307,82979,0.4,False,/ curve crashes
+United States (50 states + DC),Undivided two-way (any vehicle VTRAFWAY=1),58398,82979,70.4,False,/ curve crashes
+United States (50 states + DC),RD_OWNER: State Highway Agency (ARDOT),47225,82979,56.9,False,/ curve crashes
+United States (50 states + DC),RD_OWNER: County Highway Agency,13672,82979,16.5,False,/ curve crashes
+United States (50 states + DC),RD_OWNER: City/Municipal Agency,6843,82979,8.2,False,/ curve crashes
+United States (50 states + DC),RD_OWNER: Town/Township Agency,2698,82979,3.3,False,/ curve crashes
+United States (50 states + DC),RD_OWNER: Other/Not in inventory/Unknown,12541,82979,15.1,False,/ curve crashes
