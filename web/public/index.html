@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="/vendor/maplibre-gl/maplibre-gl.css">
   <style>
     :root {
-      --sheet: #e8ecec;
+      --sheet: #d5dee2;
       --panel: #f7f8f6;
       --ink: #15252d;
       --muted: #50636c;
@@ -26,7 +26,7 @@
       color: var(--ink);
       font: 15px/1.5 var(--sans);
       display: grid;
-      grid-template-columns: 24rem minmax(0, 1fr);
+      grid-template-columns: 22.5rem minmax(0, 1fr);
       grid-template-rows: 100%;
     }
     :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
@@ -35,37 +35,40 @@
       background: var(--panel);
       border-right: 1px solid var(--rule);
       overflow-y: auto;
-      padding: 1.5rem 1.5rem 2rem;
+      padding: 1.35rem 1.35rem 2rem;
     }
     h1 {
       font: 600 1.7rem/1.15 var(--serif);
       letter-spacing: -0.01em;
-      margin: 0 0 0.75rem;
+      margin: 0 0 0.55rem;
     }
     h2 {
       font: 600 0.95rem/1.3 var(--sans);
-      margin: 0 0 0.5rem;
+      margin: 0 0 0.45rem;
     }
-    p { margin: 0 0 0.75rem; max-width: 36rem; }
-    .lead { font-family: var(--serif); font-size: 1.02rem; line-height: 1.55; }
+    p { margin: 0 0 0.75rem; }
+    .lead { font-family: var(--serif); font-size: 1.02rem; line-height: 1.5; }
     .muted { color: var(--muted); }
     .small { font-size: 0.86rem; }
-    section { border-top: 1px solid var(--rule); padding: 1rem 0 0.25rem; margin-top: 1rem; }
+    section { border-top: 1px solid var(--rule); padding: 0.9rem 0 0.15rem; margin-top: 0.9rem; }
 
-    fieldset { border: 0; margin: 0 0 0.75rem; padding: 0; }
-    legend { font-weight: 600; padding: 0; margin-bottom: 0.25rem; }
-    label.check { display: flex; gap: 0.6rem; align-items: flex-start; padding: 0.2rem 0; cursor: pointer; }
-    label.check input { margin-top: 0.3rem; accent-color: var(--ink); }
-    .swatch { display: inline-block; width: 1.6rem; height: 0.3rem; border-radius: 0.15rem; vertical-align: middle; margin-right: 0.4rem; }
-    .swatch.paved { background: var(--paved); }
-    .swatch.unpaved { background: var(--unpaved); }
-
-    .count { font: 600 1.05rem/1.3 var(--sans); font-variant-numeric: tabular-nums; margin: 0.25rem 0 0; }
-
-    input[type="search"] {
+    label.field { display: block; font-weight: 600; margin-bottom: 0.35rem; }
+    select, input[type="search"] {
       width: 100%; font: inherit; color: inherit; background: #fff;
       border: 1px solid #8fa0a7; border-radius: 4px; padding: 0.5rem 0.65rem;
     }
+    .hint-copy { margin: 0.4rem 0 0; }
+
+    fieldset { border: 0; margin: 0 0 0.55rem; padding: 0; }
+    legend { font-weight: 600; padding: 0; margin-bottom: 0.2rem; }
+    label.check { display: flex; gap: 0.6rem; align-items: flex-start; padding: 0.15rem 0; cursor: pointer; }
+    label.check input { margin-top: 0.28rem; accent-color: var(--ink); }
+    .swatch { display: inline-block; width: 1.6rem; height: 0.32rem; border-radius: 0.16rem; vertical-align: middle; margin-right: 0.35rem; }
+    .swatch.paved { background: var(--paved); }
+    .swatch.unpaved { background: var(--unpaved); }
+
+    .count { font: 600 1.02rem/1.35 var(--sans); font-variant-numeric: tabular-nums; margin: 0.35rem 0 0; }
+
     ul.results { list-style: none; margin: 0.4rem 0 0; padding: 0; }
     ul.results button {
       width: 100%; text-align: left; font: inherit; color: inherit; background: none;
@@ -74,30 +77,24 @@
     ul.results button:hover { background: #eaeeed; }
     ul.results .meta { display: block; color: var(--muted); font-size: 0.82rem; }
 
-    .links a { color: var(--paved); }
-    dl { margin: 0; }
-
-    #map { position: relative; min-width: 0; }
+    #map { position: relative; min-width: 0; height: 100%; }
+    .map-hint {
+      position: absolute; top: 0.75rem; left: 0.75rem; z-index: 1; max-width: 16rem; margin: 0;
+      background: rgba(247, 248, 246, 0.94); border: 1px solid var(--rule); border-radius: 4px;
+      padding: 0.45rem 0.65rem; font-size: 0.86rem; pointer-events: none;
+    }
     #map .maplibregl-popup-content {
       font: 14px/1.45 var(--sans); color: var(--ink); padding: 0.8rem 1rem 0.9rem; max-width: 20rem;
     }
     .maplibregl-popup-content h3 { font: 600 1.05rem/1.25 var(--serif); margin: 0 1.2rem 0.35rem 0; }
     .maplibregl-popup-content p { margin: 0 0 0.35rem; }
-    .maplibregl-popup-content .id { color: var(--muted); font-variant-numeric: tabular-nums; }
     .maplibregl-popup-content .stats { border-top: 1px solid var(--rule); padding-top: 0.4rem; margin-top: 0.5rem; }
 
-    .nobase {
-      position: absolute; left: 0.75rem; bottom: 2.2rem; z-index: 1; max-width: 17rem;
-      background: rgba(247, 248, 246, 0.92); border: 1px solid var(--rule); border-radius: 4px;
-      padding: 0.4rem 0.6rem; font-size: 0.8rem; color: var(--muted); pointer-events: none;
-    }
-
     @media (max-width: 760px) {
-      body { grid-template-columns: 100%; grid-template-rows: minmax(0, 1fr) minmax(0, 46vh); }
-      #map { order: -1; }
+      body { grid-template-columns: 100%; grid-template-rows: minmax(28rem, 58vh) minmax(0, 1fr); }
+      #map { order: -1; height: auto; }
       aside { border-right: 0; border-top: 1px solid var(--rule); padding: 1rem 1rem 1.5rem; }
       h1 { font-size: 1.35rem; }
-      .nobase { display: none; }
     }
   </style>
 </head>
@@ -106,6 +103,15 @@
     <h1>RydAR</h1>
     <p class="lead">Arkansas roads that bend tighter than a 600-foot radius. A candidate list, not a ranking.</p>
 
+    <section aria-labelledby="where-h">
+      <h2 id="where-h">Where</h2>
+      <label class="field" for="county">County</label>
+      <select id="county">
+        <option value="">All of Arkansas</option>
+      </select>
+      <p class="small muted hint-copy">Choose a county, or click one on the map. Then click a bend.</p>
+    </section>
+
     <section aria-labelledby="show-h">
       <h2 id="show-h">Show</h2>
       <fieldset>
@@ -113,25 +119,22 @@
         <label class="check"><input type="checkbox" name="surface" value="paved" checked> <span><span class="swatch paved"></span>Paved</span></label>
         <label class="check"><input type="checkbox" name="surface" value="unpaved" checked> <span><span class="swatch unpaved"></span>Unpaved</span></label>
       </fieldset>
-      <label class="check">
-        <input type="checkbox" id="flagged">
-        <span>Include flagged curves</span>
-      </label>
-      <p class="count" id="count" role="status" aria-live="polite">Loading curves</p>
+      <p class="small muted">Loops, ramps, and corners under 50 feet are left off this map.</p>
+      <p class="count" id="count" role="status" aria-live="polite">Loading the map</p>
     </section>
 
     <section aria-labelledby="find-h">
       <h2 id="find-h">Find a road</h2>
       <label class="small muted" for="find">Road name</label>
-      <input id="find" type="search" autocomplete="off" placeholder="Road name">
+      <input id="find" type="search" autocomplete="off" placeholder="For example, Old Wire">
       <ul class="results" id="results"></ul>
     </section>
 
-    <p class="small muted">A curve shows pass counts only after 20 passes in more than one hour. Roads: Arkansas GIS Office.</p>
+    <p class="small muted">Click a curve for its screening range. That number is not an advisory speed. A curve shows anonymous pass counts only after 20 passes in more than one hour, and only after you pick its county. Roads: Arkansas GIS Office. County lines: U.S. Census Bureau.</p>
   </aside>
 
   <main id="map" aria-label="Map of candidate curves">
-    <div class="nobase">No basemap is loaded. The map draws only curve geometry from this site.</div>
+    <p class="map-hint" id="hint">Click a county, then click a curve.</p>
   </main>
 
   <script type="module">
@@ -144,15 +147,19 @@
       lt50ft_corner_or_hairpin: "Corner tighter than 50 ft radius.",
       ramp_circle_connector: "Ramp, circle, or connector.",
     };
+    const CURVE_FILES = ["curves-arkansas-1.geojson", "curves-arkansas-2.geojson", "curves-arkansas-3.geojson", "curves-arkansas-4.geojson"];
     const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const state = {
       surfaces: new Set(["paved", "unpaved"]),
-      flagged: false,
+      county: "",
     };
     let features = [];
+    let countyFeatures = [];
     const stats = {};
+    let statsCounty = "";
     let selectedId = null;
+    let selectedFeature = null;
     let popup = null;
 
     const map = new Map({
@@ -160,10 +167,10 @@
       style: {
         version: 8,
         sources: {},
-        layers: [{ id: "sheet", type: "background", paint: { "background-color": "#e8ecec" } }],
+        layers: [{ id: "sheet", type: "background", paint: { "background-color": "#d5dee2" } }],
       },
       bounds: [[-94.8, 33.0], [-89.6, 36.6]],
-      fitBoundsOptions: { padding: 16 },
+      fitBoundsOptions: { padding: 28 },
       attributionControl: false,
       dragRotate: false,
       touchPitch: false,
@@ -171,41 +178,93 @@
     map.addControl(new NavigationControl({ showCompass: false }), "top-right");
     map.addControl(new ScaleControl({ unit: "imperial" }), "bottom-left");
     map.addControl(new AttributionControl({
-      compact: true,
-      customAttribution: "Road centerlines: Arkansas GIS Office. Curve analysis: RydAR.",
+      compact: false,
+      customAttribution: "Arkansas GIS Office · U.S. Census Bureau",
     }), "bottom-right");
     map.touchZoomRotate.disableRotation();
-    const HOME = [[-94.8, 33.0], [-89.6, 36.6]];
     const mapReady = new Promise((resolve) => map.once("load", resolve));
-    mapReady.then(() => {
-      // Layout can settle after the first measure, so frame the counties again.
-      map.resize();
-      map.fitBounds(HOME, { padding: 16, duration: 0 });
-    });
 
-    function surfaceFilter() {
+    const countEl = document.getElementById("count");
+    const countySelect = document.getElementById("county");
+    const hintEl = document.getElementById("hint");
+
+    function setStatus(text) {
+      countEl.textContent = text;
+    }
+
+    function boundsOf(feature) {
+      const bounds = new LngLatBounds();
+      const walk = (coords) => {
+        if (typeof coords[0] === "number") bounds.extend(coords);
+        else coords.forEach(walk);
+      };
+      walk(feature.geometry.coordinates);
+      return bounds;
+    }
+
+    function frame(bounds, maxZoom) {
+      map.fitBounds(bounds, { padding: 36, maxZoom, duration: reduceMotion ? 0 : 600 });
+    }
+
+    function curveFilter() {
+      if (!state.surfaces.size) return ["==", ["get", "id"], ""];
       const parts = [["in", ["get", "surface"], ["literal", [...state.surfaces]]]];
-      if (!state.flagged) parts.push(["==", ["get", "flags"], ""]);
+      if (state.county) parts.push(["==", ["get", "county"], state.county]);
       return ["all", ...parts];
     }
 
     function applyFilters() {
-      if (map.getLayer("arkansas")) map.setFilter("arkansas", surfaceFilter());
+      if (map.getLayer("arkansas")) map.setFilter("arkansas", curveFilter());
+      if (popup && selectedFeature && !matches(selectedFeature)) popup.remove();
       updateCount();
       runSearch();
     }
 
     function matches(f) {
       const p = f.properties;
-      return state.surfaces.has(p.surface) && (state.flagged || p.flags === "");
+      if (!state.surfaces.has(p.surface)) return false;
+      if (state.county && p.county !== state.county) return false;
+      return true;
     }
 
     function updateCount() {
-      const el = document.getElementById("count");
       if (!features.length) return;
       let shown = 0;
       for (const f of features) if (matches(f)) shown += 1;
-      el.textContent = `Showing ${shown.toLocaleString()} of ${features.length.toLocaleString()} curves`;
+      const where = state.county ? `${state.county} County` : "Arkansas";
+      setStatus(`Showing ${shown.toLocaleString()} curves in ${where}`);
+    }
+
+    function addCounties(geojson) {
+      countyFeatures = geojson.features;
+      for (const feature of countyFeatures) {
+        const option = document.createElement("option");
+        option.value = feature.properties.county;
+        option.textContent = `${feature.properties.county} County`;
+        countySelect.appendChild(option);
+      }
+      map.addSource("counties", { type: "geojson", data: geojson, promoteId: "county" });
+      map.addLayer({
+        id: "counties-fill",
+        type: "fill",
+        source: "counties",
+        paint: {
+          "fill-color": ["case", ["boolean", ["feature-state", "selected"], false], "#e3eef3", "#f4f7f6"],
+        },
+      });
+      map.addLayer({
+        id: "counties-line",
+        type: "line",
+        source: "counties",
+        paint: {
+          "line-color": ["case", ["boolean", ["feature-state", "selected"], false], "#1b5b8c", "#8ea0a8"],
+          "line-width": ["case", ["boolean", ["feature-state", "selected"], false], 2.4, 1.1],
+        },
+      });
+      const bounds = new LngLatBounds();
+      for (const feature of countyFeatures) bounds.extend(boundsOf(feature));
+      map.resize();
+      frame(bounds, 8);
     }
 
     function addCurves(geojson) {
@@ -214,7 +273,7 @@
         id: "arkansas",
         type: "line",
         source: "arkansas",
-        filter: surfaceFilter(),
+        filter: curveFilter(),
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
           "line-color": [
@@ -223,28 +282,31 @@
             ["==", ["get", "surface"], "unpaved"], "#b3530b",
             "#1b5b8c",
           ],
-          "line-width": [
-            "interpolate", ["linear"], ["zoom"],
-            8, 1.6, 12, 2.6, 15, 4.5, 18, 8,
-          ],
-          "line-opacity": 0.92,
+          "line-width": ["interpolate", ["linear"], ["zoom"], 6, 1.4, 9, 2.4, 12, 3.6, 15, 6],
+          "line-opacity": 0.95,
         },
       });
     }
 
-    async function loadCurves() {
-      const names = ["curves-arkansas-1.geojson", "curves-arkansas-2.geojson", "curves-arkansas-3.geojson", "curves-arkansas-4.geojson"];
-      const parts = await Promise.all(names.map(async (name) => {
-        const res = await fetch(`/data/${name}`);
-        if (!res.ok) throw new Error(`${name}: HTTP ${res.status}`);
-        return res.json();
-      }));
-      features = parts.flatMap((part) => part.features);
+    async function loadMap() {
       await mapReady;
+      const countiesRes = await fetch("/data/arkansas-counties.geojson");
+      if (!countiesRes.ok) throw new Error(`counties: HTTP ${countiesRes.status}`);
+      addCounties(await countiesRes.json());
+      setStatus("County lines are up. Loading curves.");
+      const parts = [];
+      for (let i = 0; i < CURVE_FILES.length; i += 1) {
+        setStatus(`Loading curves, part ${i + 1} of ${CURVE_FILES.length}`);
+        const res = await fetch(`/data/${CURVE_FILES[i]}`);
+        if (!res.ok) throw new Error(`${CURVE_FILES[i]}: HTTP ${res.status}`);
+        parts.push(await res.json());
+      }
+      features = parts.flatMap((part) => part.features);
       addCurves({ type: "FeatureCollection", features });
+      updateCount();
+      runSearch();
     }
 
-    // Same formula as ios/RydAR/Screening.swift. e and f are ratios.
     function screeningMPH(radiusFeet, superelevation, friction) {
       const inside = 15 * radiusFeet * (superelevation + friction);
       return inside > 0 ? Math.sqrt(inside) : 0;
@@ -256,8 +318,7 @@
       const friction = surface === "paved" ? 0.15 : 0.1;
       const low = screeningMPH(radius, -0.02, friction);
       const high = screeningMPH(radius, 0.02, friction);
-      const text = `${low.toFixed(1)}\u2013${high.toFixed(1)} mph. screening range \u2014 not an advisory speed.`;
-      return text;
+      return `${low.toFixed(1)}\u2013${high.toFixed(1)} mph. screening range \u2014 not an advisory speed.`;
     }
 
     function flagList(flags) {
@@ -273,17 +334,14 @@
         root.appendChild(el);
         return el;
       };
-      add("h3", p.road);
+      add("h3", p.road || "Unnamed road");
       add("p", `${p.county} County, ${p.surface} road`);
       add("p", `Estimated radius ${p.radius_ft} ft, turning about ${p.deflection_deg} degrees`);
       const range = screeningRangeText(p.radius_ft, p.surface);
       if (range) add("p", range);
       for (const text of flagList(p.flags)) add("p", text, "muted");
       const s = stats[p.id];
-      if (s) {
-        const box = add("p", `Anonymous passes: ${s.n} across ${s.hours} hours of the day.`, "stats");
-        box.setAttribute("data-published", "true");
-      }
+      if (s) add("p", `Anonymous passes: ${s.n} across ${s.hours} hours of the day.`, "stats");
       return root;
     }
 
@@ -291,15 +349,17 @@
       const p = feature.properties;
       if (selectedId && selectedId !== p.id) setSelected(selectedId, false);
       selectedId = p.id;
+      selectedFeature = feature;
       setSelected(p.id, true);
       if (popup) popup.remove();
-      popup = new Popup({ closeButton: true, maxWidth: "20rem", focusAfterOpen: true })
+      popup = new Popup({ closeButton: true, maxWidth: "20rem", focusAfterOpen: false })
         .setLngLat(lngLat)
         .setDOMContent(popupContent(p))
         .addTo(map);
       popup.on("close", () => {
         if (selectedId) setSelected(selectedId, false);
         selectedId = null;
+        selectedFeature = null;
       });
     }
 
@@ -308,57 +368,106 @@
       map.setFeatureState({ source: "arkansas", id }, { selected: on });
     }
 
+    function chooseCounty(name, refit) {
+      if (state.county && map.getSource("counties")) {
+        map.setFeatureState({ source: "counties", id: state.county }, { selected: false });
+      }
+      state.county = name;
+      countySelect.value = name;
+      hintEl.hidden = Boolean(name);
+      if (name && map.getSource("counties")) {
+        map.setFeatureState({ source: "counties", id: name }, { selected: true });
+        const feature = countyFeatures.find((f) => f.properties.county === name);
+        if (refit && feature) frame(boundsOf(feature), 11);
+        loadStats(name);
+      } else if (refit && countyFeatures.length) {
+        const bounds = new LngLatBounds();
+        for (const feature of countyFeatures) bounds.extend(boundsOf(feature));
+        frame(bounds, 8);
+        clearStats();
+      }
+      applyFilters();
+    }
+
+    function clearStats() {
+      statsCounty = "";
+      for (const key of Object.keys(stats)) delete stats[key];
+    }
+
+    async function loadStats(county) {
+      const token = county;
+      statsCounty = county;
+      for (const key of Object.keys(stats)) delete stats[key];
+      try {
+        const res = await fetch(`/api/export/${encodeURIComponent(county.toLowerCase())}.csv`);
+        if (!res.ok || statsCounty !== token) return;
+        const lines = (await res.text()).trim().split("\n").slice(1);
+        if (statsCounty !== token) return;
+        for (const line of lines) {
+          if (!line) continue;
+          const [id, n, hours] = line.split(",");
+          stats[id] = { n: Number(n), hours: Number(hours) };
+        }
+      } catch {
+        // Pass counts are optional. The map still works without them.
+      }
+    }
+
     map.on("click", (e) => {
-      const r = 7;
-      const box = [[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]];
-      if (!map.getLayer("arkansas")) return;
-      const hits = map.queryRenderedFeatures(box, { layers: ["arkansas"] });
-      if (hits.length) select(hits[0], e.lngLat);
+      const box = [[e.point.x - 8, e.point.y - 8], [e.point.x + 8, e.point.y + 8]];
+      if (map.getLayer("arkansas")) {
+        const hits = map.queryRenderedFeatures(box, { layers: ["arkansas"] });
+        if (hits.length) {
+          select(hits[0], e.lngLat);
+          return;
+        }
+      }
+      if (!map.getLayer("counties-fill")) return;
+      const counties = map.queryRenderedFeatures(e.point, { layers: ["counties-fill"] });
+      if (counties.length) chooseCounty(counties[0].properties.county, true);
     });
     map.on("mousemove", (e) => {
-      const r = 5;
-      const box = [[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]];
-      if (!map.getLayer("arkansas")) return;
-      map.getCanvas().style.cursor = map.queryRenderedFeatures(box, { layers: ["arkansas"] }).length ? "pointer" : "";
+      const box = [[e.point.x - 6, e.point.y - 6], [e.point.x + 6, e.point.y + 6]];
+      let hot = false;
+      if (map.getLayer("arkansas") && map.queryRenderedFeatures(box, { layers: ["arkansas"] }).length) hot = true;
+      if (!hot && map.getLayer("counties-fill") && map.queryRenderedFeatures(e.point, { layers: ["counties-fill"] }).length) hot = true;
+      map.getCanvas().style.cursor = hot ? "pointer" : "";
     });
 
+    countySelect.addEventListener("change", () => chooseCounty(countySelect.value, true));
     document.querySelectorAll('input[name="surface"]').forEach((el) =>
       el.addEventListener("change", () => {
         el.checked ? state.surfaces.add(el.value) : state.surfaces.delete(el.value);
         applyFilters();
       }));
-    document.getElementById("flagged").addEventListener("change", (e) => {
-      state.flagged = e.target.checked;
-      applyFilters();
-    });
-
-    // Road search: alphabetical by road name then curve id. Not ordered by any property of the curve.
     const findInput = document.getElementById("find");
     const resultsEl = document.getElementById("results");
     function runSearch() {
       const q = findInput.value.trim().toLowerCase();
       resultsEl.replaceChildren();
-      if (q.length < 2) return;
+      if (q.length < 2 || !features.length) return;
       const found = [];
       for (const f of features) {
-        if (matches(f) && f.properties.road.toLowerCase().includes(q)) found.push(f);
+        if (matches(f) && String(f.properties.road || "").toLowerCase().includes(q)) found.push(f);
       }
       found.sort((a, b) =>
-        a.properties.road.localeCompare(b.properties.road) || a.properties.id.localeCompare(b.properties.id));
+        String(a.properties.road).localeCompare(String(b.properties.road)) ||
+        String(a.properties.id).localeCompare(String(b.properties.id)));
       const li0 = document.createElement("li");
       li0.className = "small muted";
+      const scope = state.county ? ` in ${state.county} County` : "";
       li0.textContent = found.length
-        ? `${found.length.toLocaleString()} match${found.length === 1 ? "" : "es"}${found.length > 8 ? ", first 8 shown" : ""}`
-        : "No matching road among the curves shown.";
+        ? `${found.length.toLocaleString()} match${found.length === 1 ? "" : "es"}${scope}${found.length > 8 ? ", first 8 shown" : ""}`
+        : `No matching road${scope}.`;
       resultsEl.appendChild(li0);
       for (const f of found.slice(0, 8)) {
         const li = document.createElement("li");
         const b = document.createElement("button");
         b.type = "button";
-        b.textContent = f.properties.road;
+        b.textContent = f.properties.road || "Unnamed road";
         const meta = document.createElement("span");
         meta.className = "meta";
-        meta.textContent = `${f.properties.county} County, ${f.properties.surface}`;
+        meta.textContent = `${f.properties.county} County, ${f.properties.surface}, ${f.properties.radius_ft} ft radius`;
         b.appendChild(meta);
         b.addEventListener("click", () => goTo(f));
         li.appendChild(b);
@@ -368,16 +477,15 @@
     findInput.addEventListener("input", runSearch);
 
     function goTo(f) {
-      const bounds = new LngLatBounds();
-      f.geometry.coordinates.forEach((c) => bounds.extend(c));
+      if (state.county !== f.properties.county) chooseCounty(f.properties.county, false);
+      frame(boundsOf(f), 16);
       const mid = f.geometry.coordinates[Math.floor(f.geometry.coordinates.length / 2)];
-      map.fitBounds(bounds, { padding: 120, maxZoom: 16, duration: reduceMotion ? 0 : 700 });
       select(f, mid);
     }
 
-    loadCurves().then(() => { updateCount(); runSearch(); }).catch((err) => {
+    loadMap().catch((err) => {
       console.error(err);
-      document.getElementById("count").textContent = "Could not load curves. Reload the page.";
+      setStatus("Could not load the map. Reload the page.");
     });
   </script>
 </body>
