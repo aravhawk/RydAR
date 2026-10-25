@@ -233,12 +233,15 @@
     }
 
     async function loadCurves() {
-      const res = await fetch("/data/curves-arkansas.geojson");
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const geojson = await res.json();
-      features = geojson.features;
+      const names = ["curves-arkansas-1.geojson", "curves-arkansas-2.geojson", "curves-arkansas-3.geojson", "curves-arkansas-4.geojson"];
+      const parts = await Promise.all(names.map(async (name) => {
+        const res = await fetch(`/data/${name}`);
+        if (!res.ok) throw new Error(`${name}: HTTP ${res.status}`);
+        return res.json();
+      }));
+      features = parts.flatMap((part) => part.features);
       await mapReady;
-      addCurves(geojson);
+      addCurves({ type: "FeatureCollection", features });
     }
 
     // Same formula as ios/RydAR/Screening.swift. e and f are ratios.
