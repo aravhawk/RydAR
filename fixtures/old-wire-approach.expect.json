@@ -1,0 +1,13 @@
+{
+  "curve_id": "007-2-3",
+  "road": "N Old Wire Rd",
+  "county": "Benton",
+  "direction": "forward coordinate order",
+  "spoken_line": "Curve ahead. Above screening range.",
+  "driver_mode": "passenger",
+  "simulator_speed_mps": 10,
+  "waypoints": 66,
+  "duration_seconds": 50.0,
+  "approach": "Synthetic 350 m tangent extension; target curve vertices are exact database coordinates.",
+  "engine_expectation": "When connected: one prompt for this curve/pass, debrief pass; no prompt in under18 mode. Replay must not upload."
+}
