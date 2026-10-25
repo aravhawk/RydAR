@@ -1,5 +1,5 @@
 import XCTest
-@testable import CurveAudit
+@testable import RydAR
 
 final class SQLiteCurveStoreTests: XCTestCase {
     func testNearbyQueryUsesTheBoundingBoxColumns() {
@@ -94,7 +94,7 @@ final class SQLiteCurveStoreTests: XCTestCase {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-            .appendingPathComponent("ios/CurveAudit/curves.sqlite")
+            .appendingPathComponent("ios/RydAR/curves.sqlite")
         let store = try SQLiteCurveStore(databaseURL: url)
         let near = store.curves(nearLatitude: 36.394111, longitude: -94.119669, radiusMeters: 500)
         XCTAssertGreaterThan(near.count, 0)

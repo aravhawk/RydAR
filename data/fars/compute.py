@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-OUT = "/tmp/curveaudit_fars"
+OUT = "/tmp/rydar_fars"
 RAW = f"{OUT}/raw"
 os.makedirs(RAW, exist_ok=True)
 YEARS_TRY = list(range(2015, 2026))          # 2025 is probed; it 404s on 2026-10-24
@@ -29,7 +29,7 @@ CENSUS = {
 AR_STATE = 5
 AR3 = {7: "Benton", 15: "Carroll", 33: "Crawford", 87: "Madison", 143: "Washington"}
 SEB = {131: "Sebastian"}
-UA = {"User-Agent": "Mozilla/5.0 (curveaudit student brief)"}
+UA = {"User-Agent": "Mozilla/5.0 (rydar student brief)"}
 
 pd.set_option("display.width", 250, "display.max_columns", 50, "display.max_rows", 500)
 

@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "CA0000000000000000000001"
-               BuildableName = "CurveAudit.app"
-               BlueprintName = "CurveAudit"
-               ReferencedContainer = "container:CurveAudit.xcodeproj">
+               BuildableName = "RydAR.app"
+               BlueprintName = "RydAR"
+               ReferencedContainer = "container:RydAR.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "CA0000000000000000000002"
-               BuildableName = "CurveAuditTests.xctest"
-               BlueprintName = "CurveAuditTests"
-               ReferencedContainer = "container:CurveAudit.xcodeproj">
+               BuildableName = "RydARTests.xctest"
+               BlueprintName = "RydARTests"
+               ReferencedContainer = "container:RydAR.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "CA0000000000000000000001"
-            BuildableName = "CurveAudit.app"
-            BlueprintName = "CurveAudit"
-            ReferencedContainer = "container:CurveAudit.xcodeproj">
+            BuildableName = "RydAR.app"
+            BlueprintName = "RydAR"
+            ReferencedContainer = "container:RydAR.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "CA0000000000000000000001"
-            BuildableName = "CurveAudit.app"
-            BlueprintName = "CurveAudit"
-            ReferencedContainer = "container:CurveAudit.xcodeproj">
+            BuildableName = "RydAR.app"
+            BlueprintName = "RydAR"
+            ReferencedContainer = "container:RydAR.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

@@ -1,6 +1,6 @@
 import AVFoundation
 import XCTest
-@testable import CurveAudit
+@testable import RydAR
 
 final class TripEngineTests: XCTestCase {
     private let baseLat = 36.0
@@ -416,6 +416,15 @@ final class TripEngineTests: XCTestCase {
         let speech = SpyPrompt()
         let engine = TripEngine(store: EmptyCurveStore(), passLog: log, speech: speech)
         return (engine, speech, log)
+    }
+
+    func testBlankAndAbbreviatedDesignsAreNotRamps() {
+        XCTAssertFalse(isRampDesign(""))
+        XCTAssertFalse(isRampDesign("SC"))
+        XCTAssertFalse(isRampDesign("DC"))
+        XCTAssertFalse(isRampDesign("Dual Carriage"))
+        XCTAssertTrue(isRampDesign("At-Grade Ramp"))
+        XCTAssertTrue(isRampDesign("Driveway"))
     }
 }
 

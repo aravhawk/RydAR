@@ -31,7 +31,7 @@ Mac A opens `ml/train_colab.ipynb` in Google Colab. No API key. The repo is priv
 On a Mac:
 
 ```bash
-python3 ml/convert_coreml.py ml/runs/roadsurface.pt ios/CurveAudit/RoadSurface.mlpackage
+python3 ml/convert_coreml.py ml/runs/roadsurface.pt ios/RydAR/RoadSurface.mlpackage
 ```
 
 Commit the package. The app loads it from the bundle when Dash mode opens. The user does not download it, and launch does not load it.

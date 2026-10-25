@@ -1,6 +1,6 @@
-# CurveAudit curve-screening prototype — Benton + Washington Counties, AR
+# RydAR curve-screening prototype — Benton + Washington Counties, AR
 
-Generated 2026-10-24 18:07:13 CDT by `/tmp/curveaudit_curves/build_curves.py`. **All speeds below are screening assumptions (AASHTO simple-curve formula), NOT legal advisory speeds.**
+Generated 2026-10-24 18:07:13 CDT by `/tmp/rydar_curves/build_curves.py`. **All speeds below are screening assumptions (AASHTO simple-curve formula), NOT legal advisory speeds.**
 
 ## 1. Data pulled
 

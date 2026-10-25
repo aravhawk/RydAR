@@ -2,7 +2,7 @@
 
 The two-county curve study below is the original Benton and Washington file. `tools/build_arkansas.py` adds the other Arkansas counties from the same Arkansas GIS Office layer and keeps these Benton and Washington curves unchanged. That layer does not include a belt of roads in the surrounding states.
 
-The product spec in this repo is `docs/CurveAudit-AR-Product-Brief.md`. If this folder and that file disagree, the **build contract** at the top of the brief wins. This folder is the copy of record. The Downloads copy of these files has been removed.
+The product spec in this repo is `docs/RydAR-Product-Brief.md`. If this folder and that file disagree, the **build contract** at the top of the brief wins. This folder is the copy of record. The Downloads copy of these files has been removed.
 
 This folder is the evidence and the prototype curve file. It is not the app.
 
@@ -23,10 +23,10 @@ Warn only where `quality_flags` is empty. Skip private roads, ramps, closed loop
 | `curves.geojson` | The prototype database. 23 MB. |
 | `SUMMARY.md` | How the file was built, counts, and the synthetic tests. Generated 2026-10-24 18:07 CDT. Research log, not the app spec. |
 | `results.json` | Machine-readable summary from the same run. |
-| `build_curves.py` | The generator. `OUT` is hardcoded to `/tmp/curveaudit_curves`. It refetches centerlines and expects a local OSM extract. You do not need to rerun it to build the app. |
+| `build_curves.py` | The generator. `OUT` is hardcoded to `/tmp/rydar_curves`. It refetches centerlines and expects a local OSM extract. You do not need to rerun it to build the app. |
 
 ## fars/
 
-Crash figures in the brief come from `report.txt` and the `t*.csv` tables. They were computed from NHTSA FARS 2015–2024 on Oct 24, 2026. `compute.py` downloads the national zips itself and writes to `/tmp/curveaudit_fars`. The raw zips are not in this folder. Quote the CSVs and `report.txt`, not a fresh memory of the percentages.
+Crash figures in the brief come from `report.txt` and the `t*.csv` tables. They were computed from NHTSA FARS 2015–2024 on Oct 24, 2026. `compute.py` downloads the national zips itself and writes to `/tmp/rydar_fars`. The raw zips are not in this folder. Quote the CSVs and `report.txt`, not a fresh memory of the percentages.
 
 `crash_level_ar3_sebastian.csv` is the crash-level extract. Sebastian County is only partly in AR-3 and is kept separate from the five-county totals.

@@ -1,5 +1,5 @@
 {
-  "name": "curveaudit-web",
+  "name": "rydar-web",
   "private": true,
   "scripts": {
     "dev": "wrangler dev",

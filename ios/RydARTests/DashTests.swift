@@ -1,6 +1,6 @@
 import CoreML
 import XCTest
-@testable import CurveAudit
+@testable import RydAR
 
 @MainActor
 final class DashTests: XCTestCase {

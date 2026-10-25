@@ -259,7 +259,10 @@ func canWarn(on curve: Curve) -> Bool {
 func isRampDesign(_ design: String) -> Bool {
     let name = design.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     if name.isEmpty { return false }
-    let allowed = ["single carriageway", "dual carriageway", "frontage road"]
+    let allowed = [
+        "single carriageway", "dual carriageway", "frontage road",
+        "sc", "dc", "dual carriage",
+    ]
     return !allowed.contains(name)
 }
 

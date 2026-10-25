@@ -1,6 +1,6 @@
 # Mac B simulator route
 
-`old-wire-approach.gpx` approaches the real bundled curve `007-2-3`, N Old Wire Rd, Benton County. The target's 21 coordinates are copied from `ios/CurveAudit/curves.sqlite`. The 350 m approach is a **synthetic tangent extension**, and the short exit is extrapolated. These are simulator inputs, not surveyed road geometry or a recommended driving route. It matches the curve ID in `trace.expect.json`.
+`old-wire-approach.gpx` approaches the real bundled curve `007-2-3`, N Old Wire Rd, Benton County. The target's 21 coordinates are copied from `ios/RydAR/curves.sqlite`. The 350 m approach is a **synthetic tangent extension**, and the short exit is extrapolated. These are simulator inputs, not surveyed road geometry or a recommended driving route. It matches the curve ID in `trace.expect.json`.
 
 Build and install the app in an iPhone simulator. Open it, finish onboarding, select **Start trip → Passenger operating → Start this trip**. With that simulator booted, run:
 

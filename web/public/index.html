@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Curves in Arkansas | RydAR</title>
-  <meta name="description" content="County-road curves in Arkansas. Candidates for a road department to look at. Geometry only.">
+  <meta name="description" content="Curves on Arkansas roads. Candidates for a road department to look at. Geometry only.">
   <link rel="stylesheet" href="/vendor/maplibre-gl/maplibre-gl.css">
   <style>
     :root {
@@ -104,7 +104,7 @@
 <body>
   <aside aria-label="Map controls and notes">
     <h1>RydAR</h1>
-    <p class="lead">County roads in Arkansas that bend tighter than a 600-foot radius. A candidate list, not a ranking.</p>
+    <p class="lead">Arkansas roads that bend tighter than a 600-foot radius. A candidate list, not a ranking.</p>
 
     <section aria-labelledby="show-h">
       <h2 id="show-h">Show</h2>
@@ -241,7 +241,7 @@
       addCurves(geojson);
     }
 
-    // Same formula as ios/CurveAudit/Screening.swift. e and f are ratios.
+    // Same formula as ios/RydAR/Screening.swift. e and f are ratios.
     function screeningMPH(radiusFeet, superelevation, friction) {
       const inside = 15 * radiusFeet * (superelevation + friction);
       return inside > 0 ? Math.sqrt(inside) : 0;

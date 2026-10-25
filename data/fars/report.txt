@@ -298,28 +298,28 @@ AR-3 vehicle records by VALIGN:
 0 Non-trafficway/driveway      4
 8 Not reported                 2
 
-DONE. Files in /tmp/curveaudit_fars
-/tmp/curveaudit_fars/00_file_availability.csv
-/tmp/curveaudit_fars/crash_level_ar3_sebastian.csv
-/tmp/curveaudit_fars/t1_deaths_by_year_wide.csv
-/tmp/curveaudit_fars/t1_deaths_crosscheck_person_file.csv
-/tmp/curveaudit_fars/t1_fatal_crashes_by_year_wide.csv
-/tmp/curveaudit_fars/t1_fatal_crashes_deaths_long.csv
-/tmp/curveaudit_fars/t2_curve_counts_county_year.csv
-/tmp/curveaudit_fars/t2_curve_share_by_year.csv
-/tmp/curveaudit_fars/t2_curve_share_summary.csv
-/tmp/curveaudit_fars/t2_valign_distribution_ar3_vehicles.csv
-/tmp/curveaudit_fars/t2b_curve_share_comparisons.csv
-/tmp/curveaudit_fars/t2c_curve_share_rural_urban.csv
-/tmp/curveaudit_fars/t3_curve_crash_profile.csv
-/tmp/curveaudit_fars/t3_curve_crash_profile_wide.csv
-/tmp/curveaudit_fars/t4_deaths_by_road_owner_county.csv
-/tmp/curveaudit_fars/t4_deaths_by_route_county.csv
-/tmp/curveaudit_fars/t4_deaths_by_route_detail_ar3_by_year.csv
-/tmp/curveaudit_fars/t4_route_vs_owner_crosstab_ar3_deaths.csv
-/tmp/curveaudit_fars/t5_census_population_used.csv
-/tmp/curveaudit_fars/t5_deaths_per_100k.csv
-/tmp/curveaudit_fars/t6_unpaved_flagged_crashes_ar3_sebastian.csv
-/tmp/curveaudit_fars/t6_unpaved_gravel_counts.csv
-/tmp/curveaudit_fars/t6_vpavetyp_distribution_ar3.csv
-/tmp/curveaudit_fars/compute.py
+DONE. Files in /tmp/rydar_fars
+/tmp/rydar_fars/00_file_availability.csv
+/tmp/rydar_fars/crash_level_ar3_sebastian.csv
+/tmp/rydar_fars/t1_deaths_by_year_wide.csv
+/tmp/rydar_fars/t1_deaths_crosscheck_person_file.csv
+/tmp/rydar_fars/t1_fatal_crashes_by_year_wide.csv
+/tmp/rydar_fars/t1_fatal_crashes_deaths_long.csv
+/tmp/rydar_fars/t2_curve_counts_county_year.csv
+/tmp/rydar_fars/t2_curve_share_by_year.csv
+/tmp/rydar_fars/t2_curve_share_summary.csv
+/tmp/rydar_fars/t2_valign_distribution_ar3_vehicles.csv
+/tmp/rydar_fars/t2b_curve_share_comparisons.csv
+/tmp/rydar_fars/t2c_curve_share_rural_urban.csv
+/tmp/rydar_fars/t3_curve_crash_profile.csv
+/tmp/rydar_fars/t3_curve_crash_profile_wide.csv
+/tmp/rydar_fars/t4_deaths_by_road_owner_county.csv
+/tmp/rydar_fars/t4_deaths_by_route_county.csv
+/tmp/rydar_fars/t4_deaths_by_route_detail_ar3_by_year.csv
+/tmp/rydar_fars/t4_route_vs_owner_crosstab_ar3_deaths.csv
+/tmp/rydar_fars/t5_census_population_used.csv
+/tmp/rydar_fars/t5_deaths_per_100k.csv
+/tmp/rydar_fars/t6_unpaved_flagged_crashes_ar3_sebastian.csv
+/tmp/rydar_fars/t6_unpaved_gravel_counts.csv
+/tmp/rydar_fars/t6_vpavetyp_distribution_ar3.csv
+/tmp/rydar_fars/compute.py

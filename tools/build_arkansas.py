@@ -129,11 +129,18 @@ def fetch_centerlines() -> gpd.GeoDataFrame:
     return frame
 
 
+CARRIAGEWAY = {
+    "", "sc", "dc", "dual carriage",
+    "single carriageway", "dual carriageway", "frontage road",
+}
+
+
 def flags(row) -> str:
     found = []
     if row.closed:
         found.append("closed_loop")
-    if row.rd_design not in ("Single Carriageway", "Dual Carriageway", "Frontage Road"):
+    design = str(row.rd_design or "").strip().lower()
+    if design not in CARRIAGEWAY:
         found.append("ramp_circle_connector")
     if row.radius_ft < 50:
         found.append("lt50ft_corner_or_hairpin")

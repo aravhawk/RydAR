@@ -52,7 +52,7 @@ def features(path: Path):
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--geojson", type=Path, default=Path("data/curves/curves.geojson"))
-    parser.add_argument("--sqlite", type=Path, default=Path("ios/CurveAudit/curves.sqlite"))
+    parser.add_argument("--sqlite", type=Path, default=Path("ios/RydAR/curves.sqlite"))
     parser.add_argument("--example", type=Path, default=Path("Contracts/curve.example.json"))
     args = parser.parse_args()
 

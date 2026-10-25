@@ -12,37 +12,37 @@
 			containerPortal = CA0000000000000000000003 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = CA0000000000000000000001;
-			remoteInfo = CurveAudit;
+			remoteInfo = RydAR;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		CA0000000000000000000004 /* CurveAudit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CurveAudit.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		CA0000000000000000000005 /* CurveAuditTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CurveAuditTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CA0000000000000000000004 /* RydAR.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RydAR.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CA0000000000000000000005 /* RydARTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RydARTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		CA000000000000000000000B /* Exceptions for "CurveAudit" folder in "CurveAudit" target */ = {
+		CA000000000000000000000B /* Exceptions for "RydAR" folder in "RydAR" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = CA0000000000000000000001 /* CurveAudit */;
+			target = CA0000000000000000000001 /* RydAR */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		CA0000000000000000000006 /* CurveAudit */ = {
+		CA0000000000000000000006 /* RydAR */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				CA000000000000000000000B /* Exceptions for "CurveAudit" folder in "CurveAudit" target */,
+				CA000000000000000000000B /* Exceptions for "RydAR" folder in "RydAR" target */,
 			);
-			path = CurveAudit;
+			path = RydAR;
 			sourceTree = "<group>";
 		};
-		CA0000000000000000000007 /* CurveAuditTests */ = {
+		CA0000000000000000000007 /* RydARTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = CurveAuditTests;
+			path = RydARTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -68,8 +68,8 @@
 		CA0000000000000000000008 = {
 			isa = PBXGroup;
 			children = (
-				CA0000000000000000000006 /* CurveAudit */,
-				CA0000000000000000000007 /* CurveAuditTests */,
+				CA0000000000000000000006 /* RydAR */,
+				CA0000000000000000000007 /* RydARTests */,
 				CA0000000000000000000009 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -77,8 +77,8 @@
 		CA0000000000000000000009 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				CA0000000000000000000004 /* CurveAudit.app */,
-				CA0000000000000000000005 /* CurveAuditTests.xctest */,
+				CA0000000000000000000004 /* RydAR.app */,
+				CA0000000000000000000005 /* RydARTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -86,9 +86,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		CA0000000000000000000001 /* CurveAudit */ = {
+		CA0000000000000000000001 /* RydAR */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = CA0000000000000000000011 /* Build configuration list for PBXNativeTarget "CurveAudit" */;
+			buildConfigurationList = CA0000000000000000000011 /* Build configuration list for PBXNativeTarget "RydAR" */;
 			buildPhases = (
 				CA000000000000000000000E /* Sources */,
 				CA000000000000000000000C /* Frameworks */,
@@ -99,18 +99,18 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				CA0000000000000000000006 /* CurveAudit */,
+				CA0000000000000000000006 /* RydAR */,
 			);
-			name = CurveAudit;
+			name = RydAR;
 			packageProductDependencies = (
 			);
-			productName = CurveAudit;
-			productReference = CA0000000000000000000004 /* CurveAudit.app */;
+			productName = RydAR;
+			productReference = CA0000000000000000000004 /* RydAR.app */;
 			productType = "com.apple.product-type.application";
 		};
-		CA0000000000000000000002 /* CurveAuditTests */ = {
+		CA0000000000000000000002 /* RydARTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = CA0000000000000000000012 /* Build configuration list for PBXNativeTarget "CurveAuditTests" */;
+			buildConfigurationList = CA0000000000000000000012 /* Build configuration list for PBXNativeTarget "RydARTests" */;
 			buildPhases = (
 				CA0000000000000000000010 /* Sources */,
 				CA000000000000000000000D /* Frameworks */,
@@ -122,13 +122,13 @@
 				CA0000000000000000000014 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				CA0000000000000000000007 /* CurveAuditTests */,
+				CA0000000000000000000007 /* RydARTests */,
 			);
-			name = CurveAuditTests;
+			name = RydARTests;
 			packageProductDependencies = (
 			);
-			productName = CurveAuditTests;
-			productReference = CA0000000000000000000005 /* CurveAuditTests.xctest */;
+			productName = RydARTests;
+			productReference = CA0000000000000000000005 /* RydARTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
@@ -150,7 +150,7 @@
 					};
 				};
 			};
-			buildConfigurationList = CA0000000000000000000015 /* Build configuration list for PBXProject "CurveAudit" */;
+			buildConfigurationList = CA0000000000000000000015 /* Build configuration list for PBXProject "RydAR" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -164,8 +164,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				CA0000000000000000000001 /* CurveAudit */,
-				CA0000000000000000000002 /* CurveAuditTests */,
+				CA0000000000000000000001 /* RydAR */,
+				CA0000000000000000000002 /* RydARTests */,
 			);
 		};
 /* End PBXProject section */
@@ -207,7 +207,7 @@
 /* Begin PBXTargetDependency section */
 		CA0000000000000000000014 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = CA0000000000000000000001 /* CurveAudit */;
+			target = CA0000000000000000000001 /* RydAR */;
 			targetProxy = CA000000000000000000000A /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -220,10 +220,10 @@
 				COREML_CODEGEN_LANGUAGE = None;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = CurveAudit/Info.plist;
+				INFOPLIST_FILE = RydAR/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Dash mode looks at the road ahead and compares it with a public dataset. No photo is saved.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "CurveAudit uses your location to know which curve you are approaching.";
-				INFOPLIST_KEY_NSMotionUsageDescription = "CurveAudit uses motion to estimate speed changes on the way into a curve.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "RydAR uses your location to know which curve you are approaching.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "RydAR uses motion to estimate speed changes on the way into a curve.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -249,10 +249,10 @@
 				COREML_CODEGEN_LANGUAGE = None;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = CurveAudit/Info.plist;
+				INFOPLIST_FILE = RydAR/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Dash mode looks at the road ahead and compares it with a public dataset. No photo is saved.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "CurveAudit uses your location to know which curve you are approaching.";
-				INFOPLIST_KEY_NSMotionUsageDescription = "CurveAudit uses motion to estimate speed changes on the way into a curve.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "RydAR uses your location to know which curve you are approaching.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "RydAR uses motion to estimate speed changes on the way into a curve.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -317,7 +317,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CurveAudit.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CurveAudit";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/RydAR.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/RydAR";
 			};
 			name = Debug;
 		};
@@ -334,14 +334,14 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CurveAudit.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CurveAudit";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/RydAR.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/RydAR";
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		CA0000000000000000000011 /* Build configuration list for PBXNativeTarget "CurveAudit" */ = {
+		CA0000000000000000000011 /* Build configuration list for PBXNativeTarget "RydAR" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CA0000000000000000000016 /* Debug */,
@@ -350,7 +350,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		CA0000000000000000000012 /* Build configuration list for PBXNativeTarget "CurveAuditTests" */ = {
+		CA0000000000000000000012 /* Build configuration list for PBXNativeTarget "RydARTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CA000000000000000000001A /* Debug */,
@@ -359,7 +359,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		CA0000000000000000000015 /* Build configuration list for PBXProject "CurveAudit" */ = {
+		CA0000000000000000000015 /* Build configuration list for PBXProject "RydAR" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CA0000000000000000000018 /* Debug */,

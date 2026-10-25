@@ -1,5 +1,5 @@
 import XCTest
-@testable import CurveAudit
+@testable import RydAR
 
 final class AnonymousPassTests: XCTestCase {
     func testSpeedBandFloorsToFiveAndClamps() {

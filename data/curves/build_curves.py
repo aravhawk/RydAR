@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-CurveAudit curve-screening prototype: Benton (FIPS 05007) + Washington (FIPS 05143) counties, Arkansas.
+RydAR curve-screening prototype: Benton (FIPS 05007) + Washington (FIPS 05143) counties, Arkansas.
 
-Rerun:  python3 /tmp/curveaudit_curves/build_curves.py            (uses cached downloads when present)
-        python3 /tmp/curveaudit_curves/build_curves.py --refetch   (re-download everything)
+Rerun:  python3 /tmp/rydar_curves/build_curves.py            (uses cached downloads when present)
+        python3 /tmp/rydar_curves/build_curves.py --refetch   (re-download everything)
 
 Inputs (all downloaded by this script):
   * Arkansas GIS Office ROADS_ACF centerlines, MapServer layer 18 (paginated, resultOffset)
   * Census TIGERweb county polygons (only to clip OSM to county lines)
   * Geofabrik arkansas-latest.osm.pbf (OSM highway ways, read with GDAL OSM driver through pyogrio)
-Outputs in /tmp/curveaudit_curves/: curves.geojson, SUMMARY.md, results.json, plus caches.
+Outputs in /tmp/rydar_curves/: curves.geojson, SUMMARY.md, results.json, plus caches.
 """
 import json, math, os, re, sys, time, io
 import concurrent.futures as cf
@@ -22,7 +22,7 @@ from shapely.geometry import LineString, MultiLineString, Point
 from shapely.ops import linemerge
 from pyproj import Transformer
 
-OUT = "/tmp/curveaudit_curves"
+OUT = "/tmp/rydar_curves"
 os.makedirs(OUT, exist_ok=True)
 T0 = time.time()
 TIMES = {}
@@ -814,8 +814,8 @@ def write_summary(R, g, out):
     L = []
     A = L.append
     f = R["fetch"]
-    A("# CurveAudit curve-screening prototype — Benton + Washington Counties, AR\n")
-    A(f"Generated {time.strftime('%Y-%m-%d %H:%M:%S %Z')} by `/tmp/curveaudit_curves/build_curves.py`. "
+    A("# RydAR curve-screening prototype — Benton + Washington Counties, AR\n")
+    A(f"Generated {time.strftime('%Y-%m-%d %H:%M:%S %Z')} by `/tmp/rydar_curves/build_curves.py`. "
       "**All speeds below are screening assumptions (AASHTO simple-curve formula), NOT legal advisory speeds.**\n")
 
     A("## 1. Data pulled\n")

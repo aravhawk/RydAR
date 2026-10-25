@@ -1,5 +1,5 @@
 import XCTest
-@testable import CurveAudit
+@testable import RydAR
 
 final class PassLogTests: XCTestCase {
     func testLatePassRules() {

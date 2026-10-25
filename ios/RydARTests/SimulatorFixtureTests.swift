@@ -1,7 +1,7 @@
 import XCTest
 import Foundation
 import SQLite3
-@testable import CurveAudit
+@testable import RydAR
 
 final class SimulatorFixtureTests: XCTestCase {
     func testGPXContainsExactBundledCurveAndUsesSharedSentence() throws {
@@ -13,7 +13,7 @@ final class SimulatorFixtureTests: XCTestCase {
         let curveID = try XCTUnwrap(expected["curve_id"] as? String)
 
         var database: OpaquePointer?
-        XCTAssertEqual(sqlite3_open_v2(root.appendingPathComponent("ios/CurveAudit/curves.sqlite").path,
+        XCTAssertEqual(sqlite3_open_v2(root.appendingPathComponent("ios/RydAR/curves.sqlite").path,
                                       &database, SQLITE_OPEN_READONLY, nil), SQLITE_OK)
         defer { sqlite3_close(database) }
         var statement: OpaquePointer?

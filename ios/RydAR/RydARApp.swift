@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct CurveAuditApp: App {
+struct RydARApp: App {
     private let session: LiveTripSession
 
     init() {

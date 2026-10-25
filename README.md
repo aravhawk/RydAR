@@ -1,6 +1,8 @@
 # RydAR
 
-iPhone app for curve screening on Arkansas roads, plus a public Cloudflare map. The product spec is `docs/CurveAudit-AR-Product-Brief.md`. If this README and that file disagree, the build contract at the top of the brief wins.
+iPhone app for curve screening on Arkansas roads, plus a public Cloudflare map. The product spec is `docs/RydAR-Product-Brief.md`. If this README and that file disagree, the build contract at the top of the brief wins.
+
+Repository: `git@github.com:aravhawk/RydAR.git`
 
 ## Stack
 
@@ -13,7 +15,7 @@ iPhone app for curve screening on Arkansas roads, plus a public Cloudflare map. 
 
 | Computer | Open | Do not open |
 |---|---|---|
-| Mac A (this Mac: paid Apple team, the phone, Colab) | `ios/CurveAudit.xcodeproj`, `ml/train_colab.ipynb` | the website |
+| Mac A (this Mac: paid Apple team, the phone, Colab) | `ios/RydAR.xcodeproj`, `ml/train_colab.ipynb` | the website |
 | Mac B | the same Xcode project, simulator | a second copy of `Screening.swift` |
 | Windows | `tools/`, `web/` | the Xcode project, the Colab notebook |
 
@@ -22,7 +24,7 @@ iPhone app for curve screening on Arkansas roads, plus a public Cloudflare map. 
 ## Mac
 
 ```bash
-open ios/CurveAudit.xcodeproj
+open ios/RydAR.xcodeproj
 ```
 
 Pick the parent's paid team when you install on a phone. The simulator does not need that for the shell. The shell shows a sample screening range. Location, speech, and the camera are not connected yet.
@@ -33,7 +35,7 @@ Pick the parent's paid team when you install on a phone. The simulator does not 
 python3 tools/geojson_to_sqlite.py
 ```
 
-That reads `data/curves/curves.geojson` and writes `ios/CurveAudit/curves.sqlite`.
+That reads `data/curves/curves.geojson` and writes `ios/RydAR/curves.sqlite`.
 
 ## Website
 
