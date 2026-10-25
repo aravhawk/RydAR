@@ -19,7 +19,7 @@ def main() -> int:
         import torch
         from roadnet import RoadNet
     except ImportError:
-        print("On a Mac: python3 -m pip install torch torchvision coremltools", file=sys.stderr)
+        print("On a Mac: python3 -m pip install torch torchvision timm coremltools", file=sys.stderr)
         return 1
 
     blob = torch.load(args.checkpoint, map_location="cpu")
@@ -38,8 +38,8 @@ def main() -> int:
 
     example = torch.rand(1, 3, 224, 224)
     traced = torch.jit.trace(SoftmaxHeads(model), example)
-    mean = (0.485, 0.456, 0.406)
-    std = (0.229, 0.224, 0.225)
+    mean = tuple(blob.get("mean", (0.485, 0.456, 0.406)))
+    std = tuple(blob.get("std", (0.229, 0.224, 0.225)))
     image = ct.ImageType(
         name="image",
         shape=example.shape,

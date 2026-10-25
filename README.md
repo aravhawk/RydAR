@@ -7,7 +7,7 @@ iPhone app for curve-speed screening on Benton and Washington county roads, plus
 - iOS 17, SwiftUI, MapKit, one SQLite file for curves and trips
 - Python for the curve importer and the training script
 - Cloudflare Worker, D1, and static files for the public page and anonymous passes
-- One vision model with three heads. Fine-tuned in PyTorch on Google Colab from Mac A, converted to Core ML on Mac A, and bundled in the app. See `ml/README.md`. The curve database is also bundled. A drive does not download data. An on-device timing memory can speak earlier. Nothing in the app predicts a speed.
+- One vision model with three heads on MobileNetV4-Conv-Small. Fine-tuned in PyTorch on Google Colab from Mac A, converted to Core ML on Mac A, and bundled in the app. See `ml/README.md`. The curve database is also bundled. A drive does not download data. An on-device timing memory can speak earlier. Nothing in the app predicts a speed.
 
 ## Who works where
 

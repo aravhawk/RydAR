@@ -4,7 +4,7 @@ The phone does not retrain this network. Core ML is the file bundled inside the 
 
 ## What to train
 
-One torchvision MobileNetV3-Small trunk and three heads (`ml/roadnet.py`). Create ML is the backup, and it cannot run on an NVIDIA GPU. It also cannot train three heads. If conversion fails, the Create ML backup is material only.
+One timm MobileNetV4-Conv-Small trunk (`mobilenetv4_conv_small.e2400_r224_in1k`) and three heads (`ml/roadnet.py`). Conv-Small, not the hybrid and not the large. Create ML is the backup, and it cannot run on an NVIDIA GPU. It also cannot train three heads. If conversion fails, the Create ML backup is material only.
 
 | Head | Labels | Effect on the phone |
 |---|---|---|

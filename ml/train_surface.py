@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fine-tune one MobileNetV3-Small with three heads on RSCD.
+"""Fine-tune one MobileNetV4-Conv-Small with three heads on RSCD.
 
 Run this from Google Colab on an NVIDIA GPU. Mac A opens the notebook.
 Create ML cannot run there, and it cannot train three heads. Convert the
@@ -97,9 +97,9 @@ def main() -> int:
         from torch.utils.data import DataLoader, Dataset
         from torchvision import transforms
         from PIL import Image
-        from roadnet import RoadNet
+        from roadnet import IMAGENET_MEAN, IMAGENET_STD, RoadNet
     except ImportError:
-        print("Install torch, torchvision, and pillow on the GPU machine.", file=sys.stderr)
+        print("Install torch, torchvision, timm, and pillow on the GPU machine.", file=sys.stderr)
         return 1
 
     rows = index_images(args.data, args.cant_tell)
@@ -136,14 +136,14 @@ def main() -> int:
             transforms.ColorJitter(brightness=0.4, contrast=0.3, saturation=0.2),
             transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 1.5)),
             transforms.ToTensor(),
-            transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+            transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
         ]
     )
     eval_transform = transforms.Compose(
         [
             transforms.Resize((224, 224)),
             transforms.ToTensor(),
-            transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+            transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
         ]
     )
     train_loader = DataLoader(
@@ -221,6 +221,8 @@ def main() -> int:
                 "material_labels": list(MATERIAL),
                 "friction_labels": list(FRICTION),
                 "uneven_labels": list(UNEVEN),
+                "mean": list(IMAGENET_MEAN),
+                "std": list(IMAGENET_STD),
             },
             args.out,
         )
@@ -232,6 +234,8 @@ def main() -> int:
         "material_labels": list(MATERIAL),
         "friction_labels": list(FRICTION),
         "uneven_labels": list(UNEVEN),
+        "mean": list(IMAGENET_MEAN),
+        "std": list(IMAGENET_STD),
     }
     torch.save(blob, args.out)
     metrics = {
