@@ -109,7 +109,7 @@ final class TripEngineTests: XCTestCase {
         let parked = harness.engine.handle(fix: fix(speed: 0, at: moment), nearby: [], now: moment)
         XCTAssertFalse(parked.gate.allowsSound)
         XCTAssertFalse(parked.gate.allowsCamera)
-        XCTAssertTrue(parked.gate.allowsUpload)
+        XCTAssertFalse(parked.gate.allowsUpload)
     }
 
     func testPassengerChimeDoesNotSpeakASpeed() throws {

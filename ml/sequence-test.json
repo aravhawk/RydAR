@@ -2,6 +2,7 @@
   "do_not_say_in_the_app_or_the_video": true,
   "not_an_arkansas_road_test": true,
   "not_the_phone_gate": "Argmax on one 240x360 patch. The phone accepts a head only when 4 of the last 6 frames agree and the weakest of those votes is at least 0.8. That gate was not applied here.",
+  "which_number_to_quote_if_one_is_required": "macro_recall. AUC is a ranking score and is the largest. AURC is lower-is-better and is not an accuracy.",
   "checkpoint": "/content/roadsurface.pt",
   "what_this_is": "Held-out RSCD test-set: 12 sequences, 30 frames, 8 patches. The training run did not load these frames. Beijing roads, not Arkansas. Do not quote the random validation split as this number.",
   "device": "cuda",
@@ -25,6 +26,52 @@
           "support": 0,
           "recall": null
         }
+      },
+      "operating_point": {
+        "accuracy": 0.8791666666666667,
+        "macro_precision": 0.8129464285714285,
+        "macro_recall": 0.8295760410912212,
+        "macro_ovr_auc": 0.9322860958638441,
+        "aurc": 0.029305207713906285,
+        "aurc_optimal": 0.007634530990602982,
+        "classes_in_macro": 2,
+        "classes_in_auc": 2,
+        "per_class": [
+          {
+            "name": "paved",
+            "support": 2284,
+            "predicted": 2240,
+            "hits": 2088,
+            "precision": 0.9321428571428572,
+            "recall": 0.9141856392294221,
+            "ovr_auc": 0.9322842593354411
+          },
+          {
+            "name": "unpaved",
+            "support": 596,
+            "predicted": 640,
+            "hits": 444,
+            "precision": 0.69375,
+            "recall": 0.7449664429530202,
+            "ovr_auc": 0.9322879323922472
+          },
+          {
+            "name": "cant_tell",
+            "support": 0,
+            "predicted": 0,
+            "hits": 0,
+            "precision": null,
+            "recall": null,
+            "ovr_auc": null
+          }
+        ],
+        "definitions": {
+          "accuracy": "Argmax matches the label, over patches whose label is not masked.",
+          "macro_precision": "Unweighted mean of per-class precision. A class with no labeled patches is left out. A class that is never predicted scores 0.",
+          "macro_recall": "Unweighted mean of per-class recall over classes that have at least one labeled patch.",
+          "macro_ovr_auc": "Unweighted mean of one-versus-rest ROC AUC. A class with no positive or no negative patches is left out. Higher is better.",
+          "aurc": "Area under the risk-coverage curve from max-softmax confidence. Lower is better. aurc_optimal is the same area if every correct call were ranked first."
+        }
       }
     },
     "friction": {
@@ -34,11 +81,11 @@
       "recall_by_class": {
         "dry": {
           "support": 1162,
-          "recall": 0.6833046471600689
+          "recall": 0.6824440619621343
         },
         "wet": {
           "support": 1295,
-          "recall": 0.7258687258687259
+          "recall": 0.7266409266409266
         },
         "water": {
           "support": 423,
@@ -51,6 +98,70 @@
         "cant_tell": {
           "support": 0,
           "recall": null
+        }
+      },
+      "operating_point": {
+        "accuracy": 0.7170138888888888,
+        "macro_precision": 0.7026696753352347,
+        "macro_recall": 0.7305302995895152,
+        "macro_ovr_auc": 0.8785494640682744,
+        "aurc": 0.16467611654719327,
+        "aurc_optimal": 0.0445133449912771,
+        "classes_in_macro": 3,
+        "classes_in_auc": 3,
+        "per_class": [
+          {
+            "name": "dry",
+            "support": 1162,
+            "predicted": 1002,
+            "hits": 793,
+            "precision": 0.7914171656686627,
+            "recall": 0.6824440619621343,
+            "ovr_auc": 0.8812041780960529
+          },
+          {
+            "name": "wet",
+            "support": 1295,
+            "predicted": 1297,
+            "hits": 941,
+            "precision": 0.725520431765613,
+            "recall": 0.7266409266409266,
+            "ovr_auc": 0.8222958966176632
+          },
+          {
+            "name": "water",
+            "support": 423,
+            "predicted": 560,
+            "hits": 331,
+            "precision": 0.5910714285714286,
+            "recall": 0.7825059101654847,
+            "ovr_auc": 0.932148317491107
+          },
+          {
+            "name": "snow_ice",
+            "support": 0,
+            "predicted": 21,
+            "hits": 0,
+            "precision": 0.0,
+            "recall": null,
+            "ovr_auc": null
+          },
+          {
+            "name": "cant_tell",
+            "support": 0,
+            "predicted": 0,
+            "hits": 0,
+            "precision": null,
+            "recall": null,
+            "ovr_auc": null
+          }
+        ],
+        "definitions": {
+          "accuracy": "Argmax matches the label, over patches whose label is not masked.",
+          "macro_precision": "Unweighted mean of per-class precision. A class with no labeled patches is left out. A class that is never predicted scores 0.",
+          "macro_recall": "Unweighted mean of per-class recall over classes that have at least one labeled patch.",
+          "macro_ovr_auc": "Unweighted mean of one-versus-rest ROC AUC. A class with no positive or no negative patches is left out. Higher is better.",
+          "aurc": "Area under the risk-coverage curve from max-softmax confidence. Lower is better. aurc_optimal is the same area if every correct call were ranked first."
         }
       }
     },
@@ -74,6 +185,61 @@
         "cant_tell": {
           "support": 0,
           "recall": null
+        }
+      },
+      "operating_point": {
+        "accuracy": 0.7053415061295972,
+        "macro_precision": 0.5342783277842701,
+        "macro_recall": 0.7335800723662373,
+        "macro_ovr_auc": 0.870661704633222,
+        "aurc": 0.1308980839822633,
+        "aurc_optimal": 0.048507179523746814,
+        "classes_in_macro": 3,
+        "classes_in_auc": 3,
+        "per_class": [
+          {
+            "name": "smooth",
+            "support": 1719,
+            "predicted": 1364,
+            "hits": 1272,
+            "precision": 0.9325513196480938,
+            "recall": 0.7399650959860384,
+            "ovr_auc": 0.8750014157232802
+          },
+          {
+            "name": "slight",
+            "support": 486,
+            "predicted": 616,
+            "hits": 267,
+            "precision": 0.43344155844155846,
+            "recall": 0.5493827160493827,
+            "ovr_auc": 0.7706356399657599
+          },
+          {
+            "name": "severe",
+            "support": 79,
+            "predicted": 304,
+            "hits": 72,
+            "precision": 0.23684210526315788,
+            "recall": 0.9113924050632911,
+            "ovr_auc": 0.966348058210626
+          },
+          {
+            "name": "cant_tell",
+            "support": 0,
+            "predicted": 0,
+            "hits": 0,
+            "precision": null,
+            "recall": null,
+            "ovr_auc": null
+          }
+        ],
+        "definitions": {
+          "accuracy": "Argmax matches the label, over patches whose label is not masked.",
+          "macro_precision": "Unweighted mean of per-class precision. A class with no labeled patches is left out. A class that is never predicted scores 0.",
+          "macro_recall": "Unweighted mean of per-class recall over classes that have at least one labeled patch.",
+          "macro_ovr_auc": "Unweighted mean of one-versus-rest ROC AUC. A class with no positive or no negative patches is left out. Higher is better.",
+          "aurc": "Area under the risk-coverage curve from max-softmax confidence. Lower is better. aurc_optimal is the same area if every correct call were ranked first."
         }
       }
     }
@@ -137,9 +303,9 @@
         "accuracy": 1.0
       },
       "friction": {
-        "correct": 220,
+        "correct": 219,
         "seen": 240,
-        "accuracy": 0.9166666666666666
+        "accuracy": 0.9125
       },
       "uneven": {
         "correct": 118,
@@ -188,9 +354,9 @@
         "accuracy": 0.825
       },
       "friction": {
-        "correct": 164,
+        "correct": 165,
         "seen": 240,
-        "accuracy": 0.6833333333333333
+        "accuracy": 0.6875
       },
       "uneven": {
         "correct": 144,

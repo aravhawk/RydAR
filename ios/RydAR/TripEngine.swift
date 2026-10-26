@@ -221,7 +221,6 @@ func driveGate(mode: DriverMode?, speedMps: Double, dashEnabled: Bool, uploadOpt
     guard let mode else {
         return DriveGate(allowsSound: false, allowsChime: false, allowsCamera: false, allowsUpload: false)
     }
-    let moving = speedMps > DriveRules.movingSpeedMps
     let sound = allowsInDriveSound(mode)
     switch mode {
     case .under18:
@@ -229,7 +228,7 @@ func driveGate(mode: DriverMode?, speedMps: Double, dashEnabled: Bool, uploadOpt
             allowsSound: false,
             allowsChime: false,
             allowsCamera: false,
-            allowsUpload: uploadOptIn && !moving
+            allowsUpload: false
         )
     case .adult, .passenger:
         return DriveGate(

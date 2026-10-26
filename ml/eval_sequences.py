@@ -92,6 +92,112 @@ def extract_test_set(blob: bytes, dest: Path) -> int:
     return written
 
 
+def roc_auc(y_true, y_score) -> float | None:
+    """ROC AUC by the Mann–Whitney rank formula. Ties get the average rank."""
+    y_true = [int(value) for value in y_true]
+    y_score = [float(value) for value in y_score]
+    n_pos = sum(y_true)
+    n_neg = len(y_true) - n_pos
+    if n_pos == 0 or n_neg == 0:
+        return None
+    order = sorted(range(len(y_score)), key=lambda index: y_score[index])
+    ranks = [0.0] * len(y_score)
+    start = 0
+    while start < len(order):
+        end = start
+        while end + 1 < len(order) and y_score[order[end + 1]] == y_score[order[start]]:
+            end += 1
+        average = (start + 1 + end + 1) / 2.0
+        for cursor in range(start, end + 1):
+            ranks[order[cursor]] = average
+        start = end + 1
+    sum_pos = sum(rank for rank, label in zip(ranks, y_true) if label == 1)
+    return (sum_pos - n_pos * (n_pos + 1) / 2.0) / (n_pos * n_neg)
+
+
+def aurc(confidence, correct) -> float | None:
+    """Area under the risk-coverage curve. Lower is better.
+
+    Samples are ordered from most confident to least. At each coverage the
+    risk is the error rate among the samples kept so far. The reported area
+    is the mean of those risks, which is the equal-step integral from 0 to 1.
+    """
+    paired = sorted(zip(confidence, correct), key=lambda item: -float(item[0]))
+    if not paired:
+        return None
+    risks = []
+    errors = 0
+    for index, (_, is_correct) in enumerate(paired, start=1):
+        errors += 0 if is_correct else 1
+        risks.append(errors / index)
+    return sum(risks) / len(risks)
+
+
+def aurc_optimal(n_correct: int, total: int) -> float | None:
+    """AURC if every correct call were ranked above every incorrect call."""
+    if total <= 0:
+        return None
+    risks = [max(0, index - n_correct) / index for index in range(1, total + 1)]
+    return sum(risks) / len(risks)
+
+
+def summarize_head(truths: list[int], probabilities: list[list[float]], class_names: tuple[str, ...]) -> dict:
+    """Accuracy, precision, recall, one-vs-rest AUC, and AURC at the argmax point."""
+    count = len(truths)
+    if count == 0:
+        return {}
+    predicted = [max(range(len(row)), key=lambda index: row[index]) for row in probabilities]
+    correct_flags = [guess == truth for guess, truth in zip(predicted, truths)]
+    confidence = [max(row) for row in probabilities]
+    classes = []
+    precisions = []
+    recalls = []
+    aucs = []
+    for index, name in enumerate(class_names):
+        support = sum(truth == index for truth in truths)
+        called = sum(guess == index for guess in predicted)
+        hits = sum(truth == index and guess == index for truth, guess in zip(truths, predicted))
+        precision = (hits / called) if called else (0.0 if support else None)
+        recall = (hits / support) if support else None
+        if support:
+            precisions.append(0.0 if precision is None else precision)
+            recalls.append(0.0 if recall is None else recall)
+        auc = roc_auc(
+            [1 if truth == index else 0 for truth in truths],
+            [row[index] for row in probabilities],
+        )
+        if auc is not None:
+            aucs.append(auc)
+        classes.append({
+            "name": name,
+            "support": support,
+            "predicted": called,
+            "hits": hits,
+            "precision": precision,
+            "recall": recall,
+            "ovr_auc": auc,
+        })
+    n_correct = sum(correct_flags)
+    return {
+        "accuracy": n_correct / count,
+        "macro_precision": sum(precisions) / len(precisions) if precisions else None,
+        "macro_recall": sum(recalls) / len(recalls) if recalls else None,
+        "macro_ovr_auc": sum(aucs) / len(aucs) if aucs else None,
+        "aurc": aurc(confidence, correct_flags),
+        "aurc_optimal": aurc_optimal(n_correct, count),
+        "classes_in_macro": len(precisions),
+        "classes_in_auc": len(aucs),
+        "per_class": classes,
+        "definitions": {
+            "accuracy": "Argmax matches the label, over patches whose label is not masked.",
+            "macro_precision": "Unweighted mean of per-class precision. A class with no labeled patches is left out. A class that is never predicted scores 0.",
+            "macro_recall": "Unweighted mean of per-class recall over classes that have at least one labeled patch.",
+            "macro_ovr_auc": "Unweighted mean of one-versus-rest ROC AUC. A class with no positive or no negative patches is left out. Higher is better.",
+            "aurc": "Area under the risk-coverage curve from max-softmax confidence. Lower is better. aurc_optimal is the same area if every correct call were ranked first.",
+        },
+    }
+
+
 def labels_for(text: str) -> list[tuple[int, int, int]]:
     tokens = text.split()
     if len(tokens) != 8:
@@ -130,6 +236,8 @@ def score(root: Path, checkpoint: Path, out: Path) -> dict:
     correct = [0, 0, 0]
     seen = [0, 0, 0]
     confusion = [torch.zeros(len(label_names[i]), len(label_names[i]), dtype=torch.long) for i in range(3)]
+    stored_truth: list[list[int]] = [[], [], []]
+    stored_prob: list[list[list[float]]] = [[], [], []]
     per_sequence: dict[str, dict] = {}
     frames = 0
     patches = 0
@@ -154,12 +262,17 @@ def score(root: Path, checkpoint: Path, out: Path) -> dict:
             if not bool(keep.any()):
                 continue
             pred = logits.argmax(dim=1)
+            probability = torch.softmax(logits, dim=1)
             seen[head] += int(keep.sum())
             correct[head] += int((pred[keep] == target[:, head][keep]).sum())
-            for truth, guess, seq in zip(target[:, head].tolist(), pred.tolist(), batch_seq):
+            for truth, guess, scores, seq in zip(
+                target[:, head].tolist(), pred.tolist(), probability.tolist(), batch_seq
+            ):
                 if truth < 0:
                     continue
                 confusion[head][truth, guess] += 1
+                stored_truth[head].append(truth)
+                stored_prob[head].append(scores)
                 row = per_sequence[seq][names[head]]
                 row["seen"] += 1
                 row["correct"] += int(guess == truth)
@@ -216,6 +329,7 @@ def score(root: Path, checkpoint: Path, out: Path) -> dict:
                 "seen": seen[i],
                 "accuracy": (correct[i] / seen[i]) if seen[i] else None,
                 "recall_by_class": rates(i),
+                "operating_point": summarize_head(stored_truth[i], stored_prob[i], label_names[i]),
             }
             for i in range(3)
         },
@@ -265,14 +379,18 @@ def score(root: Path, checkpoint: Path, out: Path) -> dict:
     }
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, indent=2) + "\n")
-    print(json.dumps({
-        "frames": frames,
-        "patches": patches,
-        "material": report["heads"]["material"]["accuracy"],
-        "friction": report["heads"]["friction"]["accuracy"],
-        "uneven": report["heads"]["uneven"]["accuracy"],
-        "wrote": str(out),
-    }), flush=True)
+    summary = {}
+    for name in names:
+        point = report["heads"][name]["operating_point"]
+        summary[name] = {
+            "accuracy": point.get("accuracy"),
+            "macro_precision": point.get("macro_precision"),
+            "macro_recall": point.get("macro_recall"),
+            "macro_ovr_auc": point.get("macro_ovr_auc"),
+            "aurc": point.get("aurc"),
+            "aurc_optimal": point.get("aurc_optimal"),
+        }
+    print(json.dumps({"frames": frames, "patches": patches, "heads": summary, "wrote": str(out)}), flush=True)
     return report
 
 
