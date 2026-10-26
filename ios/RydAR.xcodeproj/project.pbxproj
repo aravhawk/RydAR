@@ -329,7 +329,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RydAR/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = RydAR;
-				INFOPLIST_KEY_NSCameraUsageDescription = "Dash mode looks at the road ahead and compares it with a public dataset. No photo is saved.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Dash uses the camera to read the road surface ahead. No photo is saved.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "RydAR keeps your precise location during a trip, including while Maps is in front.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "RydAR uses your precise location to know which curve you are approaching.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "RydAR uses motion to estimate speed changes on the way into a curve.";
@@ -361,7 +361,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RydAR/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = RydAR;
-				INFOPLIST_KEY_NSCameraUsageDescription = "Dash mode looks at the road ahead and compares it with a public dataset. No photo is saved.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Dash uses the camera to read the road surface ahead. No photo is saved.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "RydAR keeps your precise location during a trip, including while Maps is in front.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "RydAR uses your precise location to know which curve you are approaching.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "RydAR uses motion to estimate speed changes on the way into a curve.";

@@ -53,7 +53,7 @@ struct ScreeningRangeLabel: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("\(range.low, specifier: "%.1f")–\(range.high, specifier: "%.1f") mph")
                 .font(.title2.bold().monospacedDigit())
-            Text("Advisory speed, accurate as computed.")
+            Text("Advisory")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)
@@ -79,10 +79,10 @@ struct SurfaceBadge: View {
     }
     private var source: String {
         switch fused.1 {
-        case .unconfirmed: return "From the county road file"
-        case .cameraLowered: return "Camera read this stretch as unpaved"
-        case .conflictKeptUnpaved: return "Camera conflict · kept unpaved"
-        case .confirmed: return "County file + camera agreement"
+        case .unconfirmed: return "County file"
+        case .cameraLowered: return "Camera: unpaved"
+        case .conflictKeptUnpaved: return "Kept unpaved"
+        case .confirmed: return "County file and camera"
         }
     }
 }
@@ -123,9 +123,9 @@ extension DriverMode {
     }
     var screenDetail: String {
         switch self {
-        case .adult: return "An adult is driving. Prompts can speak. Set up while parked."
-        case .passenger: return "An adult is driving. You are holding the phone. Prompts can speak."
-        case .under18: return "You are the driver, and you are under 18. No voice, camera, or upload on this trip."
+        case .adult: return "Prompts can speak."
+        case .passenger: return "You hold the phone. Prompts can speak."
+        case .under18: return "No voice, camera, or upload."
         }
     }
 }

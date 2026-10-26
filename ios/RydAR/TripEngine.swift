@@ -323,6 +323,9 @@ struct TripMatcher {
         nearby: [Curve],
         memoryForContext: (String) -> ApproachMemory = { _ in ApproachMemory(latePasses: 0, earlyPasses: 0) },
         passesUnderRange: (String) -> Int = { _ in 0 },
+        curveMemory: (String) -> ApproachMemory = { _ in ApproachMemory(latePasses: 0, earlyPasses: 0) },
+        contextOnset: (String) -> OnsetMemory = { _ in .empty },
+        curveOnset: (String) -> OnsetMemory = { _ in .empty },
         vision: VisionCaution = VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false),
         camera: CameraEvidence? = nil,
         braking: Bool = false,
@@ -364,7 +367,10 @@ struct TripMatcher {
             gate: gate,
             vision: vision,
             camera: camera,
-            memoryForContext: memoryForContext
+            memoryForContext: memoryForContext,
+            curveMemory: curveMemory,
+            contextOnset: contextOnset,
+            curveOnset: curveOnset
         )
         let hot = scored
             .filter { $0.confidence >= DriveRules.matchConfidenceMinimum }
@@ -505,7 +511,10 @@ struct TripMatcher {
         gate: DriveGate,
         vision: VisionCaution,
         camera: CameraEvidence?,
-        memoryForContext: (String) -> ApproachMemory
+        memoryForContext: (String) -> ApproachMemory,
+        curveMemory: (String) -> ApproachMemory,
+        contextOnset: (String) -> OnsetMemory,
+        curveOnset: (String) -> OnsetMemory
     ) -> [ScoredCurve] {
         let hour = Calendar.current.component(.hour, from: moment)
         let visionUsed = gate.allowsCamera
@@ -529,7 +538,14 @@ struct TripMatcher {
             let key = approachContextKey(surface: fused.0, radiusFeet: curve.radiusFeet, hour: hour)
             let memory = memoryForContext(key)
             let base = baseLookAheadMeters(speedMps: speed)
-            let extended = lookAheadMeters(speedMps: speed, memory: memory, vision: visionUsed)
+            let extended = lookAheadMeters(
+                speedMps: speed,
+                memory: memory,
+                vision: visionUsed,
+                curveMemory: curveMemory(curve.id),
+                contextOnset: contextOnset(key),
+                curveOnset: curveOnset(curve.id)
+            )
             return ScoredCurve(
                 curve: curve,
                 distance: geometry.distanceMeters,
@@ -702,7 +718,6 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
             motionManager.stopDeviceMotionUpdates()
         }
         snapshot.paused = true
-        DriveLiveActivity.notePaused(speaks: matcher.driverMode != .under18)
     }
 
     func resume() {
@@ -711,7 +726,6 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         snapshot.paused = false
         guard sensorsWanted else { return }
         startSensorsIfNeeded()
-        DriveLiveActivity.noteListening(speaks: matcher.driverMode != .under18)
     }
 
     func updateVision(_ caution: VisionCaution, camera: CameraEvidence?, acceptedAt: Date = Date()) {
@@ -745,6 +759,15 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
             passesUnderRange: { identifier in
                 (try? self.passLog.passesUnderRange(curveID: identifier)) ?? 0
             },
+            curveMemory: { identifier in
+                (try? self.passLog.curveMemory(for: identifier)) ?? ApproachMemory(latePasses: 0, earlyPasses: 0)
+            },
+            contextOnset: { key in
+                (try? self.passLog.onset(forContext: key)) ?? .empty
+            },
+            curveOnset: { identifier in
+                (try? self.passLog.onset(forCurve: identifier)) ?? .empty
+            },
             vision: latestVision,
             camera: cameraForIngest(at: moment),
             braking: braking,
@@ -764,11 +787,9 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
             case .speak:
                 speech.playCurveTap()
                 try? speech.speakWarning()
-                DriveLiveActivity.noteCurve(speaks: true)
             case .chime:
                 speech.playCurveTap()
                 try? speech.playChime()
-                DriveLiveActivity.noteCurve(speaks: true)
             case nil:
                 break
             }
@@ -797,6 +818,14 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         try passLog.deleteAll()
         endTrip()
         uploadOptIn = false
+    }
+
+    /// One line for the parked screen. Empty until a road on this iPhone has earned an earlier prompt.
+    func timingNote() -> String {
+        let roads = (try? passLog.curvesWithEarlierPrompt()) ?? 0
+        guard roads > 0 else { return "" }
+        let noun = roads == 1 ? "road" : "roads"
+        return "Prompts come earlier on \(roads) \(noun) where you brake late."
     }
 
     /// Reads this trip's rows before the caller clears the trip id.

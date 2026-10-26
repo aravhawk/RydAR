@@ -9,18 +9,18 @@ struct DebriefScreen: View {
     /// The Settings switch can stay on while this trip sent nothing.
     private var uploadSentence: String {
         if trip.driverMode == .under18 {
-            return "This trip was not uploaded. An under-18 driver sends nothing."
+            return "Not uploaded. Under 18."
         }
         if !uploadOptIn {
-            return "Anonymous passes are off on this iPhone."
+            return "Uploads are off."
         }
         if trip.isConnected && !trip.uploadConfigured {
-            return "Saved on this iPhone. This build has no upload address."
+            return "Saved on this iPhone."
         }
         if trip.debrief.passes.isEmpty {
-            return "No passes from this trip to send."
+            return "Nothing to send."
         }
-        return "Anonymous passes from this trip are sent. No name and no route."
+        return "Sent. No name or route."
     }
 
     var body: some View {
@@ -31,12 +31,8 @@ struct DebriefScreen: View {
                     .font(.headline).foregroundStyle(AuditTheme.accent)
                 if trip.debrief.overRangePasses.isEmpty {
                     AuditCard {
-                        Label("No over-range passes recorded", systemImage: "checkmark.circle")
+                        Label(trip.isConnected ? "None this trip" : "Not recorded", systemImage: "checkmark.circle")
                             .font(.headline)
-                        Text(trip.isConnected
-                             ? "Only passes saved for this trip appear here."
-                             : "This UI preview did not record a trip. Connect the trip engine to review saved passes.")
-                            .font(.subheadline).foregroundStyle(.secondary)
                     }
                 }
                 ForEach(trip.debrief.overRangePasses) { pass in
@@ -52,16 +48,16 @@ struct DebriefScreen: View {
                         Text(pass.surfaceUsed.rawValue.capitalized).font(.subheadline).foregroundStyle(.secondary)
                     }
                 }
-                if trip.debrief.lateContexts.isEmpty {
-                    Text("No context has enough late approaches to move the next prompt earlier.")
-                        .font(.subheadline).foregroundStyle(.secondary)
+                if !trip.timingNote.isEmpty {
+                    Text(trip.timingNote)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("timingNote")
                 }
                 ForEach(trip.debrief.lateContexts) { context in
                     AuditCard {
                         Label("Earlier next time", systemImage: "clock.arrow.circlepath").font(.headline)
-                        Text(trip.driverMode == .under18
-                             ? "This trip had a late approach. An under-18 driver still gets no prompt."
-                             : context.message)
+                        Text(trip.driverMode == .under18 ? "No prompt. Under 18." : context.message)
                             .font(.subheadline)
                         Text("\(context.surface.rawValue.capitalized) · \(isNightHour(context.hour) ? "night" : "day")")
                             .font(.caption).foregroundStyle(.secondary)
@@ -72,12 +68,12 @@ struct DebriefScreen: View {
                         .font(.subheadline)
                         .accessibilityIdentifier("debriefUpload")
                     if trip.driverMode != .under18 {
-                        Text("Turn this off in Settings. A count is published after 20 passes in more than one hour.")
+                        Text("Published after 20.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
-                    Button("Save export on this iPhone", systemImage: "square.and.arrow.down") {
+                    Button("Save a copy", systemImage: "square.and.arrow.down") {
                         do {
-                            let file = try LocalTripExport.save(trip.debrief)
+                            _ = try LocalTripExport.save(trip.debrief)
                             exportMessage = "Saved on this iPhone."
                         } catch { exportMessage = "Export could not be saved: \(error.localizedDescription)" }
                     }.disabled(trip.debrief.passes.isEmpty).accessibilityIdentifier("exportTrip")
@@ -87,7 +83,7 @@ struct DebriefScreen: View {
             }.padding(24)
         }
         .background(AuditTheme.background)
-        .navigationTitle("Trip debrief").navigationBarTitleDisplayMode(.inline).navigationBarBackButtonHidden()
+        .navigationTitle("Review").navigationBarTitleDisplayMode(.inline).navigationBarBackButtonHidden()
         .alert("Saved", isPresented: Binding(get: { exportMessage != nil }, set: { if !$0 { exportMessage = nil } })) {
             Button("OK") { exportMessage = nil }
         } message: { Text(exportMessage ?? "") }

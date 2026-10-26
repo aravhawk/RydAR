@@ -94,11 +94,22 @@ final class PassLog {
             CREATE TABLE IF NOT EXISTS approach_memory (
               context_key TEXT PRIMARY KEY,
               late_passes INTEGER NOT NULL DEFAULT 0,
-              early_passes INTEGER NOT NULL DEFAULT 0
+              early_passes INTEGER NOT NULL DEFAULT 0,
+              onset_count INTEGER NOT NULL DEFAULT 0,
+              onset_sum_m REAL NOT NULL DEFAULT 0
+            );
+            CREATE TABLE IF NOT EXISTS curve_memory (
+              curve_id TEXT PRIMARY KEY,
+              late_passes INTEGER NOT NULL DEFAULT 0,
+              early_passes INTEGER NOT NULL DEFAULT 0,
+              onset_count INTEGER NOT NULL DEFAULT 0,
+              onset_sum_m REAL NOT NULL DEFAULT 0
             );
             """
         )
+        try connection.execute("DROP TABLE IF EXISTS approach_model;")
         try ensureBrakingColumn()
+        try ensureOnsetColumns()
     }
 
     /// Copies made before braking distance was stored still open.
@@ -109,6 +120,21 @@ final class PassLog {
         }
         if !names.contains("braking_m") {
             try connection.execute("ALTER TABLE trip_passes ADD COLUMN braking_m REAL;")
+        }
+    }
+
+    private func ensureOnsetColumns() throws {
+        for table in ["approach_memory", "curve_memory"] {
+            var names: [String] = []
+            try connection.query("PRAGMA table_info(\(table))") { statement in
+                names.append(self.connection.text(statement, 1))
+            }
+            if !names.contains("onset_count") {
+                try connection.execute("ALTER TABLE \(table) ADD COLUMN onset_count INTEGER NOT NULL DEFAULT 0;")
+            }
+            if !names.contains("onset_sum_m") {
+                try connection.execute("ALTER TABLE \(table) ADD COLUMN onset_sum_m REAL NOT NULL DEFAULT 0;")
+            }
         }
     }
 
@@ -161,6 +187,8 @@ final class PassLog {
         defer { lock.unlock() }
         try connection.execute("BEGIN IMMEDIATE")
         do {
+            let onsetCount = pass.brakingDistanceMeters == nil ? 0 : 1
+            let onsetSum = pass.brakingDistanceMeters ?? 0
             try connection.run(
                 """
                 INSERT INTO trip_passes (
@@ -190,16 +218,39 @@ final class PassLog {
             }
             try connection.run(
                 """
-                INSERT INTO approach_memory (context_key, late_passes, early_passes)
-                VALUES (?, ?, ?)
+                INSERT INTO approach_memory (
+                  context_key, late_passes, early_passes, onset_count, onset_sum_m
+                ) VALUES (?, ?, ?, ?, ?)
                 ON CONFLICT(context_key) DO UPDATE SET
                   late_passes = late_passes + excluded.late_passes,
-                  early_passes = early_passes + excluded.early_passes
+                  early_passes = early_passes + excluded.early_passes,
+                  onset_count = onset_count + excluded.onset_count,
+                  onset_sum_m = onset_sum_m + excluded.onset_sum_m
                 """
             ) { statement in
                 connection.bind(statement, 1, pass.contextKey)
                 connection.bind(statement, 2, pass.late ? 1 : 0)
                 connection.bind(statement, 3, pass.late ? 0 : 1)
+                connection.bind(statement, 4, onsetCount)
+                connection.bind(statement, 5, onsetSum)
+            }
+            try connection.run(
+                """
+                INSERT INTO curve_memory (
+                  curve_id, late_passes, early_passes, onset_count, onset_sum_m
+                ) VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(curve_id) DO UPDATE SET
+                  late_passes = late_passes + excluded.late_passes,
+                  early_passes = early_passes + excluded.early_passes,
+                  onset_count = onset_count + excluded.onset_count,
+                  onset_sum_m = onset_sum_m + excluded.onset_sum_m
+                """
+            ) { statement in
+                connection.bind(statement, 1, pass.curveID)
+                connection.bind(statement, 2, pass.late ? 1 : 0)
+                connection.bind(statement, 3, pass.late ? 0 : 1)
+                connection.bind(statement, 4, onsetCount)
+                connection.bind(statement, 5, onsetSum)
             }
             try connection.execute("COMMIT")
         } catch {
@@ -211,6 +262,53 @@ final class PassLog {
     func memory(for contextKey: String) throws -> ApproachMemory {
         lock.lock()
         defer { lock.unlock() }
+        return try memoryLocked(contextKey)
+    }
+
+    func curveMemory(for curveID: String) throws -> ApproachMemory {
+        lock.lock()
+        defer { lock.unlock() }
+        return try curveMemoryLocked(curveID)
+    }
+
+    func onset(forContext contextKey: String) throws -> OnsetMemory {
+        lock.lock()
+        defer { lock.unlock() }
+        return try onsetLocked(table: "approach_memory", column: "context_key", key: contextKey)
+    }
+
+    func onset(forCurve curveID: String) throws -> OnsetMemory {
+        lock.lock()
+        defer { lock.unlock() }
+        return try onsetLocked(table: "curve_memory", column: "curve_id", key: curveID)
+    }
+
+    func curvesWithEarlierPrompt() throws -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        let reference = baseLookAheadMeters(speedMps: 20)
+        var count = 0
+        try connection.query(
+            "SELECT late_passes, early_passes, onset_count, onset_sum_m FROM curve_memory"
+        ) { statement in
+            let counts = ApproachMemory(
+                latePasses: self.connection.int(statement, 0),
+                earlyPasses: self.connection.int(statement, 1)
+            )
+            let onset = OnsetMemory(
+                count: self.connection.int(statement, 2),
+                sumMeters: self.connection.double(statement, 3)
+            )
+            let placed = placedLookAheadMeters(
+                baseMeters: reference, context: ApproachMemory(latePasses: 0, earlyPasses: 0),
+                curve: counts, curveOnset: onset
+            )
+            if placed > reference + 0.5 { count += 1 }
+        }
+        return count
+    }
+
+    private func memoryLocked(_ contextKey: String) throws -> ApproachMemory {
         var memory = ApproachMemory(latePasses: 0, earlyPasses: 0)
         try connection.query(
             "SELECT late_passes, early_passes FROM approach_memory WHERE context_key = ?",
@@ -225,6 +323,40 @@ final class PassLog {
             }
         )
         return memory
+    }
+
+    private func curveMemoryLocked(_ curveID: String) throws -> ApproachMemory {
+        var memory = ApproachMemory(latePasses: 0, earlyPasses: 0)
+        try connection.query(
+            "SELECT late_passes, early_passes FROM curve_memory WHERE curve_id = ?",
+            { statement in
+                memory = ApproachMemory(
+                    latePasses: self.connection.int(statement, 0),
+                    earlyPasses: self.connection.int(statement, 1)
+                )
+            },
+            bind: { statement in
+                self.connection.bind(statement, 1, curveID)
+            }
+        )
+        return memory
+    }
+
+    private func onsetLocked(table: String, column: String, key: String) throws -> OnsetMemory {
+        var onset = OnsetMemory.empty
+        try connection.query(
+            "SELECT onset_count, onset_sum_m FROM \(table) WHERE \(column) = ?",
+            { statement in
+                onset = OnsetMemory(
+                    count: self.connection.int(statement, 0),
+                    sumMeters: self.connection.double(statement, 1)
+                )
+            },
+            bind: { statement in
+                self.connection.bind(statement, 1, key)
+            }
+        )
+        return onset
     }
 
     func passesUnderRange(curveID: String) throws -> Int {
@@ -307,6 +439,7 @@ final class PassLog {
         defer { lock.unlock() }
         try connection.execute("DELETE FROM trip_passes;")
         try connection.execute("DELETE FROM approach_memory;")
+        try connection.execute("DELETE FROM curve_memory;")
         try connection.execute("DELETE FROM trips;")
     }
 

@@ -16,13 +16,19 @@ struct HomeScreen: View {
                 Text("Parked.").font(.largeTitle.bold())
                 Text(dashEnabled ? "Dash is on." : "Co-pilot. Camera off.")
                     .foregroundStyle(.secondary)
-                Text("Leave RydAR open. Alerts still speak if Maps is in front, unless the driver is under 18.")
+                Text("Alerts speak with Maps in front. Not for an under-18 driver.")
                     .font(.subheadline).foregroundStyle(.secondary)
+                if !trip.timingNote.isEmpty {
+                    Text(trip.timingNote)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("timingNote")
+                }
                 if tread?.replaceBeforeDriving == true {
                     Text("Replace the tires before this trip.")
                         .font(.headline)
                 } else if tread == .low {
-                    Text("Low tread. Curve ranges sit lower.")
+                    Text("Low tread. Ranges sit lower.")
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
                 Button(action: onStart) {

@@ -45,13 +45,14 @@ struct OnboardingScreen: View {
                     .font(.system(size: 52)).foregroundStyle(AuditTheme.accent)
                     .accessibilityHidden(true)
                 Text("RydAR").font(.largeTitle.bold())
-                Text("A heads-up before a tight curve. Follow the signs.")
+                Text("A heads-up before a tight curve.")
                     .foregroundStyle(.secondary)
                 AuditCard {
-                    Text("How a trip works").font(.headline)
-                    Text("Park, choose who is driving, and start. Leave RydAR open. Alerts still speak if Maps is in front, unless the driver is under 18.")
+                    Text("Leave it open. Alerts speak with Maps in front.")
+                        .font(.subheadline)
+                    Text("“\(spokenWarning)”")
                         .font(.subheadline).foregroundStyle(.secondary)
-                    Text("The phone speaks only “\(spokenWarning)” and taps at the same moment. That happens when a filed curve is ahead and the cautious speed is above the advisory speed computed for it. The number is accurate as computed. A neighborhood corner the road file does not keep, or a speed under that range, stays quiet.")
+                    Text("Under 18: no voice, camera, or upload.")
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
                 if permissions.locationStatus == .notDetermined {
@@ -70,25 +71,23 @@ struct OnboardingScreen: View {
                 }
                 AuditCard {
                     Text("Dash is on").font(.headline)
-                    Text("Dash reads the road surface from the camera. It can only treat a paved road as unpaved. It does not measure ice or a friction number. The model was checked on a public road-surface dataset.")
+                    Text("Reads the surface. Paved can only become unpaved. Off under 18.")
                         .font(.subheadline).foregroundStyle(.secondary)
-                    Text("Turn Dash off in Settings if you do not want the camera. An under-18 driver never gets the camera.")
-                        .font(.footnote).foregroundStyle(.secondary)
                 }
                 AuditCard {
                     Text("Anonymous passes are on").font(.headline)
-                    Text("A pass is the curve, the direction, a 5 mph band, and the hour. No name and no route. A road department sees a count only after 20 passes in more than one hour. That count is how those curves show up beyond this phone.")
+                    Text("Curve, direction, 5 mph band, hour. No name or route.")
                         .font(.subheadline).foregroundStyle(.secondary)
-                    Text("It stays on unless you turn it off in Settings. An under-18 driver does not send passes.")
+                    Text("Published after 20. Off under 18.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
-                Text("How much tread is on the tires?").font(.title3.bold())
+                Text("Tread").font(.title3.bold())
                 TreadChoices(selection: $tread)
                 if tread?.replaceBeforeDriving == true {
-                    Text("Those tires are at the wear bars. Replace them before driving.")
+                    Text("At the wear bars. Replace them.")
                         .font(.subheadline.bold())
                 } else if tread == .low {
-                    Text("Low tread. The range on a curve will sit lower.")
+                    Text("Low tread. Ranges sit lower.")
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
                 Button("Continue") {
@@ -149,7 +148,7 @@ struct TreadCheckScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 Text("Check the tires").font(.largeTitle.bold())
-                Text("About 1,000 miles since the last answer. Use a gauge, or the wear bars.")
+                Text("About 1,000 miles since the last check.")
                     .foregroundStyle(.secondary)
                 TreadChoices(selection: $tread)
                 if tread?.replaceBeforeDriving == true {
@@ -180,7 +179,7 @@ struct DriverGateScreen: View {
                 VStack(alignment: .leading, spacing: 20) {
                     AuditEyebrow(text: "Set up while parked")
                     Text("Who's driving?").font(.largeTitle.bold())
-                    Text("Choose for this trip. Your choice is never saved as a default.")
+                    Text("This trip only.")
                         .foregroundStyle(.secondary)
                     ForEach([DriverMode.adult, .passenger, .under18], id: \.rawValue) { mode in
                         Button {

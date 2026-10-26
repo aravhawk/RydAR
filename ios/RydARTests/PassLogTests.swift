@@ -103,6 +103,31 @@ final class PassLogTests: XCTestCase {
         XCTAssertEqual(kept, 1)
     }
 
+    func testBrakingDistancePlacesTheNextWarningAndThenClears() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("onset-\(UUID().uuidString).sqlite")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let log = try PassLog(databaseURL: url)
+        let tripID = try log.startTrip(mode: .passenger)
+        let key = approachContextKey(surface: .unpaved, radiusFeet: 120, hour: 21)
+        for _ in 0..<3 {
+            var pass = sample(curveID: "same", speed: 30, low: 15, late: true, key: key, band: "under-150", hour: 21, surface: .unpaved)
+            pass.brakingDistanceMeters = 40
+            try log.record(pass, tripID: tripID)
+        }
+        var quiet = sample(curveID: "same", speed: 10, low: 20, late: false, key: key, band: "under-150", hour: 21, surface: .unpaved)
+        quiet.brakingDistanceMeters = nil
+        try log.record(quiet, tripID: tripID)
+        let onset = try log.onset(forCurve: "same")
+        XCTAssertEqual(onset.count, 3)
+        XCTAssertEqual(onset.sumMeters, 120, accuracy: 0.001)
+        XCTAssertEqual(try log.onset(forContext: key).count, 3)
+        XCTAssertEqual(try log.curvesWithEarlierPrompt(), 1)
+        try log.deleteAll()
+        XCTAssertEqual(try log.onset(forCurve: "same").count, 0)
+        XCTAssertEqual(try log.curvesWithEarlierPrompt(), 0)
+    }
+
     private func sample(
         curveID: String,
         speed: Double,

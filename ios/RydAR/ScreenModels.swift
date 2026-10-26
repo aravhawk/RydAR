@@ -70,9 +70,9 @@ struct TimingContextSummary: Identifiable {
     }
     var message: String {
         if surface == .unpaved && radiusBand(feet: representativeRadiusFeet) == "under-150" {
-            return "On tight unpaved roads you brake late. The next prompt in that situation comes earlier."
+            return "Tight unpaved. Next prompt comes earlier."
         }
-        return "Braking was late in this context. The next prompt in that situation comes earlier."
+        return "Next prompt comes earlier."
     }
 }
 
@@ -98,6 +98,7 @@ final class TripScreenBridge: ObservableObject {
     @Published var drive = DriveScreenSnapshot()
     @Published var debrief = TripScreenDebrief()
     @Published var uploadConfigured = false
+    @Published var timingNote = ""
     @Published private(set) var driverMode: DriverMode?
 
     var onStart: ((DriverMode, PromptStyle, Bool) -> Void)?
@@ -128,6 +129,7 @@ final class TripScreenBridge: ObservableObject {
         try onDeleteAllData?()
         drive = DriveScreenSnapshot()
         debrief = TripScreenDebrief()
+        timingNote = ""
         driverMode = nil
         onUploadPreference?(false)
     }

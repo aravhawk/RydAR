@@ -276,7 +276,7 @@
         <img class="mark" src="/logo.svg" width="40" height="40" alt="">
         <h1>RydAR</h1>
       </div>
-      <p class="lead">Every Arkansas road bend tighter than 600 feet, with the advisory speed computed for it.</p>
+      <p class="lead">Bends tighter than 600 ft.</p>
     </header>
 
     <section aria-labelledby="where-h">
@@ -285,7 +285,6 @@
       <select id="county">
         <option value="">All of Arkansas</option>
       </select>
-      <p class="small muted hint-copy">Choose a county, or click one on the map. Then click a bend.</p>
     </section>
 
     <section aria-labelledby="show-h">
@@ -295,7 +294,7 @@
         <label class="check"><input type="checkbox" name="surface" value="paved" checked><span class="swatch paved"></span>Paved</label>
         <label class="check"><input type="checkbox" name="surface" value="unpaved" checked><span class="swatch unpaved"></span>Unpaved</label>
       </fieldset>
-      <p class="small muted">Loops, ramps, and corners under 50 feet are left off this map.</p>
+      <p class="small muted">Loops, ramps, and corners under 50 ft are off.</p>
       <p class="count" id="count" role="status" aria-live="polite">Loading the map</p>
     </section>
 
@@ -306,7 +305,6 @@
       <ul class="results" id="results"></ul>
     </section>
 
-    <p class="note small muted">Click a curve for its advisory speed. Accurate as computed from the filed radius. The intention is a prompt before the bend when speed is above that range. A curve shows anonymous pass counts only after 20 passes in more than one hour, and only after you pick its county. Roads: Arkansas GIS Office. County lines: U.S. Census Bureau.</p>
   </aside>
 
   <main id="map" aria-label="Map of Arkansas curves">
@@ -318,7 +316,7 @@
       from "/vendor/maplibre-gl/maplibre-gl.mjs";
 
     const FLAG_TEXT = {
-      sparse_vertices_gt25m: "The road file spaces its points widely on this bend.",
+      sparse_vertices_gt25m: "Widely spaced points on this bend.",
       closed_loop: "Closed loop, such as a cul-de-sac or subdivision loop.",
       lt50ft_corner_or_hairpin: "Corner tighter than 50 ft radius.",
       ramp_circle_connector: "Ramp, circle, or connector.",
@@ -679,7 +677,7 @@
 
     function updateCount() {
       if (!state.surfaces.size) {
-        setStatus("Both surfaces are off. Turn paved or unpaved back on to see curves.");
+        setStatus("Turn a surface back on.");
         return;
       }
       if (!partsLoaded) return;
@@ -851,8 +849,7 @@
       const low = screeningMPH(radius, -0.02, friction);
       const high = screeningMPH(radius, 0.02, friction);
       return {
-        speed: `${low.toFixed(1)}\u2013${high.toFixed(1)} mph.`,
-        note: "Advisory speed, accurate as computed. The intention is a prompt before the bend.",
+        speed: `Advisory ${low.toFixed(1)}\u2013${high.toFixed(1)} mph`,
       };
     }
 
@@ -871,15 +868,12 @@
       };
       add("h3", p.road || "Unnamed road");
       add("p", `${p.county} County, ${p.surface} road`);
-      add("p", `Radius ${p.radius_ft} ft, turning ${p.deflection_deg} degrees`);
+      add("p", `Radius ${p.radius_ft} ft · ${p.deflection_deg}°`);
       const range = screeningRangeText(p.radius_ft, p.surface);
-      if (range) {
-        add("p", range.speed);
-        add("p", range.note);
-      }
+      if (range) add("p", range.speed);
       for (const text of flagList(p.flags)) add("p", text, "muted");
       const s = stats[p.id];
-      if (s) add("p", `Anonymous passes: ${s.n} across ${s.hours} hours of the day.`, "stats");
+      if (s) add("p", `${s.n} passes · ${s.hours} hours`, "stats");
       return root;
     }
 

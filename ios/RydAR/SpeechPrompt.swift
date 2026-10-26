@@ -25,9 +25,13 @@ final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, 
 
     private let synthesizer = AVSpeechSynthesizer()
     private let haptic = CurveHaptic()
+    /// Category changes and setActive block long enough for AVAudioSession to warn on the main thread.
+    private let sessionQueue = DispatchQueue(label: "rydar.audio-session", qos: .userInitiated)
     private var player: AVAudioPlayer?
     private var holding = false
     private var voice: AVSpeechSynthesisVoice?
+    /// Incremented on release so an in-flight activation cannot speak or chime after the trip ends.
+    private var playbackGeneration = 0
 
     override init() {
         super.init()
@@ -37,8 +41,11 @@ final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, 
     func holdForTrip() {
         holding = true
         voice = AVSpeechSynthesisVoice(language: "en-US")
-        try? activateSession()
-        haptic.prepare()
+        let generation = playbackGeneration
+        activateSession { [weak self] in
+            guard let self, generation == self.playbackGeneration else { return }
+            self.haptic.prepare()
+        }
     }
 
     func playCurveTap() {
@@ -46,6 +53,7 @@ final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, 
     }
 
     func releaseAfterTrip() {
+        playbackGeneration += 1
         holding = false
         haptic.stop()
         player?.stop()
@@ -63,27 +71,38 @@ final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, 
     }
 
     func speakWarning() throws {
-        try activateSession()
-        player?.stop()
-        if synthesizer.isSpeaking {
-            synthesizer.stopSpeaking(at: .immediate)
+        let generation = playbackGeneration
+        activateSession { [weak self] in
+            guard let self, generation == self.playbackGeneration else { return }
+            self.player?.stop()
+            if self.synthesizer.isSpeaking {
+                self.synthesizer.stopSpeaking(at: .immediate)
+            }
+            let utterance = AVSpeechUtterance(string: spokenWarning)
+            utterance.voice = self.voice ?? AVSpeechSynthesisVoice(language: "en-US")
+            utterance.preUtteranceDelay = 0
+            utterance.postUtteranceDelay = 0
+            self.synthesizer.speak(utterance)
         }
-        let utterance = AVSpeechUtterance(string: spokenWarning)
-        utterance.voice = voice ?? AVSpeechSynthesisVoice(language: "en-US")
-        utterance.preUtteranceDelay = 0
-        utterance.postUtteranceDelay = 0
-        synthesizer.speak(utterance)
     }
 
     func playChime() throws {
-        try activateSession()
-        if synthesizer.isSpeaking {
-            synthesizer.stopSpeaking(at: .immediate)
+        let generation = playbackGeneration
+        activateSession { [weak self] in
+            guard let self, generation == self.playbackGeneration else { return }
+            if self.synthesizer.isSpeaking {
+                self.synthesizer.stopSpeaking(at: .immediate)
+            }
+            let player: AVAudioPlayer
+            do {
+                player = try AVAudioPlayer(data: self.chimeWAV())
+            } catch {
+                return
+            }
+            player.delegate = self
+            self.player = player
+            player.play()
         }
-        let player = try AVAudioPlayer(data: chimeWAV())
-        player.delegate = self
-        self.player = player
-        player.play()
     }
 
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
@@ -94,8 +113,23 @@ final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, 
         if !holding { releaseSession() }
     }
 
+    /// Configures the shared session off the main thread, then continues on the main thread.
+    private func activateSession(then completion: @escaping () -> Void) {
+        sessionQueue.async { [weak self] in
+            guard let self else { return }
+            do {
+                try self.activateSession()
+            } catch {
+                return
+            }
+            DispatchQueue.main.async(execute: completion)
+        }
+    }
+
     private func releaseSession() {
-        try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
+        sessionQueue.async {
+            try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
+        }
     }
 
     private func chimeWAV() -> Data {

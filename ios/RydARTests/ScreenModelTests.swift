@@ -23,7 +23,7 @@ final class ScreenModelTests: XCTestCase {
                                         hour: 21, memory: ApproachMemory(latePasses: 3, earlyPasses: 0))
         XCTAssertFalse(one.movesPromptEarlier)
         XCTAssertTrue(late.movesPromptEarlier)
-        XCTAssertEqual(late.message, "On tight unpaved roads you brake late. The next prompt in that situation comes earlier.")
+        XCTAssertEqual(late.message, "Tight unpaved. Next prompt comes earlier.")
         XCTAssertEqual(TripScreenDebrief(contexts: [one, late]).lateContexts.count, 1)
     }
 

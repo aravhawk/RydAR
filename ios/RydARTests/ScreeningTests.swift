@@ -147,6 +147,52 @@ final class ScreeningTests: XCTestCase {
         XCTAssertFalse(suppressRepeatPrompt(passesUnderRange: 2, effectiveSpeed: range.low, range: range))
     }
 
+    func testBrakingOnsetMovesTheWarningByHowLateItWas() {
+        let calm = ApproachMemory(latePasses: 0, earlyPasses: 0)
+        let none = VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false)
+        let base = baseLookAheadMeters(speedMps: 20)
+        XCTAssertEqual(base, 140, accuracy: 0.001)
+        let lateBrakes = OnsetMemory(count: 3, sumMeters: 40 * 3)
+        let typical = lateBrakes.typicalMeters(baseMeters: base)
+        XCTAssertEqual(typical, (120 + 2 * base) / 5, accuracy: 0.001)
+        XCTAssertEqual(
+            lookAheadMeters(speedMps: 20, memory: calm, vision: none, curveOnset: lateBrakes),
+            base + (base - typical),
+            accuracy: 0.001
+        )
+        let onTime = OnsetMemory(count: 3, sumMeters: base * 3)
+        XCTAssertEqual(
+            lookAheadMeters(speedMps: 20, memory: calm, vision: none, curveOnset: onTime),
+            base,
+            accuracy: 0.001
+        )
+        let two = OnsetMemory(count: 2, sumMeters: 40 * 2)
+        XCTAssertEqual(
+            lookAheadMeters(speedMps: 20, memory: calm, vision: none, curveOnset: two),
+            base,
+            accuracy: 0.001
+        )
+        let range = screeningRange(radiusFeet: 120, surface: .unpaved)
+        XCTAssertEqual(screeningRange(radiusFeet: 120, surface: .unpaved).low, range.low, accuracy: 0.001)
+    }
+
+    func testAKnownRoadOverridesALateSituation() {
+        let lateSituation = ApproachMemory(latePasses: 3, earlyPasses: 0)
+        let none = VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false)
+        let base = baseLookAheadMeters(speedMps: 20)
+        let onTimeHere = OnsetMemory(count: 3, sumMeters: base * 3)
+        XCTAssertEqual(
+            lookAheadMeters(speedMps: 20, memory: lateSituation, vision: none, curveOnset: onTimeHere),
+            base,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            lookAheadMeters(speedMps: 20, memory: lateSituation, vision: none),
+            base * 1.4,
+            accuracy: 0.001
+        )
+    }
+
     func testSpokenLineMatchesTheContract() throws {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

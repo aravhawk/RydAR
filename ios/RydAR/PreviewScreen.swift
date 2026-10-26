@@ -215,14 +215,12 @@ struct PreviewScreen: View {
                 }
                 Text("\(selected.county) County, \(selected.surface == .paved ? "paved" : "unpaved") road")
                     .font(.subheadline)
-                Text("Radius \(selected.radiusFeet, specifier: "%.0f") ft, turning \(selected.deflectionDegrees, specifier: "%.0f") degrees")
+                Text("Radius \(selected.radiusFeet, specifier: "%.0f") ft · \(selected.deflectionDegrees, specifier: "%.0f")°")
                     .font(.subheadline)
                 ScreeningRangeLabel(range: screeningRange(
                     radiusFeet: selected.radiusFeet,
                     surface: selected.surface,
                     tread: tread))
-                Text("Advisory speed, accurate as computed. The intention is a prompt before the bend.")
-                    .font(.caption).foregroundStyle(.secondary)
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -233,10 +231,10 @@ struct PreviewScreen: View {
 
     private var statusLine: String {
         if isSampleStore && counties.isEmpty { return "Sample roads." }
-        if !showPaved && !showUnpaved { return "Both surfaces are off. Turn paved or unpaved back on." }
-        if wide { return "Zoom in, choose a county, or search for a road." }
-        if curves.isEmpty { return "No filed curves in this view." }
-        return "\(curves.count) curves in view. Tap one for its advisory speed."
+        if !showPaved && !showUnpaved { return "Turn a surface back on." }
+        if wide { return "Zoom in, or search." }
+        if curves.isEmpty { return "No curves here." }
+        return "\(curves.count) curves"
     }
 
     private func surfaceButton(_ title: String, on: Bool, color: Color, action: @escaping () -> Void) -> some View {

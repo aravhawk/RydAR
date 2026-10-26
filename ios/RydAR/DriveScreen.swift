@@ -3,7 +3,6 @@ import SwiftUI
 struct DriveScreen: View {
     @ObservedObject var trip: TripScreenBridge
     var onFinish: () -> Void
-    @State private var confirmParked = false
     private var soundAllowed: Bool { trip.driverMode.map(allowsInDriveSound) ?? false }
 
     var body: some View {
@@ -12,18 +11,18 @@ struct DriveScreen: View {
                 AuditEyebrow(text: trip.drive.isPaused ? "Trip paused" : trip.drive.tripTitle)
                 Spacer()
                 Image(systemName: soundAllowed ? "speaker.wave.2" : "speaker.slash")
-                    .accessibilityLabel(soundAllowed ? "Sound permitted by driver choice" : "Sound disabled")
+                    .accessibilityLabel(soundAllowed ? "Sound on" : "Sound off")
             }
             Text(trip.driverMode?.screenTitle ?? "No driver selected").font(.headline)
             Spacer(minLength: 0)
             if !soundAllowed {
                 Image(systemName: "moon.zzz.fill").font(.system(size: 52)).foregroundStyle(AuditTheme.accent)
                 Text("Put the phone away.").font(.largeTitle.bold())
-                Text("Preview before moving. Review after parking. No in-drive sound, camera, or upload.")
+                Text("No voice, camera, or upload.")
                     .foregroundStyle(.secondary)
             } else if trip.drive.isPaused {
                 Text("Paused").font(.system(.largeTitle, design: .rounded).bold())
-                Text("Prompts and camera are paused.").foregroundStyle(.secondary)
+                Text("Alerts paused.").foregroundStyle(.secondary)
             } else {
                 Text("NEXT CURVE").font(.caption.bold()).tracking(2).foregroundStyle(.secondary)
                 if let distance = trip.drive.distanceMeters, distance.isFinite, distance >= 0 {
@@ -59,20 +58,18 @@ struct DriveScreen: View {
                 if let measured = trip.drive.measuredSpeedMPH,
                    let prompt = trip.drive.promptSpeedMPH,
                    measured - prompt > 3 {
-                    Text("GPS speed is uncertain. A prompt uses the cautious reading, \(prompt, specifier: "%.0f") mph.")
+                    Text("GPS uncertain. Prompt uses \(prompt, specifier: "%.0f") mph.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
             Spacer(minLength: 0)
             AuditCard {
-                Label(soundAllowed && !trip.drive.isPaused ? trip.drive.cameraStatus : "Off · driver gate or pause",
+                Label(soundAllowed && !trip.drive.isPaused ? trip.drive.cameraStatus : "Camera off",
                       systemImage: "camera")
                     .font(.subheadline.weight(.semibold))
-                Text("Checked on a public road-surface dataset. A paved road can only be read as unpaved.")
-                    .font(.caption).foregroundStyle(.secondary)
             }
             if !trip.isConnected {
-                Text("UI preview · trip engine unavailable. No recording or prompts.")
+                Text("Not recording.")
                     .font(.footnote).foregroundStyle(.secondary)
             }
             Button {
@@ -84,15 +81,12 @@ struct DriveScreen: View {
             }
             .buttonStyle(AuditPrimaryButton()).accessibilityIdentifier("pauseTrip")
             if trip.drive.isPaused {
-                Button("I'm parked · end trip") { confirmParked = true }
+                Button("I'm parked · end trip", action: onFinish)
                     .font(.headline).frame(maxWidth: .infinity, minHeight: 44)
                     .accessibilityIdentifier("endTrip")
             }
         }
         .padding(24).background(AuditTheme.background)
         .navigationBarBackButtonHidden().toolbar(.hidden, for: .navigationBar)
-        .confirmationDialog("Review only after the vehicle is parked", isPresented: $confirmParked, titleVisibility: .visible) {
-            Button("Vehicle is parked · show debrief", action: onFinish)
-        }
     }
 }

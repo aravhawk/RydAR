@@ -139,6 +139,7 @@ final class LiveTripSession {
             self.camera.stop()
             self.reading = DashReading(camera: nil, vision: .quiet, state: .off, acceptedAt: nil)
             try self.engine.deletePassHistory()
+            self.publishTiming()
         }
         engine.onHandled = { [weak self] update, curve in
             guard let self else { return }
@@ -161,6 +162,7 @@ final class LiveTripSession {
             bridge.onUploadPreference = onUpload
             bridge.onDeleteAllData = onDelete
         }
+        publishTiming()
     }
 
     private func syncCamera(mode: DriverMode?, paused: Bool) {
@@ -188,6 +190,7 @@ final class LiveTripSession {
         engine.endTrip()
         reading = DashReading(camera: nil, vision: .quiet, state: .off, acceptedAt: nil)
         publishDebrief(debrief)
+        publishTiming()
     }
 
     private func apply(_ reading: DashReading) {
@@ -280,8 +283,17 @@ final class LiveTripSession {
         hop { self.bridge.debrief = debrief }
     }
 
+    private func publishTiming() {
+        let note = engine.timingNote()
+        hop { self.bridge.timingNote = note }
+    }
+
     private func assignDrive(_ snapshot: DriveScreenSnapshot) {
-        hop { self.bridge.drive = snapshot }
+        let speaks = engine.snapshot.driverMode != .under18
+        hop {
+            self.bridge.drive = snapshot
+            DriveLiveActivity.render(snapshot, speaks: speaks)
+        }
     }
 
     private func bridgeDrive() -> DriveScreenSnapshot {
