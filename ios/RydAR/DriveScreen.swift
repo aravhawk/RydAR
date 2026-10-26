@@ -3,6 +3,7 @@ import SwiftUI
 struct DriveScreen: View {
     @ObservedObject var trip: TripScreenBridge
     var onFinish: () -> Void
+    @ScaledMetric(relativeTo: .largeTitle) private var distanceSize: CGFloat = 64
     private var soundAllowed: Bool { trip.driverMode.map(allowsInDriveSound) ?? false }
     /// GPS ready with no filed curve is the matched state. Every other banner is the location status.
     private var unmatchedCurveStatus: String {
@@ -40,13 +41,17 @@ struct DriveScreen: View {
             } else {
                 AuditEyebrow(text: "Next curve")
                 if let distance = trip.drive.distanceMeters, distance.isFinite, distance >= 0 {
-                    Text(distance.formatted(.number.precision(.fractionLength(0))) + " m")
-                        .font(.system(size: 64, weight: .bold, design: .rounded))
-                        .minimumScaleFactor(0.6)
+                    let meters = distance.formatted(.number.precision(.fractionLength(0)))
+                    Text(meters + " m")
+                        .font(.system(size: distanceSize, weight: .bold, design: .rounded))
+                        .minimumScaleFactor(0.5)
+                        .lineLimit(1)
+                        .accessibilityLabel("\(meters) meters")
                         .accessibilityIdentifier("nextCurveDistance")
                 } else {
                     Text("— m")
-                        .font(.system(size: 64, weight: .bold, design: .rounded))
+                        .font(.system(size: distanceSize, weight: .bold, design: .rounded))
+                        .accessibilityLabel("Distance unknown")
                 }
                 Text(trip.drive.nextCurve?.roadName ?? unmatchedCurveStatus)
                     .font(.title2.weight(.semibold))

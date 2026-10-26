@@ -48,6 +48,8 @@ final class CurveHaptic {
 
     func stop() {
         player = nil
+        engine?.resetHandler = {}
+        engine?.stoppedHandler = { _ in }
         engine?.stop()
         engine = nil
     }

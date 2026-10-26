@@ -91,12 +91,8 @@ final class SQLiteCurveStoreTests: XCTestCase {
     }
 
     func testBundledDatabaseReturnsANeighborhoodNotEveryCurve() throws {
-        let url = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appendingPathComponent("ios/RydAR/curves.sqlite")
-        let store = try SQLiteCurveStore(databaseURL: url)
+        // The road file the app ships, opened where it sits in the bundle.
+        let store = try SQLiteCurveStore.openBundled()
         let near = store.curves(nearLatitude: 36.394111, longitude: -94.119669, radiusMeters: 500)
         XCTAssertGreaterThan(near.count, 0)
         XCTAssertLessThan(near.count, 250)

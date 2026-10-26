@@ -49,12 +49,15 @@ enum DashConsensusRole {
 /// Friction and unevenness accept when four agree and the weakest vote clears the threshold.
 /// Material switches to unpaved on three of six when the average unpaved probability clears
 /// its threshold, and back to paved only on five of six. Unpaved accepted during a curve
-/// approach stays until that curve is passed.
+/// approach stays until that curve is passed, the approach moves to a different curve,
+/// or `maxHold` seconds go by.
 struct DashConsensus {
     static let window = 6
     static let votesNeeded = 4
     static let unpavedVotesToSwitch = 3
     static let pavedVotesToSwitch = 5
+    /// A hold that never sees its curve passed (a turn onto another road, lost GPS) ends here.
+    static let maxHold: TimeInterval = 60
     var minimumConfidence: Double = DriveRules.cameraConfidence
     var role: DashConsensusRole = .symmetric
     private(set) var votes: [DashVote] = []
@@ -62,7 +65,10 @@ struct DashConsensus {
     private var label: Int?
     private var latchedConfidence = 0.0
     private var approachID: String?
-    private var heldApproachID: String?
+    private var heldApproachID: String? {
+        didSet { if heldApproachID == nil { heldSince = nil } }
+    }
+    private var heldSince: Date?
     private var materialDecision: DashVote?
 
     init(minimumConfidence: Double = DriveRules.cameraConfidence, role: DashConsensusRole = .symmetric) {
@@ -70,7 +76,8 @@ struct DashConsensus {
         self.role = role
     }
 
-    mutating func observe(_ probabilities: [Float]) -> DashVote? {
+    mutating func observe(_ probabilities: [Float], now: Date = Date()) -> DashVote? {
+        releaseExpiredHold(now)
         guard let best = probabilities.enumerated().max(by: { $0.element < $1.element }) else { return nil }
         votes.append(DashVote(label: best.offset, confidence: Double(best.element)))
         if role == .material {
@@ -86,7 +93,7 @@ struct DashConsensus {
             unpavedProbabilities.removeFirst(unpavedProbabilities.count - Self.window)
         }
         if role == .material {
-            materialDecision = makeMaterialDecision()
+            materialDecision = makeMaterialDecision(now: now)
             return materialDecision
         }
         return accepted()
@@ -99,13 +106,29 @@ struct DashConsensus {
         return symmetricAccepted()
     }
 
-    /// The curve being approached. A nil id does not release a hold.
-    mutating func noteCurveApproach(_ curveID: String?) {
+    /// The curve being approached. A nil id does not release a hold; a different curve does,
+    /// because the hold's own curve can no longer be passed.
+    mutating func noteCurveApproach(_ curveID: String?, now: Date = Date()) {
         guard role == .material else { return }
         approachID = curveID
-        guard let curveID, label == DashHead.materialUnpaved, heldApproachID == nil else { return }
+        guard let curveID else { return }
+        if let held = heldApproachID {
+            // The unpaved reading belonged to the old curve; the new one has to earn its own.
+            if held != curveID { heldApproachID = nil }
+        } else if label == DashHead.materialUnpaved {
+            hold(curveID, now)
+        }
+        materialDecision = makeMaterialDecision(now: now)
+    }
+
+    private mutating func hold(_ curveID: String, _ now: Date) {
         heldApproachID = curveID
-        materialDecision = makeMaterialDecision()
+        heldSince = now
+    }
+
+    private mutating func releaseExpiredHold(_ now: Date) {
+        guard let heldSince, now.timeIntervalSince(heldSince) >= Self.maxHold else { return }
+        heldApproachID = nil
     }
 
     /// Releases the unpaved hold for this curve. Returns whether a hold was released.
@@ -115,7 +138,7 @@ struct DashConsensus {
         heldApproachID = nil
         materialDecision = makeMaterialDecision()
         if label == DashHead.materialUnpaved, let approachID, approachID != curveID {
-            heldApproachID = approachID
+            hold(approachID, Date())
             materialDecision = makeMaterialDecision()
         }
         return true
@@ -134,7 +157,7 @@ struct DashConsensus {
         return DashVote(label: winner.key, confidence: confidence)
     }
 
-    private mutating func makeMaterialDecision() -> DashVote? {
+    private mutating func makeMaterialDecision(now: Date = Date()) -> DashVote? {
         if heldApproachID != nil {
             return DashVote(label: DashHead.materialUnpaved, confidence: latchedConfidence)
         }
@@ -151,7 +174,7 @@ struct DashConsensus {
         let average = unpavedProbabilities.reduce(0, +) / Double(Self.window)
         if label != DashHead.materialUnpaved {
             if unpavedCount >= Self.unpavedVotesToSwitch, average >= minimumConfidence {
-                return acceptUnpaved(confidence: average)
+                return acceptUnpaved(confidence: average, now: now)
             }
             if label == nil, pavedCount >= Self.pavedVotesToSwitch, average < minimumConfidence {
                 return acceptPaved()
@@ -168,11 +191,11 @@ struct DashConsensus {
         return DashVote(label: DashHead.materialUnpaved, confidence: latchedConfidence)
     }
 
-    private mutating func acceptUnpaved(confidence: Double) -> DashVote {
+    private mutating func acceptUnpaved(confidence: Double, now: Date) -> DashVote {
         label = DashHead.materialUnpaved
         latchedConfidence = confidence
         if heldApproachID == nil, let approachID {
-            heldApproachID = approachID
+            hold(approachID, now)
         }
         return DashVote(label: DashHead.materialUnpaved, confidence: confidence)
     }

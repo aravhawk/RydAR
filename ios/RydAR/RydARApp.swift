@@ -1,29 +1,30 @@
-import BackgroundTasks
 import SwiftUI
-
-private let tripBackgroundID = "org.rydar.app.trip"
 
 @main
 struct RydARApp: App {
-    private let session: LiveTripSession
+    /// Nil when the curve file cannot be opened. The app then runs as the sample-road
+    /// preview, which says "Sample roads only" and "Not recording", instead of crashing at launch.
+    private let session: LiveTripSession?
 
     init() {
-        BGTaskScheduler.shared.register(forTaskWithIdentifier: tripBackgroundID, using: nil) { task in
-            task.setTaskCompleted(success: true)
-        }
         do {
             let curves = try SQLiteCurveStore.openBundled()
             let engine = try TripEngine.bundled()
             let bridge = TripScreenBridge()
             session = LiveTripSession(engine: engine, bridge: bridge, curves: curves)
         } catch {
-            fatalError("The bundled curve file could not be opened: \(error)")
+            print("The bundled curve file could not be opened: \(error)")
+            session = nil
         }
     }
 
     var body: some Scene {
         WindowGroup {
-            ContentView(store: session.curves, trip: session.bridge)
+            if let session {
+                ContentView(store: session.curves, trip: session.bridge)
+            } else {
+                ContentView()
+            }
         }
     }
 }

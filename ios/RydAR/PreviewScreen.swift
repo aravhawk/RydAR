@@ -561,6 +561,7 @@ private struct PreviewMapControls: View {
             }
         }
         .frame(maxHeight: 240)
+        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
         .liquidGlass(in: RoundedRectangle(cornerRadius: 26, style: .continuous))
         .mapGlassID("results", in: mapGlass)
     }

@@ -8,6 +8,7 @@ struct SettingsScreen: View {
     @AppStorage("rydar.dashEnabled") private var dashEnabled = true
     @AppStorage("rydar.onboardingComplete") private var onboarded = false
     @AppStorage(TreadStore.choiceKey) private var treadRaw = ""
+    @State private var confirmResetSettings = false
     @State private var confirmDelete = false
     @State private var deleteError: String?
 
@@ -17,6 +18,17 @@ struct SettingsScreen: View {
             return "A chime and a tap."
         }
         return "“\(spokenWarning)” Plus a tap."
+    }
+
+    /// Every switch back to its first-launch value. Trips and history are not touched.
+    private func resetSettings() {
+        appearance = AppearancePreference.system.rawValue
+        promptStyle = PromptStyle.normal.rawValue
+        uploadOptIn = true
+        dashEnabled = true
+        TreadStore.clear()
+        treadRaw = ""
+        trip.onUploadPreference?(true)
     }
 
     var body: some View {
@@ -55,7 +67,7 @@ struct SettingsScreen: View {
                 Text("Privacy")
                     .textCase(nil)
             } footer: {
-                Text("Curve, direction, 5 mph band, hour. No name or route. Published after 20. Off under 18.")
+                Text("Helps counties find the curves that need fixing. Curve, direction, 5 mph band, hour. No name or route. Published after 20. Off under 18.")
             }
 
             Section {
@@ -81,13 +93,15 @@ struct SettingsScreen: View {
             }
 
             Section {
-                Button("Delete all data", role: .destructive) { confirmDelete = true }
+                Button("Reset all settings", role: .destructive) { confirmResetSettings = true }
+                    .accessibilityIdentifier("resetSettings")
+                Button("Reset all data", role: .destructive) { confirmDelete = true }
                     .accessibilityIdentifier("deleteAllData")
             } header: {
                 Text("On this iPhone")
                     .textCase(nil)
             } footer: {
-                Text("Trips on this iPhone. Roads stay.")
+                Text("Settings puts every switch back to its default and keeps your trips. Data also deletes trips, history, and saved copies, and starts RydAR over like a first launch. Roads stay.")
             }
 
             Section {
@@ -99,22 +113,23 @@ struct SettingsScreen: View {
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.large)
         .onChange(of: uploadOptIn) { _, value in trip.onUploadPreference?(value) }
-        .confirmationDialog("Delete all local data?", isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button("Delete all data", role: .destructive) {
-                uploadOptIn = true
-                dashEnabled = true
+        .confirmationDialog("Reset all settings?", isPresented: $confirmResetSettings, titleVisibility: .visible) {
+            Button("Reset all settings", role: .destructive) { resetSettings() }
+        } message: { Text("Appearance, prompts, uploads, Dash, and tires go back to their defaults. Your trips stay.") }
+        .confirmationDialog("Reset all data?", isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("Reset all data", role: .destructive) {
                 do {
                     try trip.deleteAllData()
                     try LocalTripExport.deleteAll()
-                    promptStyle = PromptStyle.normal.rawValue
+                    resetSettings()
                     onboarded = false
-                    TreadStore.clear()
-                    treadRaw = ""
-                } catch { deleteError = error.localizedDescription }
-                trip.onUploadPreference?(uploadOptIn)
+                } catch {
+                    deleteError = error.localizedDescription
+                    trip.onUploadPreference?(uploadOptIn)
+                }
             }
-        } message: { Text("Local trips and exports cannot be recovered.") }
-        .alert("Could not finish deleting data", isPresented: Binding(get: { deleteError != nil }, set: { if !$0 { deleteError = nil } })) {
+        } message: { Text("Trips, history, and saved copies are deleted and cannot be recovered. RydAR starts over.") }
+        .alert("Could not finish resetting data", isPresented: Binding(get: { deleteError != nil }, set: { if !$0 { deleteError = nil } })) {
             Button("OK") { deleteError = nil }
         } message: { Text(deleteError ?? "") }
     }

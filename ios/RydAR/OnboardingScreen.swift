@@ -88,6 +88,9 @@ struct OnboardingScreen: View {
                     Text("Curve, direction, 5 mph band, hour. No name or route.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                    Text("This is how counties learn which curves need fixing. You can turn it off in Settings.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                     Text("Published after 20. Off under 18.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
@@ -127,7 +130,6 @@ struct OnboardingScreen: View {
             }
             .rydarProminentAction()
             .disabled(tread == nil)
-            .opacity(tread == nil ? 0.45 : 1)
             .padding(.horizontal, 24)
             .accessibilityIdentifier("finishOnboarding")
         }
@@ -140,7 +142,7 @@ struct OnboardingScreen: View {
                 permissions.requestLocation()
             }
             .accessibilityIdentifier("allowLocation")
-        } else if permissions.locationStatus == .denied {
+        } else if permissions.locationStatus == .denied || permissions.locationStatus == .restricted {
             Button("Turn on location in Settings") {
                 if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
             }
@@ -216,7 +218,6 @@ struct TreadCheckScreen: View {
             }
             .rydarProminentAction()
             .disabled(tread == nil)
-            .opacity(tread == nil ? 0.45 : 1)
             .padding(.horizontal, 24)
         }
     }
@@ -286,7 +287,6 @@ struct DriverGateScreen: View {
                 }
                 .rydarProminentAction()
                 .disabled(selection == nil)
-                .opacity(selection == nil ? 0.45 : 1)
                 .padding(.horizontal, 28)
                 .padding(.bottom, 4)
                 .accessibilityIdentifier("confirmDriver")
