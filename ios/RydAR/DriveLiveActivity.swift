@@ -110,10 +110,7 @@ enum DriveLiveActivity {
         if let curve = drive.nextCurve {
             let road = curve.roadName.isEmpty ? "Curve ahead" : curve.roadName
             let above = aboveAdvisory(drive)
-            let advisory = drive.screeningRange.map {
-                "\(format($0.low))–\(format($0.high)) mph"
-            } ?? "advisory speed"
-            let detail = above ? "Above advisory · \(advisory)" : "Advisory \(advisory)"
+            let detail = drive.advisoryNotice ?? "Curve ahead"
             let compact = drive.distanceMeters.map { "\(bucketDistance($0)) m" } ?? "Curve"
             return DriveActivityAttributes.ContentState(
                 headline: road,
@@ -151,9 +148,5 @@ enum DriveLiveActivity {
 
     private static func bucketSpeed(_ mph: Double) -> Int {
         max(0, Int((mph / 5).rounded()) * 5)
-    }
-
-    private static func format(_ mph: Double) -> String {
-        String(format: "%.0f", mph.rounded())
     }
 }

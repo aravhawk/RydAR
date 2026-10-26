@@ -99,8 +99,15 @@ struct VisionCaution: Equatable {
     var severeUnevenOnPaved: Bool
 }
 
+/// Seconds of travel to warn before a curve. Twelve seconds sits in the
+/// 10–15 second lead a driver can use (about 200–300 m at 45 mph).
+let warningLeadSeconds = 12.0
+
+/// Physics floor for a warning. Distance is speed × lead time, at least 100 m
+/// when the car is slow, and never past 450 m. Memory and the onset network
+/// can only lengthen this.
 func baseLookAheadMeters(speedMps: Double) -> Double {
-    min(450, max(100, speedMps * 7))
+    min(450, max(100, max(0, speedMps) * warningLeadSeconds))
 }
 
 /// At least three real passes, and the late share (with a two-and-two prior) above one half.
@@ -212,4 +219,76 @@ func suppressRepeatPrompt(passesUnderRange: Int, effectiveSpeed: Double, range: 
     passesUnderRange >= 3 && effectiveSpeed <= range.low
 }
 
-let spokenWarning = "Curve ahead. Above advisory speed."
+/// The number a prompt says to slow to. The low end of the screening range,
+/// rounded to the nearest mph.
+func advisorySpeedMPH(_ range: ScreeningRange) -> Int {
+    max(0, Int(range.low.rounded()))
+}
+
+func spokenCurveWarning(advisoryMPH: Int) -> String {
+    "Slow to \(advisoryMPH) mph for the curve ahead."
+}
+
+/// Example sentence for settings and onboarding. A real prompt fills in the curve's advisory.
+let spokenWarning = spokenCurveWarning(advisoryMPH: 25)
+
+struct CurveApproach: Equatable {
+    var id: String
+    var distanceMeters: Double
+    var advisoryMPH: Int
+}
+
+/// Back-to-back bends become one warning. A bend notably sharper than the one
+/// in focus stays out of the group so it can speak on its own.
+enum CurveAlerts {
+    static let groupGapMeters = 400.0
+    static let sharperByMPH = 8
+
+    static func stretch(focus: CurveApproach, ahead: [CurveApproach]) -> [CurveApproach] {
+        let ordered = ahead
+            .filter { $0.distanceMeters + 1 >= focus.distanceMeters }
+            .sorted { $0.distanceMeters < $1.distanceMeters }
+        guard let start = ordered.firstIndex(where: { $0.id == focus.id }) else { return [focus] }
+        var chain = [ordered[start]]
+        for item in ordered.dropFirst(start + 1) {
+            let gap = item.distanceMeters - chain[chain.count - 1].distanceMeters
+            if gap > groupGapMeters { break }
+            if item.advisoryMPH + sharperByMPH <= focus.advisoryMPH { break }
+            chain.append(item)
+        }
+        return chain
+    }
+
+    static func spokenLine(stretch: [CurveApproach]) -> String {
+        let limit = stretch.map(\.advisoryMPH).min() ?? 0
+        guard stretch.count >= 2, let end = stretch.last else {
+            return spokenCurveWarning(advisoryMPH: limit)
+        }
+        let distance = stretchDistancePhrase(meters: end.distanceMeters)
+        return "Curves ahead for the next \(distance), keep it under \(limit) mph."
+    }
+
+    static func displayNotice(stretch: [CurveApproach], overAdvisory: Bool) -> String {
+        if overAdvisory { return spokenLine(stretch: stretch) }
+        let limit = stretch.map(\.advisoryMPH).min() ?? 0
+        if stretch.count >= 2 { return "Keep it under \(limit) mph" }
+        return "Advisory \(limit) mph"
+    }
+}
+
+func stretchDistancePhrase(meters: Double) -> String {
+    let miles = max(0, meters) / 1609.344
+    if miles >= 0.4 && miles < 0.65 { return "half mile" }
+    if miles >= 0.18 && miles < 0.4 { return "quarter mile" }
+    if miles < 0.18 {
+        let feet = max(0, meters) * 3.28084
+        let rounded = max(100, Int((feet / 50).rounded()) * 50)
+        return "\(rounded) feet"
+    }
+    let tenths = (miles * 10).rounded() / 10
+    if abs(tenths - 1) < 0.05 { return "mile" }
+    if abs(tenths - tenths.rounded()) < 0.001 {
+        return "\(Int(tenths.rounded())) miles"
+    }
+    return String(format: "%.1f miles", tenths)
+}

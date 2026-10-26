@@ -73,7 +73,39 @@ final class ScreeningTests: XCTestCase {
     func testUnder18DriverIsSilent() {
         XCTAssertFalse(allowsInDriveSound(.under18))
         XCTAssertTrue(allowsInDriveSound(.adult))
-        XCTAssertTrue(allowsInDriveSound(.passenger))
+        XCTAssertEqual(DriverMode.fromStored("passenger"), .adult)
+        XCTAssertEqual(DriverMode.fromStored("adult"), .adult)
+        XCTAssertEqual(DriverMode.fromStored("under18"), .under18)
+        XCTAssertNil(DriverMode.fromStored("copilot"))
+    }
+
+    func testWarningLeadIsTwelveSecondsAtRoadSpeed() {
+        XCTAssertEqual(warningLeadSeconds, 12, accuracy: 0.001)
+        let fortyFiveMph = 45 * 0.44704
+        let lead = baseLookAheadMeters(speedMps: fortyFiveMph)
+        XCTAssertEqual(lead, fortyFiveMph * warningLeadSeconds, accuracy: 0.01)
+        XCTAssertGreaterThanOrEqual(lead, 200)
+        XCTAssertLessThanOrEqual(lead, 300)
+        XCTAssertEqual(baseLookAheadMeters(speedMps: 1), 100, accuracy: 0.001)
+        XCTAssertEqual(baseLookAheadMeters(speedMps: 80), 450, accuracy: 0.001)
+    }
+
+    func testCloseCurvesShareOneAlertAndASharperBendStaysSeparate() {
+        let first = CurveApproach(id: "a", distanceMeters: 200, advisoryMPH: 32)
+        let second = CurveApproach(id: "b", distanceMeters: 500, advisoryMPH: 28)
+        let third = CurveApproach(id: "c", distanceMeters: 800, advisoryMPH: 27)
+        let hairpin = CurveApproach(id: "d", distanceMeters: 980, advisoryMPH: 15)
+        let grouped = CurveAlerts.stretch(focus: first, ahead: [first, second, third, hairpin])
+        XCTAssertEqual(grouped.map(\.id), ["a", "b", "c"])
+        XCTAssertEqual(
+            CurveAlerts.spokenLine(stretch: grouped),
+            "Curves ahead for the next half mile, keep it under 27 mph."
+        )
+        XCTAssertEqual(stretchDistancePhrase(meters: 800), "half mile")
+        XCTAssertEqual(stretchDistancePhrase(meters: 400), "quarter mile")
+        let alone = CurveAlerts.stretch(focus: hairpin, ahead: [hairpin])
+        XCTAssertEqual(CurveAlerts.spokenLine(stretch: alone), "Slow to 15 mph for the curve ahead.")
+        XCTAssertEqual(advisorySpeedMPH(ScreeningRange(low: 19.7, high: 22.6)), 20)
     }
 
     func testCameraCanOnlyLower() {
@@ -384,7 +416,7 @@ final class ScreeningTests: XCTestCase {
         XCTAssertEqual(after.high, before.high, accuracy: 0.0001)
         XCTAssertEqual(before.low, 19.7, accuracy: 0.05)
         XCTAssertEqual(before.high, 22.6, accuracy: 0.05)
-        XCTAssertEqual(spokenWarning, "Curve ahead. Above advisory speed.")
+        XCTAssertEqual(spokenWarning, "Slow to 25 mph for the curve ahead.")
     }
 
     func testSpokenLineMatchesTheContract() throws {

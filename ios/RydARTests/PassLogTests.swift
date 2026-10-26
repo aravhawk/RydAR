@@ -16,7 +16,7 @@ final class PassLogTests: XCTestCase {
             .appendingPathComponent("brake-\(UUID().uuidString).sqlite")
         defer { try? FileManager.default.removeItem(at: url) }
         let log = try PassLog(databaseURL: url)
-        let tripID = try log.startTrip(mode: .passenger)
+        let tripID = try log.startTrip(mode: .adult)
         var pass = CompletedPass(
             curveID: "007-2-3",
             direction: "N",
@@ -108,7 +108,7 @@ final class PassLogTests: XCTestCase {
             .appendingPathComponent("onset-\(UUID().uuidString).sqlite")
         defer { try? FileManager.default.removeItem(at: url) }
         let log = try PassLog(databaseURL: url)
-        let tripID = try log.startTrip(mode: .passenger)
+        let tripID = try log.startTrip(mode: .adult)
         let key = approachContextKey(surface: .unpaved, radiusFeet: 120, hour: 21)
         for _ in 0..<3 {
             var pass = sample(curveID: "same", speed: 30, low: 15, late: true, key: key, band: "under-150", hour: 21, surface: .unpaved)
@@ -188,6 +188,29 @@ final class PassLogTests: XCTestCase {
             base,
             accuracy: 0.001
         )
+    }
+
+    func testASavedPassengerTripBecomesDriver() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("passenger-\(UUID().uuidString).sqlite")
+        defer { try? FileManager.default.removeItem(at: url) }
+        _ = try PassLog(databaseURL: url)
+        let side = try SQLiteConnection(url: url, readonly: false)
+        try side.execute(
+            "INSERT INTO trips (id, started_at, driver_mode, notes) VALUES ('old-trip', '2020-01-01T00:00:00Z', 'passenger', NULL)"
+        )
+        let reopened = try PassLog(databaseURL: url)
+        XCTAssertEqual(try reopened.trip(id: "old-trip")?.driverMode, .adult)
+    }
+
+    func testASavedPassengerSettingBecomesDriver() throws {
+        let name = "rydar-passenger-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defaults.removePersistentDomain(forName: name)
+        defaults.set("passenger", forKey: "rydar.driverMode")
+        DriverMode.migrateStoredSelection(defaults: defaults)
+        XCTAssertEqual(defaults.string(forKey: "rydar.driverMode"), DriverMode.adult.rawValue)
+        defaults.removePersistentDomain(forName: name)
     }
 
     private func sample(
