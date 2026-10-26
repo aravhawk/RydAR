@@ -125,4 +125,4 @@ func suppressRepeatPrompt(passesUnderRange: Int, effectiveSpeed: Double, range: 
     passesUnderRange >= 3 && effectiveSpeed <= range.low
 }
 
-let spokenWarning = "Curve ahead. Above screening range."
+let spokenWarning = "Curve ahead. Above advisory speed."

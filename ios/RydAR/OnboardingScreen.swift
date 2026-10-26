@@ -48,7 +48,7 @@ struct OnboardingScreen: View {
                     Text("How a trip works").font(.headline)
                     Text("Park, choose who is driving, and start. Leave RydAR open. Alerts still speak if Maps is in front, unless the driver is under 18.")
                         .font(.subheadline).foregroundStyle(.secondary)
-                    Text("The phone speaks only “\(spokenWarning)” and taps at the same moment. That happens when a filed curve is ahead and the cautious speed is above its screening range — not an advisory speed. A neighborhood corner the road file does not keep, or a speed under that range, stays quiet.")
+                    Text("The phone speaks only “\(spokenWarning)” and taps at the same moment. That happens when a filed curve is ahead and the cautious speed is above the advisory speed computed for it. The number is accurate as computed. A neighborhood corner the road file does not keep, or a speed under that range, stays quiet.")
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
                 if permissions.locationStatus == .notDetermined {

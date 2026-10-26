@@ -65,7 +65,7 @@ enum DriveLiveActivity {
         if alerting {
             return DriveActivityAttributes.ContentState(
                 headline: "Curve ahead",
-                detail: "Above screening range.",
+                detail: "Above advisory speed.",
                 alerting: true
             )
         }

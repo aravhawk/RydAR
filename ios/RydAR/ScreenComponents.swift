@@ -53,7 +53,7 @@ struct ScreeningRangeLabel: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("\(range.low, specifier: "%.1f")–\(range.high, specifier: "%.1f") mph")
                 .font(.title2.bold().monospacedDigit())
-            Text("screening range — not an advisory speed")
+            Text("Advisory speed, accurate as computed.")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)

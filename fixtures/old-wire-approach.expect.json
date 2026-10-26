@@ -3,7 +3,7 @@
   "road": "N Old Wire Rd",
   "county": "Benton",
   "direction": "forward coordinate order",
-  "spoken_line": "Curve ahead. Above screening range.",
+  "spoken_line": "Curve ahead. Above advisory speed.",
   "driver_mode": "passenger",
   "simulator_speed_mps": 10,
   "waypoints": 66,

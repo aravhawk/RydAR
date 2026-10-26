@@ -37,7 +37,7 @@ final class TripEngineTests: XCTestCase {
         XCTAssertEqual(SpeechPrompt.mode, .voicePrompt)
         XCTAssertTrue(SpeechPrompt.options.contains(.duckOthers))
         XCTAssertTrue(SpeechPrompt.options.contains(.interruptSpokenAudioAndMixWithOthers))
-        XCTAssertEqual(SpeechPrompt.line, "Curve ahead. Above screening range.")
+        XCTAssertEqual(SpeechPrompt.line, "Curve ahead. Above advisory speed.")
         XCTAssertEqual(SpeechPrompt.line, spokenWarning)
         XCTAssertNil(SpeechPrompt.line.range(of: #"\d"#, options: .regularExpression))
         XCTAssertFalse(SpeechPrompt.line.lowercased().contains("safe speed"))
@@ -247,7 +247,7 @@ final class TripEngineTests: XCTestCase {
         XCTAssertNil(quiet.prompt)
         let still = run(mode: .adult, speed: 12, curve: line(id: "known", north: 80), passesUnder: 3, at: moment)
         XCTAssertEqual(still.prompt, .speak)
-        XCTAssertEqual(still.spokenLine, "Curve ahead. Above screening range.")
+        XCTAssertEqual(still.spokenLine, "Curve ahead. Above advisory speed.")
     }
 
     func testLoggedMemoryLengthensTheNextApproach() throws {

@@ -291,7 +291,7 @@
       <ul class="results" id="results"></ul>
     </section>
 
-    <p class="note small muted">Click a curve for its screening range. That number is not an advisory speed. A curve shows anonymous pass counts only after 20 passes in more than one hour, and only after you pick its county. Roads: Arkansas GIS Office. County lines: U.S. Census Bureau.</p>
+    <p class="note small muted">Click a curve for its advisory speed. Accurate as computed from the filed radius. The intention is a prompt before the bend when speed is above that range. A curve shows anonymous pass counts only after 20 passes in more than one hour, and only after you pick its county. Roads: Arkansas GIS Office. County lines: U.S. Census Bureau.</p>
   </aside>
 
   <main id="map" aria-label="Map of candidate curves">
@@ -560,7 +560,7 @@
       const high = screeningMPH(radius, 0.02, friction);
       return {
         speed: `${low.toFixed(1)}\u2013${high.toFixed(1)} mph.`,
-        note: "screening range \u2014 not an advisory speed.",
+        note: "Advisory speed, accurate as computed. The intention is a prompt before the bend.",
       };
     }
 
