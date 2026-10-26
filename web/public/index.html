@@ -324,8 +324,10 @@
     let popup = null;
     let replacingPopup = false;
 
+    const POSITRON_STYLE = "https://tiles.openfreemap.org/styles/positron";
+    const LIBERTY_STYLE = "https://tiles.openfreemap.org/styles/liberty";
     const MAP_STYLES = {
-      light: "https://tiles.openfreemap.org/styles/positron",
+      light: POSITRON_STYLE,
       dark: "https://tiles.openfreemap.org/styles/dark",
     };
     let countyGeo = null;
@@ -342,11 +344,26 @@
       dragRotate: false,
       touchPitch: false,
     });
+    let basemapSwapped = false;
+    map.on("error", (event) => {
+      if (basemapSwapped || event?.error?.url !== POSITRON_STYLE) return;
+      basemapSwapped = true;
+      MAP_STYLES.light = LIBERTY_STYLE;
+      map.setStyle(LIBERTY_STYLE);
+      map.once("style.load", () => {
+        if (countyGeo || curveGeo) redrawOverlays();
+      });
+    });
     map.addControl(new NavigationControl({ showCompass: false }), "top-right");
     map.addControl(new ScaleControl({ unit: "imperial" }), "bottom-right");
     map.addControl(new AttributionControl({
       compact: false,
-      customAttribution: "OpenFreeMap · OpenStreetMap · Arkansas GIS Office · U.S. Census Bureau",
+      customAttribution: [
+        '<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a>',
+        '<a href="https://www.openmaptiles.org/" target="_blank">© OpenMapTiles</a>',
+        '<a href="https://www.openstreetmap.org/copyright" target="_blank">© OpenStreetMap contributors</a>',
+        "Arkansas GIS Office · U.S. Census Bureau",
+      ],
     }), "bottom-right");
     map.touchZoomRotate.disableRotation();
     const mapReady = new Promise((resolve) => map.once("load", resolve));
@@ -432,7 +449,7 @@
         source: "counties",
         paint: {
           "fill-color": "#30b0c7",
-          "fill-opacity": ["case", ["boolean", ["feature-state", "selected"], false], 0.22, 0.04],
+          "fill-opacity": ["case", ["boolean", ["feature-state", "selected"], false], 0.14, 0.01],
         },
       });
       map.addLayer({
@@ -440,7 +457,7 @@
         type: "line",
         source: "counties",
         paint: {
-          "line-color": ["case", ["boolean", ["feature-state", "selected"], false], "#30b0c7", activeTheme() === "dark" ? "#8aa0a8" : "#c5ced3"],
+          "line-color": ["case", ["boolean", ["feature-state", "selected"], false], "#30b0c7", activeTheme() === "dark" ? "#8aa0a8" : "#5e6e76"],
           "line-width": ["case", ["boolean", ["feature-state", "selected"], false], 2.4, 1.1],
         },
       });
