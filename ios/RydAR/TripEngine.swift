@@ -14,6 +14,10 @@ enum DriveRules {
     static let movingSpeedMps = 1.0
     static let gpsAccuracyLimitMeters = 30.0
     static let gpsMaxAgeSeconds: TimeInterval = 3
+    /// Material may lower a paved file at 0.7. On the held-out sequences that
+    /// kept the same precision as 0.8 and caught more unpaved frames. Water,
+    /// snow, and severe stay at cameraConfidence.
+    static let materialConfidence = 0.7
     static let cameraConfidence = 0.8
     static let brakingGs = 0.12
     static let brakingDeceleration = 0.5
@@ -538,7 +542,7 @@ struct TripMatcher {
             )
             let ahead = geometry.headingError <= 90
             let confidence = ahead ? max(0, cos(geometry.headingError * .pi / 180)) : 0
-            let fused = fuseSurface(fileLabel: curve.surface, camera: cameraUsed, threshold: DriveRules.cameraConfidence)
+            let fused = fuseSurface(fileLabel: curve.surface, camera: cameraUsed, threshold: DriveRules.materialConfidence)
             let range = screeningRange(radiusFeet: curve.radiusFeet, surface: fused.0, tread: tread)
             let effective = effectiveSpeedMPH(speedMps: speed, accuracyMps: max(0, fix.speedAccuracyMps))
             let key = approachContextKey(surface: fused.0, radiusFeet: curve.radiusFeet, hour: hour)

@@ -44,6 +44,23 @@ final class DashTests: XCTestCase {
         XCTAssertNil(accepted)
     }
 
+    func testMaterialAcceptsALowerConfidenceThanWaterOrSevere() {
+        let unpaved: [Float] = [0.05, 0.75, 0.2]
+        var material = DashWindows().material
+        var accepted: DashVote?
+        for index in 0..<6 {
+            accepted = material.observe(index < 4 ? unpaved : [0.9, 0.05, 0.05])
+        }
+        XCTAssertEqual(accepted?.label, DashHead.materialUnpaved)
+
+        let water: [Float] = [0.05, 0.1, 0.75, 0.05, 0.05]
+        var friction = DashWindows().friction
+        for index in 0..<6 {
+            accepted = friction.observe(index < 4 ? water : [0.9, 0.02, 0.02, 0.03, 0.03])
+        }
+        XCTAssertNil(accepted)
+    }
+
     func testDryWetAndSmoothChangeNothingAndWaterOrSevereOnlyMoveEarlier() {
         let dry = DashVote(label: DashHead.frictionDry, confidence: 0.9)
         let wet = DashVote(label: DashHead.frictionWet, confidence: 0.9)
@@ -161,7 +178,7 @@ final class DashTests: XCTestCase {
         ))
         XCTAssertEqual(adultHarness.bridge.drive.cameraStatus, "Dash · camera on")
         XCTAssertEqual(adultHarness.bridge.drive.cameraEvidence?.label, .unpaved)
-        XCTAssertEqual(adultHarness.bridge.drive.cameraThreshold, DriveRules.cameraConfidence)
+        XCTAssertEqual(adultHarness.bridge.drive.cameraThreshold, DriveRules.materialConfidence)
 
         DashPreference.isOn = false
         let copilot = SpyDash()

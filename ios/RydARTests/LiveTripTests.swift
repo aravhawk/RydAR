@@ -56,7 +56,7 @@ final class LiveTripTests: XCTestCase {
             screeningRange(radiusFeet: 200, surface: .paved)
         )
         XCTAssertNil(harness.bridge.drive.cameraEvidence)
-        XCTAssertEqual(harness.bridge.drive.cameraThreshold, DriveRules.cameraConfidence)
+        XCTAssertEqual(harness.bridge.drive.cameraThreshold, DriveRules.materialConfidence)
         XCTAssertEqual(harness.speech.spoken, [spokenWarning])
         XCTAssertEqual(harness.speech.chimes, 0)
     }

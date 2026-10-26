@@ -252,7 +252,7 @@ final class LiveTripSession {
             nextCurve: curve,
             distanceMeters: distance,
             cameraEvidence: reading.camera,
-            cameraThreshold: DriveRules.cameraConfidence,
+            cameraThreshold: DriveRules.materialConfidence,
             cameraStatus: cameraStatus,
             gpsStatus: gps,
             measuredSpeedMPH: measured,

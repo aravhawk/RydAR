@@ -42,6 +42,7 @@ struct DashVote {
 struct DashConsensus {
     static let window = 6
     static let votesNeeded = 4
+    var minimumConfidence: Double = DriveRules.cameraConfidence
     private(set) var votes: [DashVote] = []
 
     mutating func observe(_ probabilities: [Float]) -> DashVote? {
@@ -62,13 +63,13 @@ struct DashConsensus {
         guard let winner = grouped.max(by: { $0.value.count < $1.value.count }),
               winner.value.count >= Self.votesNeeded,
               let confidence = winner.value.min(),
-              confidence >= DriveRules.cameraConfidence else { return nil }
+              confidence >= minimumConfidence else { return nil }
         return DashVote(label: winner.key, confidence: confidence)
     }
 }
 
 struct DashWindows {
-    var material = DashConsensus()
+    var material = DashConsensus(minimumConfidence: DriveRules.materialConfidence)
     var friction = DashConsensus()
     var uneven = DashConsensus()
 

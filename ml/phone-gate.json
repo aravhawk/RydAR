@@ -1,0 +1,197 @@
+{
+  "do_not_say_in_the_app_or_the_video": true,
+  "decision": "Material gate is 0.7. Water, snow, and severe stay at 0.8. Severe never fired under the 4-of-6 rule, so that rule was not loosened.",
+  "what_this_is": "Phone crop and the 4-of-6 gate on the 12 held-out sequences. Not an Arkansas drive. Do not say these in the video or the app.",
+  "crop": {
+    "left": 480,
+    "top": 594,
+    "right": 1440,
+    "bottom": 1080
+  },
+  "gate": "4 of the last 6 frames, weakest vote at or above the threshold",
+  "device": "cuda",
+  "thresholds": {
+    "0.5": {
+      "material": {
+        "positive": [
+          "unpaved"
+        ],
+        "windows": 358,
+        "acted": 47,
+        "should_act": 74,
+        "precision": 0.7659574468085106,
+        "recall": 0.4864864864864865
+      },
+      "friction": {
+        "positive": [
+          "water",
+          "snow_ice"
+        ],
+        "windows": 332,
+        "acted": 35,
+        "should_act": 31,
+        "precision": 0.3142857142857143,
+        "recall": 0.3548387096774194
+      },
+      "uneven": {
+        "positive": [
+          "severe"
+        ],
+        "windows": 272,
+        "acted": 0,
+        "should_act": 5,
+        "precision": null,
+        "recall": 0.0
+      }
+    },
+    "0.6": {
+      "material": {
+        "positive": [
+          "unpaved"
+        ],
+        "windows": 358,
+        "acted": 47,
+        "should_act": 74,
+        "precision": 0.7659574468085106,
+        "recall": 0.4864864864864865
+      },
+      "friction": {
+        "positive": [
+          "water",
+          "snow_ice"
+        ],
+        "windows": 332,
+        "acted": 29,
+        "should_act": 31,
+        "precision": 0.3448275862068966,
+        "recall": 0.3225806451612903
+      },
+      "uneven": {
+        "positive": [
+          "severe"
+        ],
+        "windows": 272,
+        "acted": 0,
+        "should_act": 5,
+        "precision": null,
+        "recall": 0.0
+      }
+    },
+    "0.7": {
+      "material": {
+        "positive": [
+          "unpaved"
+        ],
+        "windows": 358,
+        "acted": 42,
+        "should_act": 74,
+        "precision": 0.8333333333333334,
+        "recall": 0.47297297297297297
+      },
+      "friction": {
+        "positive": [
+          "water",
+          "snow_ice"
+        ],
+        "windows": 332,
+        "acted": 23,
+        "should_act": 31,
+        "precision": 0.43478260869565216,
+        "recall": 0.3225806451612903
+      },
+      "uneven": {
+        "positive": [
+          "severe"
+        ],
+        "windows": 272,
+        "acted": 0,
+        "should_act": 5,
+        "precision": null,
+        "recall": 0.0
+      }
+    },
+    "0.8": {
+      "material": {
+        "positive": [
+          "unpaved"
+        ],
+        "windows": 358,
+        "acted": 36,
+        "should_act": 74,
+        "precision": 0.8333333333333334,
+        "recall": 0.40540540540540543
+      },
+      "friction": {
+        "positive": [
+          "water",
+          "snow_ice"
+        ],
+        "windows": 332,
+        "acted": 16,
+        "should_act": 31,
+        "precision": 0.5625,
+        "recall": 0.2903225806451613
+      },
+      "uneven": {
+        "positive": [
+          "severe"
+        ],
+        "windows": 272,
+        "acted": 0,
+        "should_act": 5,
+        "precision": null,
+        "recall": 0.0
+      }
+    },
+    "0.9": {
+      "material": {
+        "positive": [
+          "unpaved"
+        ],
+        "windows": 358,
+        "acted": 12,
+        "should_act": 74,
+        "precision": 1.0,
+        "recall": 0.16216216216216217
+      },
+      "friction": {
+        "positive": [
+          "water",
+          "snow_ice"
+        ],
+        "windows": 332,
+        "acted": 5,
+        "should_act": 31,
+        "precision": 0.8,
+        "recall": 0.12903225806451613
+      },
+      "uneven": {
+        "positive": [
+          "severe"
+        ],
+        "windows": 272,
+        "acted": 0,
+        "should_act": 5,
+        "precision": null,
+        "recall": 0.0
+      }
+    }
+  },
+  "single_frame_phone_crop": {
+    "material": {
+      "correct": 313,
+      "seen": 358,
+      "accuracy": 0.8743016759776536
+    },
+    "friction": {
+      "correct": 211,
+      "seen": 332,
+      "accuracy": 0.6355421686746988
+    },
+    "uneven": {
+      "correct": 219,
+      "seen": 272,
+      "accuracy": 0.8051470588235294
+    }
+  }
+}
