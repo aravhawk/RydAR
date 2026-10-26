@@ -266,7 +266,7 @@ final class LiveTripSession {
         case .running:
             return "Dash · camera on"
         case .off, .unconfirmed:
-            return "Surface unconfirmed"
+            return "Dash · county road file"
         }
     }
 

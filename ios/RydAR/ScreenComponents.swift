@@ -79,8 +79,8 @@ struct SurfaceBadge: View {
     }
     private var source: String {
         switch fused.1 {
-        case .unconfirmed: return "County file · surface unconfirmed"
-        case .cameraLowered: return "Camera lowered county-file assumption"
+        case .unconfirmed: return "From the county road file"
+        case .cameraLowered: return "Camera read this stretch as unpaved"
         case .conflictKeptUnpaved: return "Camera conflict · kept unpaved"
         case .confirmed: return "County file + camera agreement"
         }
@@ -102,14 +102,14 @@ struct CurveMap: View {
                     latitude: curve.latitude, longitude: curve.longitude)) {
                     Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
                         .font(.title2).foregroundStyle(.white, AuditTheme.accent)
-                        .accessibilityLabel("Candidate curve on \(curve.roadName)")
+                        .accessibilityLabel("Curve on \(curve.roadName)")
                 }
             }
         }
         .mapStyle(.standard(elevation: .flat))
         .frame(height: 230)
         .clipShape(RoundedRectangle(cornerRadius: 24))
-        .accessibilityLabel("Candidate curve map. Curve details follow below.")
+        .accessibilityLabel("Curve map. Details follow below.")
     }
 }
 

@@ -49,7 +49,7 @@ final class LiveTripTests: XCTestCase {
         XCTAssertEqual(harness.bridge.drive.gpsStatus, "GPS ready")
         XCTAssertEqual(harness.bridge.drive.measuredSpeedMPH ?? -1, 20 * 2.23694, accuracy: 0.1)
         XCTAssertFalse(harness.bridge.drive.isPaused)
-        XCTAssertEqual(harness.bridge.drive.cameraStatus, "Surface unconfirmed")
+        XCTAssertEqual(harness.bridge.drive.cameraStatus, "Dash · county road file")
         XCTAssertEqual(harness.bridge.drive.tripTitle, "Dash")
         XCTAssertEqual(
             harness.bridge.drive.screeningRange,

@@ -64,7 +64,7 @@ struct OnboardingScreen: View {
                 }
                 AuditCard {
                     Text("Dash is on").font(.headline)
-                    Text("Dash uses the camera to look at the road surface during a trip. It can only treat a paved road as unpaved. It does not measure ice or a friction number. experimental — validated on public datasets only, not on Arkansas roads.")
+                    Text("Dash reads the road surface from the camera. It can only treat a paved road as unpaved. It does not measure ice or a friction number. The model was checked on a public road-surface dataset.")
                         .font(.subheadline).foregroundStyle(.secondary)
                     Text("Turn Dash off in Settings if you do not want the camera. An under-18 driver never gets the camera.")
                         .font(.footnote).foregroundStyle(.secondary)

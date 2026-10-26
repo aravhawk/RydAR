@@ -12,7 +12,7 @@ struct PreviewScreen: View {
                 Label("Parked preview", systemImage: "parkingsign.circle.fill")
                     .font(.subheadline.bold()).foregroundStyle(AuditTheme.accent)
                 Text("Read the road ahead.").font(.largeTitle.bold())
-                Text("Parked. Not directions.")
+                Text("Parked. Advisory speeds for this road.")
                     .font(.subheadline).foregroundStyle(.secondary)
                 Picker("Road", selection: $road) {
                     ForEach(PreviewRoad.allCases) { choice in

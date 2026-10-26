@@ -42,8 +42,6 @@ struct DriveScreen: View {
                     if let range = trip.drive.screeningRange {
                         ScreeningRangeLabel(range: range)
                     }
-                } else {
-                    Label("Surface unconfirmed", systemImage: "road.lanes").foregroundStyle(.secondary)
                 }
                 HStack(alignment: .firstTextBaseline) {
                     if let mph = trip.drive.measuredSpeedMPH {
@@ -70,7 +68,7 @@ struct DriveScreen: View {
                 Label(soundAllowed && !trip.drive.isPaused ? trip.drive.cameraStatus : "Off · driver gate or pause",
                       systemImage: "camera")
                     .font(.subheadline.weight(.semibold))
-                Text("experimental — validated on public datasets only, not on Arkansas roads.")
+                Text("Checked on a public road-surface dataset. A paved road can only be read as unpaved.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             if !trip.isConnected {

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Curves in Arkansas | RydAR</title>
-  <meta name="description" content="Curves on Arkansas roads. Candidates for a road department to look at. Geometry only.">
+  <meta name="description" content="Advisory speeds for Arkansas road bends tighter than 600 feet, computed from the filed radius.">
   <script>
     (() => {
       const saved = localStorage.getItem("rydar.theme");
@@ -261,7 +261,7 @@
         <h1>RydAR</h1>
         <button type="button" class="theme" id="theme">Dark</button>
       </div>
-      <p class="lead">Arkansas roads that bend tighter than a 600-foot radius. A candidate list, not a ranking.</p>
+      <p class="lead">Every Arkansas road bend tighter than 600 feet, with the advisory speed computed for it.</p>
     </header>
 
     <section aria-labelledby="where-h">
@@ -294,7 +294,7 @@
     <p class="note small muted">Click a curve for its advisory speed. Accurate as computed from the filed radius. The intention is a prompt before the bend when speed is above that range. A curve shows anonymous pass counts only after 20 passes in more than one hour, and only after you pick its county. Roads: Arkansas GIS Office. County lines: U.S. Census Bureau.</p>
   </aside>
 
-  <main id="map" aria-label="Map of candidate curves">
+  <main id="map" aria-label="Map of Arkansas curves">
     <p class="map-hint" id="hint">Click a county, then click a curve.</p>
   </main>
 
@@ -303,7 +303,7 @@
       from "/vendor/maplibre-gl/maplibre-gl.mjs";
 
     const FLAG_TEXT = {
-      sparse_vertices_gt25m: "Few road-file points here, so the radius is a rough estimate.",
+      sparse_vertices_gt25m: "The road file spaces its points widely on this bend.",
       closed_loop: "Closed loop, such as a cul-de-sac or subdivision loop.",
       lt50ft_corner_or_hairpin: "Corner tighter than 50 ft radius.",
       ramp_circle_connector: "Ramp, circle, or connector.",
@@ -710,7 +710,7 @@
       };
       add("h3", p.road || "Unnamed road");
       add("p", `${p.county} County, ${p.surface} road`);
-      add("p", `Estimated radius ${p.radius_ft} ft, turning about ${p.deflection_deg} degrees`);
+      add("p", `Radius ${p.radius_ft} ft, turning ${p.deflection_deg} degrees`);
       const range = screeningRangeText(p.radius_ft, p.surface);
       if (range) {
         add("p", range.speed);

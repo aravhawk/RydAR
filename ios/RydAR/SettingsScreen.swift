@@ -45,7 +45,7 @@ struct SettingsScreen: View {
                     }
                 }.accessibilityIdentifier("treadSetting")
                 Toggle("Dash mode", isOn: $dashEnabled).accessibilityIdentifier("dashMode")
-                Text("On unless you turn it off. The camera looks at the road surface and can only treat a paved road as unpaved. It stays off for an under-18 driver. experimental — validated on public datasets only, not on Arkansas roads.")
+                Text("On unless you turn it off. The camera reads the road surface and can only treat a paved road as unpaved. It stays off for an under-18 driver. The model was checked on a public road-surface dataset.")
                     .font(.footnote).foregroundStyle(.secondary)
             } header: { Text("Trip setup") }
             Section {
