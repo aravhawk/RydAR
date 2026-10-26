@@ -627,8 +627,9 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
     private var horizontalGs: [Double] = []
     private var lastSpeedSample: (speed: Double, time: Date)?
     private var previousLocation: CLLocation?
-    private var askedForAlways = false
     private let precisePurposeKey = "PreciseCurve"
+    private let askedAlwaysKey = "rydar.askedAlwaysLocation"
+    private let askedPreciseKey = "rydar.askedPreciseLocation"
     private let motionQueue: OperationQueue = {
         let queue = OperationQueue()
         queue.name = "com.rydar.motion"
@@ -678,7 +679,6 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
 
     func endTrip() {
         paused = false
-        askedForAlways = false
         speech.releaseAfterTrip()
         DriveLiveActivity.end()
         locationManager.stopUpdatingLocation()
@@ -845,13 +845,17 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         switch locationManager.authorizationStatus {
         case .notDetermined:
             locationManager.requestWhenInUseAuthorization()
-        case .authorizedWhenInUse where !askedForAlways:
-            askedForAlways = true
+        case .authorizedWhenInUse where !UserDefaults.standard.bool(forKey: askedAlwaysKey):
+            UserDefaults.standard.set(true, forKey: askedAlwaysKey)
             locationManager.requestAlwaysAuthorization()
+        case .denied, .restricted:
+            return
         default:
             break
         }
-        if locationManager.accuracyAuthorization == .reducedAccuracy {
+        if locationManager.accuracyAuthorization == .reducedAccuracy,
+           !UserDefaults.standard.bool(forKey: askedPreciseKey) {
+            UserDefaults.standard.set(true, forKey: askedPreciseKey)
             locationManager.requestTemporaryFullAccuracyAuthorization(withPurposeKey: precisePurposeKey)
         }
         if locationManager.authorizationStatus == .authorizedAlways

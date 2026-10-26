@@ -17,7 +17,7 @@
       "/data/curves-arkansas-2.geojson",
       "/data/curves-arkansas-3.geojson",
       "/data/curves-arkansas-4.geojson",
-    ].map((url) => fetch(url).then((res) => {
+    ].map((url) => fetch(url, { priority: url.includes("counties") ? "high" : "low" }).then((res) => {
       if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
       return res.arrayBuffer();
     }));
@@ -74,6 +74,8 @@
       max-height: calc(100% - 32px);
       overflow: auto;
       scrollbar-width: none;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
       display: flex;
       flex-direction: column;
       gap: 12px;
@@ -287,7 +289,7 @@
   </main>
 
   <script type="module">
-    import { Map, NavigationControl, ScaleControl, AttributionControl, Popup, LngLatBounds }
+    import { Map as MapLibreMap, NavigationControl, ScaleControl, AttributionControl, Popup, LngLatBounds }
       from "/vendor/maplibre-gl/maplibre-gl.mjs";
 
     const FLAG_TEXT = {
@@ -319,13 +321,15 @@
       dark: "https://tiles.openfreemap.org/styles/dark",
     };
     let countyGeo = null;
-    let curveGeo = null;
-    const curveParts = [];
+    const pointParts = [];
+    const lineParts = [];
+    let partsLoaded = 0;
+    const tally = { paved: 0, unpaved: 0, county: new globalThis.Map() };
     let acceptOverlays = false;
     let styleToken = 0;
     const activeTheme = () => (document.documentElement.dataset.theme === "dark" ? "dark" : "light");
 
-    const map = new Map({
+    const map = new MapLibreMap({
       container: "map",
       style: MAP_STYLES[activeTheme()],
       bounds: [[-94.8, 33.0], [-89.6, 36.6]],
@@ -333,6 +337,7 @@
       attributionControl: false,
       dragRotate: false,
       touchPitch: false,
+      fadeDuration: 0,
     });
     let basemapSwapped = false;
     map.on("error", (event) => {
@@ -343,7 +348,7 @@
       map.setStyle(LIBERTY_STYLE);
       map.once("style.load", () => {
         acceptOverlays = true;
-        if (countyGeo || curveGeo) redrawOverlays();
+        if (countyGeo || partsLoaded) redrawOverlays();
       });
     });
     map.addControl(new NavigationControl({ showCompass: false }), "top-right");
@@ -404,7 +409,8 @@
     }
 
     function firstCurveLayerId() {
-      for (let i = 0; i < curveParts.length; i += 1) {
+      for (let i = 0; i < pointParts.length; i += 1) {
+        if (map.getLayer(`curves-clusters-${i}`)) return `curves-clusters-${i}`;
         if (map.getLayer(`curves-dots-${i}`)) return `curves-dots-${i}`;
         if (map.getLayer(`curves-line-${i}`)) return `curves-line-${i}`;
       }
@@ -414,9 +420,17 @@
     function curveLayerIds() {
       const zoom = map.getZoom();
       const ids = [];
-      for (let i = 0; i < curveParts.length; i += 1) {
+      for (let i = 0; i < pointParts.length; i += 1) {
         if (zoom >= 12 && map.getLayer(`curves-line-${i}`)) ids.push(`curves-line-${i}`);
         if (zoom < 13 && map.getLayer(`curves-dots-${i}`)) ids.push(`curves-dots-${i}`);
+      }
+      return ids;
+    }
+
+    function clusterLayerIds() {
+      const ids = [];
+      for (let i = 0; i < pointParts.length; i += 1) {
+        if (map.getLayer(`curves-clusters-${i}`)) ids.push(`curves-clusters-${i}`);
       }
       return ids;
     }
@@ -435,94 +449,134 @@
       return ["interpolate", ["linear"], ["zoom"], 0, 4, 8, 4, 11, 6.5];
     }
 
-    function curveMidpoint(feature) {
-      const geometry = feature.geometry;
-      const coords = geometry && geometry.type === "LineString" ? geometry.coordinates : null;
-      if (!coords || !coords.length) return null;
-      const mid = coords[Math.floor(coords.length / 2)];
-      if (!mid || typeof mid[0] !== "number") return null;
-      return {
-        type: "Feature",
-        properties: feature.properties,
-        geometry: { type: "Point", coordinates: mid },
-      };
+    function filteredPoints(list) {
+      if (!list) return [];
+      if (!state.county && state.surfaces.size === 2) return list;
+      const out = [];
+      for (let i = 0; i < list.length; i += 1) if (matches(list[i])) out.push(list[i]);
+      return out;
     }
 
-    function mountCurvePart(index, geojson) {
-      if (!acceptOverlays) return;
-      const lineId = `curves-line-${index}`;
-      const dotId = `curves-dots-${index}`;
-      if (map.getLayer(lineId)) map.removeLayer(lineId);
-      if (map.getLayer(dotId)) map.removeLayer(dotId);
-      if (map.getSource(lineId)) map.removeSource(lineId);
-      if (map.getSource(dotId)) map.removeSource(dotId);
-      const points = [];
-      const list = geojson.features;
-      for (let i = 0; i < list.length; i += 1) {
-        const point = curveMidpoint(list[i]);
-        if (point) points.push(point);
+    function rememberSelection(sourceId) {
+      if (selectedId && map.getSource(sourceId)) {
+        map.setFeatureState({ source: sourceId, id: selectedId }, { selected: true });
       }
-      map.addSource(lineId, { type: "geojson", data: geojson, promoteId: "id" });
+    }
+
+    function mountPoints(index) {
+      if (!acceptOverlays || !pointParts[index]) return;
+      const dotId = `curves-dots-${index}`;
+      const clusterId = `curves-clusters-${index}`;
+      const countId = `curves-count-${index}`;
+      for (const id of [countId, clusterId, dotId]) if (map.getLayer(id)) map.removeLayer(id);
+      if (map.getSource(dotId)) map.removeSource(dotId);
       map.addSource(dotId, {
         type: "geojson",
-        data: { type: "FeatureCollection", features: points },
+        data: { type: "FeatureCollection", features: filteredPoints(pointParts[index]) },
         promoteId: "id",
+        cluster: true,
+        clusterRadius: 48,
+        clusterMaxZoom: 11,
       });
-      const filter = curveFilter();
-      const color = curveColor();
+      map.addLayer({
+        id: clusterId,
+        type: "circle",
+        source: dotId,
+        filter: ["has", "point_count"],
+        paint: {
+          "circle-color": "#30b0c7",
+          "circle-opacity": 0.9,
+          "circle-radius": ["step", ["get", "point_count"], 11, 40, 15, 150, 19],
+        },
+      });
+      map.addLayer({
+        id: countId,
+        type: "symbol",
+        source: dotId,
+        filter: ["has", "point_count"],
+        layout: {
+          "text-field": ["get", "point_count_abbreviated"],
+          "text-size": 11,
+          "text-font": ["Noto Sans Regular"],
+        },
+        paint: { "text-color": "#ffffff" },
+      });
       map.addLayer({
         id: dotId,
         type: "circle",
         source: dotId,
+        filter: ["!", ["has", "point_count"]],
         maxzoom: 13,
-        filter,
         paint: {
           "circle-radius": circleRadius(),
-          "circle-color": color,
-          "circle-opacity": ["interpolate", ["linear"], ["zoom"], 12, 0.92, 12.9, 0],
-          "circle-stroke-width": 1,
-          "circle-stroke-color": activeTheme() === "dark" ? "rgba(28,28,30,0.55)" : "#ffffff",
+          "circle-color": curveColor(),
+          "circle-opacity": ["interpolate", ["linear"], ["zoom"], 12, 0.95, 12.9, 0],
         },
+      });
+      rememberSelection(dotId);
+    }
+
+    function mountLines(index) {
+      if (!acceptOverlays || !lineParts[index]) return;
+      const lineId = `curves-line-${index}`;
+      if (map.getLayer(lineId)) map.removeLayer(lineId);
+      if (map.getSource(lineId)) map.removeSource(lineId);
+      map.addSource(lineId, {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: lineParts[index] },
+        promoteId: "id",
       });
       map.addLayer({
         id: lineId,
         type: "line",
         source: lineId,
         minzoom: 12,
-        filter,
+        filter: curveFilter(),
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
-          "line-color": color,
+          "line-color": curveColor(),
           "line-width": ["interpolate", ["linear"], ["zoom"], 12, 2.4, 15, 6],
           "line-opacity": 0.95,
         },
       });
-      if (selectedId) {
-        map.setFeatureState({ source: lineId, id: selectedId }, { selected: true });
-        map.setFeatureState({ source: dotId, id: selectedId }, { selected: true });
-      }
+      rememberSelection(lineId);
     }
 
-    function addCurvePart(geojson) {
-      const index = curveParts.length;
-      curveParts.push(geojson);
-      const list = geojson.features;
-      for (let i = 0; i < list.length; i += 1) features.push(list[i]);
-      curveGeo = curveParts;
-      mountCurvePart(index, geojson);
+    function addTally(props) {
+      if (props.surface !== "paved" && props.surface !== "unpaved") return;
+      tally[props.surface] += 1;
+      let row = tally.county.get(props.county);
+      if (!row) {
+        row = { paved: 0, unpaved: 0 };
+        tally.county.set(props.county, row);
+      }
+      row[props.surface] += 1;
+    }
+
+    function addPointPart(index, list) {
+      pointParts[index] = list;
+      for (let i = 0; i < list.length; i += 1) {
+        features.push(list[i]);
+        addTally(list[i].properties);
+      }
+      partsLoaded += 1;
+      mountPoints(index);
+      if (map.getZoom() >= 12) maybeLoadLines();
     }
 
     function applyFilters() {
       const filter = curveFilter();
       const radius = circleRadius();
-      for (let i = 0; i < curveParts.length; i += 1) {
+      for (let i = 0; i < pointParts.length; i += 1) {
         const lineId = `curves-line-${i}`;
         const dotId = `curves-dots-${i}`;
-        if (map.getLayer(lineId)) map.setFilter(lineId, filter);
-        if (map.getLayer(dotId)) {
-          map.setFilter(dotId, filter);
-          map.setPaintProperty(dotId, "circle-radius", radius);
+        const source = map.getSource(dotId);
+        if (source && pointParts[i]) {
+          source.setData({ type: "FeatureCollection", features: filteredPoints(pointParts[i]) });
+          rememberSelection(dotId);
         }
+        if (map.getLayer(dotId)) map.setPaintProperty(dotId, "circle-radius", radius);
+        if (map.getLayer(lineId)) map.setFilter(lineId, filter);
       }
       if (popup && selectedFeature && !matches(selectedFeature)) popup.remove();
       updateCount();
@@ -541,12 +595,21 @@
         setStatus("Both surfaces are off. Turn paved or unpaved back on to see curves.");
         return;
       }
-      if (!features.length) return;
+      if (!partsLoaded) return;
       let shown = 0;
-      for (const f of features) if (matches(f)) shown += 1;
+      if (!state.county) {
+        if (state.surfaces.has("paved")) shown += tally.paved;
+        if (state.surfaces.has("unpaved")) shown += tally.unpaved;
+      } else {
+        const row = tally.county.get(state.county);
+        if (row) {
+          if (state.surfaces.has("paved")) shown += row.paved;
+          if (state.surfaces.has("unpaved")) shown += row.unpaved;
+        }
+      }
       const where = state.county ? `${state.county} County` : "Arkansas";
       const base = `Showing ${shown.toLocaleString()} curves in ${where}`;
-      setStatus(curveParts.length < CURVE_FILES.length ? `${base}. Loading more.` : base);
+      setStatus(partsLoaded < CURVE_FILES.length ? `${base}. Loading more.` : base);
     }
 
     function addCounties(geojson, refit = true) {
@@ -598,8 +661,13 @@
 
     function redrawOverlays() {
       if (countyGeo) addCounties(countyGeo, false);
-      for (let i = 0; i < curveParts.length; i += 1) mountCurvePart(i, curveParts[i]);
-      applyFilters();
+      for (let i = 0; i < pointParts.length; i += 1) {
+        if (pointParts[i]) mountPoints(i);
+        if (lineParts[i]) mountLines(i);
+      }
+      if (popup && selectedFeature && !matches(selectedFeature)) popup.remove();
+      updateCount();
+      runSearch();
     }
 
     function useTheme(theme) {
@@ -618,40 +686,69 @@
       useTheme(event.matches ? "dark" : "light");
     });
 
+    const curveWorker = new Worker("/curve-worker.js");
+    const workerWait = new globalThis.Map();
+    curveWorker.onmessage = (event) => {
+      const message = event.data;
+      const done = workerWait.get(`${message.kind}:${message.index}`);
+      if (!done) return;
+      workerWait.delete(`${message.kind}:${message.index}`);
+      done(message);
+    };
+    function askWorker(kind, index, buffer) {
+      return new Promise((resolve, reject) => {
+        workerWait.set(`${kind}:${index}`, resolve);
+        curveWorker.onerror = () => reject(new Error("Curve worker failed"));
+        if (buffer) curveWorker.postMessage({ kind, index, buffer }, [buffer]);
+        else curveWorker.postMessage({ kind, index });
+      });
+    }
+
+    let linesLoading = false;
+    async function loadLines() {
+      if (linesLoading || map.getZoom() < 12) return;
+      linesLoading = true;
+      try {
+        for (let i = 0; i < CURVE_FILES.length; i += 1) {
+          if (lineParts[i] || !pointParts[i]) continue;
+          const message = await askWorker("lines", i);
+          const coords = message.coords || [];
+          const lines = [];
+          const points = pointParts[i];
+          for (let n = 0; n < points.length && n < coords.length; n += 1) {
+            lines.push({
+              type: "Feature",
+              properties: points[n].properties,
+              geometry: { type: "LineString", coordinates: coords[n] },
+            });
+          }
+          lineParts[i] = lines;
+          await yieldFrame();
+          mountLines(i);
+        }
+      } finally {
+        linesLoading = false;
+      }
+    }
+    function maybeLoadLines() {
+      if (map.getZoom() >= 12) loadLines();
+    }
+
     async function loadMap() {
       const files = window.rydarFiles;
       await mapReady;
       await yieldFrame();
-
-      const decoder = new TextDecoder();
-      let chain = Promise.resolve();
-      function parseWhenReady(index, use) {
-        return files[index].then((buffer) => {
-          const turn = chain.then(async () => {
-            await yieldFrame();
-            const geojson = JSON.parse(decoder.decode(buffer));
-            files[index] = null;
-            use(geojson);
-            await yieldFrame();
-          });
-          chain = turn;
-          return turn;
-        });
-      }
-
-      const countyDone = parseWhenReady(0, (geojson) => {
-        addCounties(geojson);
-        if (!features.length) setStatus("County lines are up. Loading curves.");
-      });
-      const curveDone = [];
+      const countyBuffer = await files[0];
+      addCounties(JSON.parse(new TextDecoder().decode(countyBuffer)));
+      if (!partsLoaded) setStatus("County lines are up. Loading curves.");
       for (let i = 1; i < files.length; i += 1) {
-        curveDone.push(parseWhenReady(i, (geojson) => {
-          addCurvePart(geojson);
-          updateCount();
-          runSearch();
-        }));
+        const buffer = await files[i];
+        files[i] = null;
+        const message = await askWorker("curves", i - 1, buffer);
+        await yieldFrame();
+        addPointPart(i - 1, message.features);
+        updateCount();
       }
-      await Promise.all([countyDone, ...curveDone]);
     }
 
     function screeningMPH(radiusFeet, superelevation, friction) {
@@ -722,7 +819,7 @@
     }
 
     function setSelected(id, on) {
-      for (let i = 0; i < curveParts.length; i += 1) {
+      for (let i = 0; i < pointParts.length; i += 1) {
         const lineId = `curves-line-${i}`;
         const dotId = `curves-dots-${i}`;
         if (map.getSource(lineId)) map.setFeatureState({ source: lineId, id }, { selected: on });
@@ -781,12 +878,25 @@
       resizeTimer = setTimeout(() => map.resize(), 150);
     });
 
+    map.on("zoomend", maybeLoadLines);
     map.on("click", (e) => {
       const box = [[e.point.x - 8, e.point.y - 8], [e.point.x + 8, e.point.y + 8]];
+      const clusters = clusterLayerIds();
+      if (clusters.length) {
+        const grouped = map.queryRenderedFeatures(box, { layers: clusters });
+        if (grouped.length && grouped[0].properties.cluster_id != null) {
+          const hit = grouped[0];
+          map.getSource(hit.source).getClusterExpansionZoom(hit.properties.cluster_id, (err, zoom) => {
+            if (err) return;
+            map.easeTo({ center: hit.geometry.coordinates, zoom, duration: reduceMotion ? 0 : 400 });
+          });
+          return;
+        }
+      }
       const layers = curveLayerIds();
       if (layers.length) {
         const hits = map.queryRenderedFeatures(box, { layers });
-        if (hits.length) {
+        if (hits.length && hits[0].properties.cluster_id == null) {
           select(hits[0], e.lngLat);
           return;
         }
@@ -798,13 +908,22 @@
         chooseCounty(name, name !== state.county);
       }
     });
+    let hoverQueued = false;
+    let hoverPoint = null;
     map.on("mousemove", (e) => {
-      const box = [[e.point.x - 6, e.point.y - 6], [e.point.x + 6, e.point.y + 6]];
-      let hot = false;
-      const layers = curveLayerIds();
-      if (layers.length && map.queryRenderedFeatures(box, { layers }).length) hot = true;
-      if (!hot && map.getLayer("counties-fill") && map.queryRenderedFeatures(e.point, { layers: ["counties-fill"] }).length) hot = true;
-      map.getCanvas().style.cursor = hot ? "pointer" : "";
+      hoverPoint = e.point;
+      if (hoverQueued) return;
+      hoverQueued = true;
+      requestAnimationFrame(() => {
+        hoverQueued = false;
+        const point = hoverPoint;
+        if (!point) return;
+        const box = [[point.x - 6, point.y - 6], [point.x + 6, point.y + 6]];
+        const layers = clusterLayerIds().concat(curveLayerIds());
+        let hot = layers.length > 0 && map.queryRenderedFeatures(box, { layers }).length > 0;
+        if (!hot && map.getLayer("counties-fill") && map.queryRenderedFeatures(point, { layers: ["counties-fill"] }).length) hot = true;
+        map.getCanvas().style.cursor = hot ? "pointer" : "";
+      });
     });
 
     countySelect.addEventListener("change", () => chooseCounty(countySelect.value, true));
@@ -864,13 +983,28 @@
       return best;
     }
 
-    findInput.addEventListener("input", runSearch);
+    let searchTimer = 0;
+    findInput.addEventListener("input", () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(runSearch, 150);
+    });
+
+    function pointOf(f) {
+      const geometry = f.geometry;
+      if (!geometry) return null;
+      if (geometry.type === "Point") return geometry.coordinates;
+      const coords = geometry.coordinates;
+      if (!coords || !coords.length) return null;
+      return coords[Math.floor(coords.length / 2)];
+    }
 
     function goTo(f) {
+      const at = pointOf(f);
+      if (!at) return;
       if (state.county !== f.properties.county) chooseCounty(f.properties.county, false);
-      frame(boundsOf(f), 16);
-      const mid = f.geometry.coordinates[Math.floor(f.geometry.coordinates.length / 2)];
-      select(f, mid);
+      frame(new LngLatBounds([at[0] - 0.01, at[1] - 0.01], [at[0] + 0.01, at[1] + 0.01]), 16);
+      maybeLoadLines();
+      select(f, at);
     }
 
     loadMap().catch((err) => {
