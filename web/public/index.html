@@ -21,7 +21,7 @@
       "/data/curves-arkansas-4.geojson",
     ].map((url) => fetch(url).then((res) => {
       if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
-      return res.json();
+      return res.arrayBuffer();
     }));
   </script>
   <link rel="icon" href="/favicon.ico" sizes="32x32">
@@ -332,6 +332,8 @@
     };
     let countyGeo = null;
     let curveGeo = null;
+    const curveParts = [];
+    let acceptOverlays = false;
     let styleToken = 0;
     const activeTheme = () => (document.documentElement.dataset.theme === "dark" ? "dark" : "light");
 
@@ -348,9 +350,11 @@
     map.on("error", (event) => {
       if (basemapSwapped || event?.error?.url !== POSITRON_STYLE) return;
       basemapSwapped = true;
+      acceptOverlays = false;
       MAP_STYLES.light = LIBERTY_STYLE;
       map.setStyle(LIBERTY_STYLE);
       map.once("style.load", () => {
+        acceptOverlays = true;
         if (countyGeo || curveGeo) redrawOverlays();
       });
     });
@@ -366,7 +370,10 @@
       ],
     }), "bottom-right");
     map.touchZoomRotate.disableRotation();
-    const mapReady = new Promise((resolve) => map.once("load", resolve));
+    const mapReady = new Promise((resolve) => map.once("load", () => {
+      if (!basemapSwapped && styleToken === 0) acceptOverlays = true;
+      resolve();
+    }));
 
     const countEl = document.getElementById("count");
     const countySelect = document.getElementById("county");
@@ -402,8 +409,133 @@
       return ["all", ...parts];
     }
 
+    function yieldFrame() {
+      return new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      });
+    }
+
+    function firstCurveLayerId() {
+      for (let i = 0; i < curveParts.length; i += 1) {
+        if (map.getLayer(`curves-dots-${i}`)) return `curves-dots-${i}`;
+        if (map.getLayer(`curves-line-${i}`)) return `curves-line-${i}`;
+      }
+      return undefined;
+    }
+
+    function curveLayerIds() {
+      const zoom = map.getZoom();
+      const ids = [];
+      for (let i = 0; i < curveParts.length; i += 1) {
+        if (zoom >= 12 && map.getLayer(`curves-line-${i}`)) ids.push(`curves-line-${i}`);
+        if (zoom < 13 && map.getLayer(`curves-dots-${i}`)) ids.push(`curves-dots-${i}`);
+      }
+      return ids;
+    }
+
+    function curveColor() {
+      return [
+        "case",
+        ["boolean", ["feature-state", "selected"], false], activeTheme() === "dark" ? "#f2f2f7" : "#15252d",
+        ["==", ["get", "surface"], "unpaved"], "#c47a2b",
+        "#30b0c7",
+      ];
+    }
+
+    function circleRadius() {
+      if (state.county) return ["interpolate", ["linear"], ["zoom"], 0, 6, 8, 7, 11, 9];
+      return ["interpolate", ["linear"], ["zoom"], 0, 4, 8, 4, 11, 6.5];
+    }
+
+    function curveMidpoint(feature) {
+      const geometry = feature.geometry;
+      const coords = geometry && geometry.type === "LineString" ? geometry.coordinates : null;
+      if (!coords || !coords.length) return null;
+      const mid = coords[Math.floor(coords.length / 2)];
+      if (!mid || typeof mid[0] !== "number") return null;
+      return {
+        type: "Feature",
+        properties: feature.properties,
+        geometry: { type: "Point", coordinates: mid },
+      };
+    }
+
+    function mountCurvePart(index, geojson) {
+      if (!acceptOverlays) return;
+      const lineId = `curves-line-${index}`;
+      const dotId = `curves-dots-${index}`;
+      if (map.getLayer(lineId)) map.removeLayer(lineId);
+      if (map.getLayer(dotId)) map.removeLayer(dotId);
+      if (map.getSource(lineId)) map.removeSource(lineId);
+      if (map.getSource(dotId)) map.removeSource(dotId);
+      const points = [];
+      const list = geojson.features;
+      for (let i = 0; i < list.length; i += 1) {
+        const point = curveMidpoint(list[i]);
+        if (point) points.push(point);
+      }
+      map.addSource(lineId, { type: "geojson", data: geojson, promoteId: "id" });
+      map.addSource(dotId, {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: points },
+        promoteId: "id",
+      });
+      const filter = curveFilter();
+      const color = curveColor();
+      map.addLayer({
+        id: dotId,
+        type: "circle",
+        source: dotId,
+        maxzoom: 13,
+        filter,
+        paint: {
+          "circle-radius": circleRadius(),
+          "circle-color": color,
+          "circle-opacity": ["interpolate", ["linear"], ["zoom"], 12, 0.92, 12.9, 0],
+          "circle-stroke-width": 1,
+          "circle-stroke-color": activeTheme() === "dark" ? "rgba(28,28,30,0.55)" : "#ffffff",
+        },
+      });
+      map.addLayer({
+        id: lineId,
+        type: "line",
+        source: lineId,
+        minzoom: 12,
+        filter,
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: {
+          "line-color": color,
+          "line-width": ["interpolate", ["linear"], ["zoom"], 12, 2.4, 15, 6],
+          "line-opacity": 0.95,
+        },
+      });
+      if (selectedId) {
+        map.setFeatureState({ source: lineId, id: selectedId }, { selected: true });
+        map.setFeatureState({ source: dotId, id: selectedId }, { selected: true });
+      }
+    }
+
+    function addCurvePart(geojson) {
+      const index = curveParts.length;
+      curveParts.push(geojson);
+      const list = geojson.features;
+      for (let i = 0; i < list.length; i += 1) features.push(list[i]);
+      curveGeo = curveParts;
+      mountCurvePart(index, geojson);
+    }
+
     function applyFilters() {
-      if (map.getLayer("arkansas")) map.setFilter("arkansas", curveFilter());
+      const filter = curveFilter();
+      const radius = circleRadius();
+      for (let i = 0; i < curveParts.length; i += 1) {
+        const lineId = `curves-line-${i}`;
+        const dotId = `curves-dots-${i}`;
+        if (map.getLayer(lineId)) map.setFilter(lineId, filter);
+        if (map.getLayer(dotId)) {
+          map.setFilter(dotId, filter);
+          map.setPaintProperty(dotId, "circle-radius", radius);
+        }
+      }
       if (popup && selectedFeature && !matches(selectedFeature)) popup.remove();
       updateCount();
       runSearch();
@@ -417,15 +549,16 @@
     }
 
     function updateCount() {
-      if (!features.length) return;
       if (!state.surfaces.size) {
         setStatus("Both surfaces are off. Turn paved or unpaved back on to see curves.");
         return;
       }
+      if (!features.length) return;
       let shown = 0;
       for (const f of features) if (matches(f)) shown += 1;
       const where = state.county ? `${state.county} County` : "Arkansas";
-      setStatus(`Showing ${shown.toLocaleString()} curves in ${where}`);
+      const base = `Showing ${shown.toLocaleString()} curves in ${where}`;
+      setStatus(curveParts.length < CURVE_FILES.length ? `${base}. Loading more.` : base);
     }
 
     function addCounties(geojson, refit = true) {
@@ -439,11 +572,17 @@
           countySelect.appendChild(option);
         }
       }
+      if (!acceptOverlays) return;
       if (map.getLayer("counties-fill")) map.removeLayer("counties-fill");
       if (map.getLayer("counties-line")) map.removeLayer("counties-line");
       if (map.getSource("counties")) map.removeSource("counties");
       map.addSource("counties", { type: "geojson", data: geojson, promoteId: "county" });
-      map.addLayer({
+      const addCountyLayer = (layer) => {
+        const before = firstCurveLayerId();
+        if (before) map.addLayer(layer, before);
+        else map.addLayer(layer);
+      };
+      addCountyLayer({
         id: "counties-fill",
         type: "fill",
         source: "counties",
@@ -452,7 +591,7 @@
           "fill-opacity": ["case", ["boolean", ["feature-state", "selected"], false], 0.14, 0.01],
         },
       });
-      map.addLayer({
+      addCountyLayer({
         id: "counties-line",
         type: "line",
         source: "counties",
@@ -471,7 +610,7 @@
 
     function redrawOverlays() {
       if (countyGeo) addCounties(countyGeo, false);
-      if (curveGeo) addCurves(curveGeo);
+      for (let i = 0; i < curveParts.length; i += 1) mountCurvePart(i, curveParts[i]);
       applyFilters();
     }
 
@@ -486,9 +625,11 @@
       if (persist) localStorage.setItem("rydar.theme", theme);
       labelTheme();
       const token = ++styleToken;
+      acceptOverlays = false;
       map.setStyle(MAP_STYLES[theme]);
       map.once("style.load", () => {
         if (token !== styleToken) return;
+        acceptOverlays = true;
         redrawOverlays();
       });
     }
@@ -501,50 +642,40 @@
       useTheme(event.matches ? "dark" : "light", false);
     });
 
-    function addCurves(geojson) {
-      curveGeo = geojson;
-      if (map.getLayer("arkansas")) map.removeLayer("arkansas");
-      if (map.getSource("arkansas")) map.removeSource("arkansas");
-      map.addSource("arkansas", { type: "geojson", data: geojson, promoteId: "id" });
-      map.addLayer({
-        id: "arkansas",
-        type: "line",
-        source: "arkansas",
-        filter: curveFilter(),
-        layout: { "line-cap": "round", "line-join": "round" },
-        paint: {
-          "line-color": [
-            "case",
-            ["boolean", ["feature-state", "selected"], false], activeTheme() === "dark" ? "#f2f2f7" : "#15252d",
-            ["==", ["get", "surface"], "unpaved"], "#c47a2b",
-            "#30b0c7",
-          ],
-          "line-width": ["interpolate", ["linear"], ["zoom"], 0, 2.2, 8, 2.2, 12, 3.6, 15, 6],
-          "line-opacity": 0.95,
-        },
-      });
-    }
-
     async function loadMap() {
       const files = window.rydarFiles;
-      let arrived = 0;
-      const curves = files.slice(1).map((file) => file.then((geojson) => {
-        arrived += 1;
-        setStatus(`Loading curves, part ${arrived} of ${CURVE_FILES.length}`);
-        return geojson;
-      }));
-      const countiesReady = Promise.all([files[0], mapReady]).then(([geojson]) => {
+      await mapReady;
+      await yieldFrame();
+
+      const decoder = new TextDecoder();
+      let chain = Promise.resolve();
+      function parseWhenReady(index, use) {
+        return files[index].then((buffer) => {
+          const turn = chain.then(async () => {
+            await yieldFrame();
+            const geojson = JSON.parse(decoder.decode(buffer));
+            files[index] = null;
+            use(geojson);
+            await yieldFrame();
+          });
+          chain = turn;
+          return turn;
+        });
+      }
+
+      const countyDone = parseWhenReady(0, (geojson) => {
         addCounties(geojson);
         if (!features.length) setStatus("County lines are up. Loading curves.");
       });
-      const curvesReady = Promise.all([...curves, mapReady]).then((results) => {
-        const parts = results.slice(0, CURVE_FILES.length);
-        features = parts.flatMap((part) => part.features);
-        addCurves({ type: "FeatureCollection", features });
-        updateCount();
-        runSearch();
-      });
-      await Promise.all([countiesReady, curvesReady]);
+      const curveDone = [];
+      for (let i = 1; i < files.length; i += 1) {
+        curveDone.push(parseWhenReady(i, (geojson) => {
+          addCurvePart(geojson);
+          updateCount();
+          runSearch();
+        }));
+      }
+      await Promise.all([countyDone, ...curveDone]);
     }
 
     function screeningMPH(radiusFeet, superelevation, friction) {
@@ -615,8 +746,12 @@
     }
 
     function setSelected(id, on) {
-      if (!map.getSource("arkansas")) return;
-      map.setFeatureState({ source: "arkansas", id }, { selected: on });
+      for (let i = 0; i < curveParts.length; i += 1) {
+        const lineId = `curves-line-${i}`;
+        const dotId = `curves-dots-${i}`;
+        if (map.getSource(lineId)) map.setFeatureState({ source: lineId, id }, { selected: on });
+        if (map.getSource(dotId)) map.setFeatureState({ source: dotId, id }, { selected: on });
+      }
     }
 
     function chooseCounty(name, refit) {
@@ -672,8 +807,9 @@
 
     map.on("click", (e) => {
       const box = [[e.point.x - 8, e.point.y - 8], [e.point.x + 8, e.point.y + 8]];
-      if (map.getLayer("arkansas")) {
-        const hits = map.queryRenderedFeatures(box, { layers: ["arkansas"] });
+      const layers = curveLayerIds();
+      if (layers.length) {
+        const hits = map.queryRenderedFeatures(box, { layers });
         if (hits.length) {
           select(hits[0], e.lngLat);
           return;
@@ -689,7 +825,8 @@
     map.on("mousemove", (e) => {
       const box = [[e.point.x - 6, e.point.y - 6], [e.point.x + 6, e.point.y + 6]];
       let hot = false;
-      if (map.getLayer("arkansas") && map.queryRenderedFeatures(box, { layers: ["arkansas"] }).length) hot = true;
+      const layers = curveLayerIds();
+      if (layers.length && map.queryRenderedFeatures(box, { layers }).length) hot = true;
       if (!hot && map.getLayer("counties-fill") && map.queryRenderedFeatures(e.point, { layers: ["counties-fill"] }).length) hot = true;
       map.getCanvas().style.cursor = hot ? "pointer" : "";
     });
