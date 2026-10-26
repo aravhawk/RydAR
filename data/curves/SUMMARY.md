@@ -1,5 +1,7 @@
 # RydAR curve-screening prototype — Benton + Washington Counties, AR
 
+This log is the Benton and Washington prototype from 2026-10-24. The shipped database is the 75-county SQLite file in the app, described in `data/README.md`. Section 6 uses one superelevation, `e = +0.02`. The app recomputes the range with `e` from −0.02 to +0.02. The 91.5% figure in section 7 is the share of these extracted bends within 20 m of a drivable OpenStreetMap way. It is a proximity check on this prototype. The app does not use OpenStreetMap geometry to find curves.
+
 Generated 2026-10-24 18:07:13 CDT by `/tmp/rydar_curves/build_curves.py`. **All speeds below are screening assumptions (AASHTO simple-curve formula), NOT legal advisory speeds.**
 
 ## 1. Data pulled

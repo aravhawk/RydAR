@@ -1,13 +1,13 @@
-# Mac B simulator route
+# Simulator route
 
-`old-wire-approach.gpx` approaches the real bundled curve `007-2-3`, N Old Wire Rd, Benton County. The target's 21 coordinates are copied from `ios/RydAR/curves.sqlite`. The 350 m approach is a **synthetic tangent extension**, and the short exit is extrapolated. These are simulator inputs, not surveyed road geometry or a recommended driving route. It matches the curve ID in `trace.expect.json`.
+`old-wire-approach.gpx` approaches the bundled curve `007-2-3`, N Old Wire Rd, Benton County. The curve's own coordinates are copied from `ios/RydAR/curves.sqlite`. The 350 m approach is a synthetic tangent, and the short exit is extrapolated. These are simulator inputs. They are separate from a surveyed centerline and from a recommended driving route. The curve id matches `trace.expect.json` and `old-wire-approach.expect.json`.
 
-Build and install the app in an iPhone simulator. Open it, finish onboarding, select **Start trip → Passenger operating → Start this trip**. With that simulator booted, run:
+Build and install the app in an iPhone simulator. Open it, finish onboarding, then choose **Start trip**, **Passenger operating**, and **Start this trip**. With that simulator booted, run:
 
 ```sh
 bash fixtures/run-gpx.sh
 ```
 
-The script plays the GPX waypoints with `simctl location start`, at 10 m/s and one fix per second (about 50 seconds). Supply a simulator UUID as its first argument if multiple devices are booted. Stop with `xcrun simctl location booted clear`. In Xcode you can also select this GPX from Debug → Simulate Location. The command-line runner explicitly controls speed and fix interval.
+The script plays the GPX with `simctl location start`, at 10 m/s and one fix per second, about 50 seconds. Pass a simulator UUID as the first argument when more than one simulator is booted. Stop with `xcrun simctl location booted clear`. In Xcode, the same file is under Debug → Simulate Location. The script is what sets the speed and the fix interval.
 
-`old-wire-approach.expect.json` records the target, mode, and expected sentence. Verify one prompt for this curve on a pass, exactly “Curve ahead. Above advisory speed.”, with no numeric speed. End the trip once, without a second confirmation, and the pass is on the review. Re-run with an under-18 driver and verify no sound, camera, or upload. Replay must never upload.
+`old-wire-approach.expect.json` records the target, the mode, and the sentence. On a pass, expect one prompt for this curve, exactly "Curve ahead. Above advisory speed.", with no numeric speed spoken. End the trip once. The pass shows on Review. Run it again as an under-18 driver and expect no sound, no camera, and no upload. A replay of a finished trip stays on the phone.

@@ -1,19 +1,24 @@
 # RydAR
 
-An iPhone co-pilot for tight Arkansas bends, and a public map of those bends. The long product brief is not in this repository. The rules below are the ones the code has to keep.
+RydAR is an iPhone co-pilot for tight bends in Arkansas, and a public map of those bends at [rydar.org](https://rydar.org). The source is [github.com/aravhawk/RydAR](https://github.com/aravhawk/RydAR).
 
-Repository: [github.com/aravhawk/RydAR](https://github.com/aravhawk/RydAR)
+A drive warns from the curve database bundled in the app and from the formula in `ios/RydAR/Screening.swift`. The drive does not wait on the website. The spoken line is exactly "Curve ahead. Above advisory speed." The on-screen caption is "Advisory." That number is the formula. It is the range the app computed, and it is separate from a posted plaque.
 
-Public map: [rydar.org](https://rydar.org)
+An under-18 driver gets no voice, no chime, no haptic, no camera, and no upload, including while parked. The road test is Passenger, with an adult driving and a student holding the phone.
 
-## Stack
+The long product brief lives outside this repository.
 
-- iOS 17, SwiftUI, MapKit, one bundled SQLite file for the curves and the trips
-- The public site is plain HTML on Vercel. Anonymous passes go to Neon. A drive does not wait on either.
-- One bundled vision model, MobileNetV4-Conv-Small with three heads, trained on RSCD and converted to Core ML. Dash loads it. Launch does not. It can only lower a paved label to unpaved, or move a warning earlier. It does not change the advisory speed. Do not quote an accuracy number in the app or in a video.
-- A second on-device model, `OnsetNet`, remembers where this phone starts braking and can place the warning sooner. A measured start on that road wins over the network. It does not change the advisory speed.
+## Layout
 
-The spoken line is exactly "Curve ahead. Above advisory speed."
+| Path | What it is |
+|---|---|
+| `ios/` | SwiftUI app, Live Activity, bundled `curves.sqlite`, and `RoadSurface.mlpackage` |
+| `web/` | Public map and the anonymous-pass API. The Vercel project root is this folder. |
+| `ml/` | Road-surface checkpoint, Core ML conversion, and the held-out scoring scripts |
+| `data/` | Crash tables and the original Benton and Washington curve study |
+| `fixtures/` | Simulator approach for curve `007-2-3` on N Old Wire Rd |
+| `tools/` | Builders for the statewide database. The shipped files are already built. |
+| `Contracts/` | Curve table and the anonymous pass shape |
 
 ## App
 
@@ -21,8 +26,24 @@ The spoken line is exactly "Curve ahead. Above advisory speed."
 open ios/RydAR.xcodeproj
 ```
 
-Builds need `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`. The team is `XLR6H6DKHH`. The phone has to be unlocked to install. The curve database and the model are already in the app. Do not rebuild the SQLite file and do not download curves after install.
+Builds need `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`. The team is `XLR6H6DKHH`. Install onto an unlocked phone. The curve database and the model ship inside the app. Launch reads neither the full curve table nor the model. Dash loads the model. A drive queries a bounding box and the road ahead.
+
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+  xcodebuild test -project ios/RydAR.xcodeproj -scheme RydAR \
+  -destination 'platform=iOS Simulator,name=iPhone 17'
+```
 
 ## Website
 
-The live site deploys from `main`, with the Vercel project rooted at `web/`. Do not point the phone back at the old Cloudflare worker. That worker is still up and should be left alone.
+Pushes to `main` deploy the site. The Vercel project root is `web/`. Anonymous passes go to Neon. The phone posts to `https://rydar.org/api/pass`. The old Cloudflare worker is still running. Leave that worker and its database alone.
+
+## Camera and timing
+
+The bundled model is MobileNetV4-Conv-Small with three heads, trained on RSCD and converted to Core ML. A paved file can become unpaved. Water, snow, or a severely uneven paved surface can move the warning earlier. The advisory speed stays on the formula. Material needs 4 of the last 6 frames at a confidence of 0.7. Water, snow, and severe stay at 0.8. The records are `ml/sequence-test.json` and `ml/phone-gate.json`. Leave those numbers out of the app and out of a video.
+
+`OnsetNet` remembers where this phone starts braking and can place the warning sooner. Three measured braking starts on that road win over the network. The advisory speed stays on the formula.
+
+## Leave these as they are
+
+The vision model stays on the shipped checkpoint. `ios/RydAR/curves.sqlite` and the four public GeoJSON files stay as shipped. `data/curves/build_curves.py` and `data/fars/compute.py` stay unused for a refresh. OpenStreetMap speed limits stay out of the curve files. The product brief stays out of `docs/`.
