@@ -330,6 +330,16 @@ struct TripMatcher {
         tracks = [:]
     }
 
+    /// Forgets the approach in progress but keeps the trip's mode and tread. A pause means the car
+    /// was parked, so a curve entered before it must not complete as a pass wherever the car resumes.
+    mutating func resetApproach() {
+        streakID = nil
+        streak = 0
+        lastMatchAt = nil
+        spokenThisPass = []
+        tracks = [:]
+    }
+
     mutating func end() {
         driverMode = nil
         streakID = nil
@@ -553,6 +563,8 @@ struct TripMatcher {
             : VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false)
         let cameraUsed = gate.allowsCamera ? camera : nil
         let speed = max(0, fix.speedMps)
+        var contextMemories: [String: ApproachMemory] = [:]
+        var contextOnsets: [String: OnsetMemory] = [:]
         return nearby.compactMap { curve in
             guard canWarn(on: curve) else { return nil }
             let geometry = Geo.sight(
@@ -567,14 +579,17 @@ struct TripMatcher {
             let range = screeningRange(radiusFeet: curve.radiusFeet, surface: fused.0, tread: tread)
             let effective = effectiveSpeedMPH(speedMps: speed, accuracyMps: max(0, fix.speedAccuracyMps))
             let key = approachContextKey(surface: fused.0, radiusFeet: curve.radiusFeet, hour: hour)
-            let memory = memoryForContext(key)
+            let memory = contextMemories[key] ?? memoryForContext(key)
+            contextMemories[key] = memory
+            let contextOnsetMemory = contextOnsets[key] ?? contextOnset(key)
+            contextOnsets[key] = contextOnsetMemory
             let base = baseLookAheadMeters(speedMps: speed)
             let extended = lookAheadMeters(
                 speedMps: speed,
                 memory: memory,
                 vision: visionUsed,
                 curveMemory: curveMemory(curve.id),
-                contextOnset: contextOnset(key),
+                contextOnset: contextOnsetMemory,
                 curveOnset: curveOnset(curve.id),
                 onsetNet: net,
                 radiusFeet: curve.radiusFeet,
@@ -680,7 +695,12 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
     private var latestVision = VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false)
     private var latestCamera: CameraEvidence?
     private var cameraAcceptedAt: Date?
+    /// Written on the motion queue at 100 Hz, read on the main thread once per fix.
     private var horizontalGs: [Double] = []
+    private let motionLock = NSLock()
+    /// Curves near the last database lookup, so a fix does not query and parse JSON every second.
+    private var nearbyCache: (latitude: Double, longitude: Double, curves: [Curve])?
+    private static let nearbyCacheMarginMeters = 100.0
     private var lastSpeedSample: (speed: Double, accuracy: Double, time: Date)?
     private var previousLocation: CLLocation?
     /// True only after an adult or passenger trip has taken the audio session.
@@ -707,10 +727,9 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
 
     /// Opens the bundled curve file. Does not query every row, load Core ML, or start sensors.
     static func bundled() throws -> TripEngine {
-        let url = try BundledCurves.prepareWritableCopy()
-        return TripEngine(
-            store: try SQLiteCurveStore(databaseURL: url),
-            passLog: try PassLog(databaseURL: url),
+        TripEngine(
+            store: try SQLiteCurveStore.openBundled(),
+            passLog: try PassLog(databaseURL: BundledCurves.prepareUserData()),
             speech: SpeechPrompt()
         )
     }
@@ -725,6 +744,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         matcher.begin(driverMode: driverMode, tread: reported)
         tripID = try passLog.startTrip(mode: driverMode, at: date, notes: nil)
         previousLocation = nil
+        nearbyCache = nil
         resetMotionTracking()
         paused = false
         latestVision = VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false)
@@ -768,6 +788,8 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
 
     func pause() {
         paused = true
+        matcher.resetApproach()
+        nearbyCache = nil
         if speechHeld {
             speech.releaseAfterTrip()
             speechHeld = false
@@ -816,11 +838,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         matcher.promptStyle = promptStyle
         matcher.dashEnabled = dashEnabled
         matcher.uploadOptIn = uploadOptIn
-        let nearby = explicit ?? store.curves(
-            nearLatitude: fix.latitude,
-            longitude: fix.longitude,
-            radiusMeters: DriveRules.searchRadiusMeters
-        )
+        let nearby = explicit ?? nearbyCurves(for: fix)
         let update = matcher.ingest(
             fix: fix,
             nearby: nearby,
@@ -874,6 +892,33 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
             : nil
         onHandled?(update, matched)
         return update
+    }
+
+    /// Looks up a wider circle once, then reuses it while the phone stays within the margin.
+    /// Every fix still keeps only the curves inside the search radius, as before.
+    private func nearbyCurves(for fix: LocationFix) -> [Curve] {
+        let margin = Self.nearbyCacheMarginMeters
+        if let cache = nearbyCache,
+           Geo.distanceMeters(
+               fromLat: cache.latitude, fromLon: cache.longitude,
+               toLat: fix.latitude, toLon: fix.longitude
+           ) <= margin {
+            return withinSearchRadius(cache.curves, of: fix)
+        }
+        let wide = store.curves(
+            nearLatitude: fix.latitude,
+            longitude: fix.longitude,
+            radiusMeters: DriveRules.searchRadiusMeters + margin
+        )
+        nearbyCache = (fix.latitude, fix.longitude, wide)
+        return withinSearchRadius(wide, of: fix)
+    }
+
+    private func withinSearchRadius(_ curves: [Curve], of fix: LocationFix) -> [Curve] {
+        curves.filter {
+            Geo.distanceToCurve(latitude: fix.latitude, longitude: fix.longitude, curve: $0)
+                <= DriveRules.searchRadiusMeters
+        }
     }
 
     private func cameraForIngest(at moment: Date) -> CameraEvidence? {
@@ -981,23 +1026,31 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         motionManager.startDeviceMotionUpdates(using: .xArbitraryZVertical, to: motionQueue) { [weak self] motion, _ in
             guard let motion else { return }
             let horizontal = hypot(motion.userAcceleration.x, motion.userAcceleration.y)
-            DispatchQueue.main.async { [weak self] in
-                self?.noteHorizontalG(horizontal)
-            }
+            self?.noteHorizontalG(horizontal)
         }
     }
 
     private func noteHorizontalG(_ value: Double) {
-        guard !paused else { return }
+        motionLock.lock()
+        defer { motionLock.unlock() }
         horizontalGs.append(value)
         if horizontalGs.count > 10 {
             horizontalGs.removeFirst()
         }
     }
 
+    private func meanHorizontalG() -> Double {
+        motionLock.lock()
+        defer { motionLock.unlock() }
+        guard !horizontalGs.isEmpty else { return 0 }
+        return horizontalGs.reduce(0, +) / Double(horizontalGs.count)
+    }
+
     private func resetMotionTracking() {
         lastSpeedSample = nil
+        motionLock.lock()
         horizontalGs.removeAll()
+        motionLock.unlock()
     }
 
     func detectBraking(_ fix: LocationFix) -> Bool {
@@ -1007,7 +1060,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         guard dt > 0.2, dt < 5 else { return false }
         let drop = previous.speed - fix.speedMps
         let deceleration = drop / dt
-        let meanG = horizontalGs.isEmpty ? 0 : horizontalGs.reduce(0, +) / Double(horizontalGs.count)
+        let meanG = meanHorizontalG()
         if meanG >= DriveRules.brakingGs && deceleration >= DriveRules.brakingDeceleration {
             return true
         }

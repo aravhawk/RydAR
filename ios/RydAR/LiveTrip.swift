@@ -210,13 +210,24 @@ final class LiveTripSession {
     }
 
     private func apply(_ reading: DashReading) {
+        let previous = self.reading
         self.reading = reading
+        // The engine needs every frame to keep the evidence fresh. The screen only needs a change.
         engine.updateVision(reading.vision, camera: reading.camera, acceptedAt: reading.acceptedAt ?? Date())
+        guard showsDifferently(previous, reading) else { return }
         if let lastUpdate {
             publishDrive(lastUpdate, curve: lastCurve)
         } else {
             publishIdle()
         }
+    }
+
+    private func showsDifferently(_ old: DashReading, _ new: DashReading) -> Bool {
+        let threshold = DriveRules.materialConfidence
+        return old.state != new.state
+            || old.vision != new.vision
+            || old.camera?.label != new.camera?.label
+            || (old.camera.map { $0.confidence >= threshold }) != (new.camera.map { $0.confidence >= threshold })
     }
 
     private func publishDrive(_ update: TripUpdate, curve: Curve?) {

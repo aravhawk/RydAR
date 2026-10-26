@@ -53,7 +53,7 @@ struct DebriefScreen: View {
                         .font(.largeTitle.bold())
                     Text("\(trip.debrief.overRangePasses.count) curves above the range")
                         .font(.headline)
-                        .foregroundStyle(AuditTheme.accent)
+                        .foregroundStyle(AuditTheme.accentText)
                 }
                 .padding(.vertical, 4)
             }
@@ -74,7 +74,7 @@ struct DebriefScreen: View {
                         Spacer()
                         Text("+\(pass.gapAboveLowEnd, specifier: "%.1f") mph")
                             .font(.headline.monospacedDigit())
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(AuditTheme.warningText)
                     }
                     Text("Approach \(pass.effectiveMPH, specifier: "%.0f") mph")
                         .font(.subheadline)
@@ -136,7 +136,7 @@ struct DebriefScreen: View {
             .padding(.horizontal, 24)
             .accessibilityIdentifier("debriefDone")
         }
-        .alert("Saved", isPresented: Binding(get: { exportMessage != nil }, set: { if !$0 { exportMessage = nil } })) {
+        .alert("Save a copy", isPresented: Binding(get: { exportMessage != nil }, set: { if !$0 { exportMessage = nil } })) {
             Button("OK") { exportMessage = nil }
         } message: { Text(exportMessage ?? "") }
     }

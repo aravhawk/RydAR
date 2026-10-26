@@ -3,17 +3,31 @@ import SQLite3
 
 enum CurveDatabaseError: Error {
     case missingBundle
+    case invalidCurveFile
     case openFailed(String)
     case statementFailed(String)
 }
 
-/// The bundled curve file is read-only. Trip rows live in an Application Support copy.
+/// Two files with two owners, so each can change without touching the other.
+///
+/// Road data (`curves.sqlite`) ships inside the app and is opened read-only where it sits.
+/// An app update replaces it, so new roads reach everyone. It is never copied and never written.
+///
+/// This phone's trips, timing memory, and onset weights live in `passlog.sqlite` in Application
+/// Support. An app update never replaces it. Its tables are versioned by `PassLog.schemaVersion`.
+/// Pass rows name a curve by id, so a road that a later data file drops shows as a plain row.
 enum BundledCurves {
     static func bundleURL() -> URL? {
         Bundle.main.url(forResource: "curves", withExtension: "sqlite")
     }
 
-    static func supportURL() throws -> URL {
+    /// The road file inside the app. Throws if it is missing.
+    static func curvesURL() throws -> URL {
+        guard let url = bundleURL() else { throw CurveDatabaseError.missingBundle }
+        return url
+    }
+
+    private static func supportDirectory() throws -> URL {
         let base = try FileManager.default.url(
             for: .applicationSupportDirectory,
             in: .userDomainMask,
@@ -22,20 +36,71 @@ enum BundledCurves {
         )
         let directory = base.appendingPathComponent("RydAR", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        return directory.appendingPathComponent("curves.sqlite")
+        return directory
     }
 
-    /// Copies the bundle once. Does not query the curves table.
-    static func prepareWritableCopy() throws -> URL {
-        let destination = try supportURL()
-        if FileManager.default.fileExists(atPath: destination.path) {
-            return destination
+    static func passLogURL() throws -> URL {
+        try supportDirectory().appendingPathComponent("passlog.sqlite")
+    }
+
+    /// Where builds before the split kept roads and trips together, as a writable copy of the bundle.
+    static func legacyURL() throws -> URL {
+        try supportDirectory().appendingPathComponent("curves.sqlite")
+    }
+
+    /// The user-data file, with history from a pre-split install moved into it first.
+    /// A failed move is not fatal. The old file stays for the next launch and the app starts clean.
+    static func prepareUserData() throws -> URL {
+        let destination = try passLogURL()
+        do {
+            try migrateLegacy(from: try legacyURL(), to: destination)
+        } catch {
+            print("Moving earlier trips failed, will retry next launch: \(error)")
         }
-        guard let bundled = bundleURL() else {
-            throw CurveDatabaseError.missingBundle
-        }
-        try FileManager.default.copyItem(at: bundled, to: destination)
         return destination
+    }
+
+    private static let legacyTables: [(name: String, columns: String)] = [
+        ("trips", "id, started_at, driver_mode, notes"),
+        ("trip_passes", "id, trip_id, curve_id, direction, v_eff_mph, v_lo_mph, v_hi_mph, spoke, hour_bucket, late, surface_used, radius_band, look_ahead_m, braking_m"),
+        ("approach_memory", "context_key, late_passes, early_passes, onset_count, onset_sum_m"),
+        ("curve_memory", "curve_id, late_passes, early_passes, onset_count, onset_sum_m"),
+        ("onset_net", "id, sample_count, weights, bias"),
+    ]
+
+    /// Copies trips and timing memory out of a combined file, then deletes it to give back the
+    /// space of a second copy of the roads. One transaction, so a failure copies nothing, and
+    /// `INSERT OR IGNORE` makes a retry safe. Returns whether a legacy file was found.
+    @discardableResult
+    static func migrateLegacy(from legacy: URL, to destination: URL) throws -> Bool {
+        let manager = FileManager.default
+        guard manager.fileExists(atPath: legacy.path) else { return false }
+        // Bring an older copy's tables up to the current shape, then let go of it.
+        do { _ = try PassLog(databaseURL: legacy) }
+        do { _ = try PassLog(databaseURL: destination) }
+        do {
+            let connection = try SQLiteConnection(url: destination, readonly: false)
+            try connection.run("ATTACH DATABASE ? AS legacy") { statement in
+                connection.bind(statement, 1, legacy.path)
+            }
+            try connection.execute("BEGIN IMMEDIATE")
+            do {
+                for table in legacyTables {
+                    try connection.execute(
+                        "INSERT OR IGNORE INTO main.\(table.name) (\(table.columns)) SELECT \(table.columns) FROM legacy.\(table.name)"
+                    )
+                }
+                try connection.execute("COMMIT")
+            } catch {
+                try? connection.execute("ROLLBACK")
+                throw error
+            }
+            try connection.execute("DETACH DATABASE legacy")
+        }
+        for suffix in ["", "-wal", "-shm"] {
+            try? manager.removeItem(atPath: legacy.path + suffix)
+        }
+        return true
     }
 }
 
@@ -260,8 +325,21 @@ final class SQLiteCurveStore: CurveStore {
         connection = try SQLiteConnection(url: databaseURL, readonly: true)
     }
 
+    /// Opens the road file in the app bundle, read-only, and checks it holds a curves table.
     static func openBundled() throws -> SQLiteCurveStore {
-        try SQLiteCurveStore(databaseURL: BundledCurves.prepareWritableCopy())
+        let store = try SQLiteCurveStore(databaseURL: BundledCurves.curvesURL())
+        guard store.hasCurveTable() else { throw CurveDatabaseError.invalidCurveFile }
+        return store
+    }
+
+    private func hasCurveTable() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        var found = false
+        try? connection.query("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'curves'") { _ in
+            found = true
+        }
+        return found
     }
 
     func curves(nearLatitude latitude: Double, longitude: Double, radiusMeters: Double) -> [Curve] {

@@ -3,6 +3,17 @@ import MapKit
 
 enum AuditTheme {
     static let accent = Color.teal
+    /// Text on a light background. System teal and orange are under 3:1 there.
+    static let accentText = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? .systemTeal
+            : UIColor(red: 0.0, green: 0.40, blue: 0.48, alpha: 1)
+    })
+    static let warningText = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? .systemOrange
+            : UIColor(red: 0.72, green: 0.28, blue: 0.0, alpha: 1)
+    })
     static let background = Color(uiColor: .systemGroupedBackground)
 }
 

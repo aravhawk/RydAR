@@ -130,6 +130,38 @@ final class DashTests: XCTestCase {
         XCTAssertEqual(material.accepted()?.label, DashHead.materialPaved)
     }
 
+    func testUnpavedHoldReleasesWhenTheApproachMovesToAnotherCurve() {
+        let unpaved: [Float] = [0.02, 0.96, 0.02]
+        let paved: [Float] = [0.92, 0.05, 0.03]
+        var material = DashWindows().material
+        material.noteCurveApproach("bend")
+        for _ in 0..<6 { _ = material.observe(unpaved) }
+        for _ in 0..<6 { _ = material.observe(paved) }
+        XCTAssertEqual(material.accepted()?.label, DashHead.materialUnpaved)
+
+        material.noteCurveApproach(nil)
+        XCTAssertEqual(material.accepted()?.label, DashHead.materialUnpaved)
+
+        material.noteCurveApproach("elsewhere")
+        XCTAssertEqual(material.accepted()?.label, DashHead.materialPaved)
+    }
+
+    func testUnpavedHoldExpiresAfterTheMaximumHold() {
+        let unpaved: [Float] = [0.02, 0.96, 0.02]
+        let paved: [Float] = [0.92, 0.05, 0.03]
+        let start = Date(timeIntervalSince1970: 1_000)
+        var material = DashWindows().material
+        material.noteCurveApproach("bend", now: start)
+        for _ in 0..<6 { _ = material.observe(unpaved, now: start) }
+        var accepted: DashVote?
+        for _ in 0..<6 { accepted = material.observe(paved, now: start.addingTimeInterval(30)) }
+        XCTAssertEqual(accepted?.label, DashHead.materialUnpaved)
+
+        let late = start.addingTimeInterval(DashConsensus.maxHold)
+        for _ in 0..<6 { accepted = material.observe(paved, now: late) }
+        XCTAssertEqual(accepted?.label, DashHead.materialPaved)
+    }
+
     func testDryWetAndSmoothChangeNothingAndWaterOrSevereOnlyMoveEarlier() {
         let dry = DashVote(label: DashHead.frictionDry, confidence: 0.9)
         let wet = DashVote(label: DashHead.frictionWet, confidence: 0.9)

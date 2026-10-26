@@ -16,11 +16,16 @@ extension PromptPlaying {
 }
 
 /// Playback session, voice-prompt mode. Other navigation speech is interrupted so this alert is not queued behind it.
-/// The session stays active for the whole trip. The only spoken sentence is `spokenWarning`.
+/// The session stays active for the whole trip but only mixes with other audio. It ducks and interrupts
+/// while an alert plays, then goes back to mixing so music returns to full volume.
+/// The only spoken sentence is `spokenWarning`.
 final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegate {
     static let category: AVAudioSession.Category = .playback
     static let mode: AVAudioSession.Mode = .voicePrompt
+    /// While an alert plays.
     static let options: AVAudioSession.CategoryOptions = [.duckOthers, .interruptSpokenAudioAndMixWithOthers]
+    /// Between alerts: keep the session, leave other audio alone.
+    static let idleOptions: AVAudioSession.CategoryOptions = [.mixWithOthers]
     static var line: String { spokenWarning }
 
     private let synthesizer = AVSpeechSynthesizer()
@@ -28,6 +33,7 @@ final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, 
     /// Category changes and setActive block long enough for AVAudioSession to warn on the main thread.
     private let sessionQueue = DispatchQueue(label: "rydar.audio-session", qos: .userInitiated)
     private var player: AVAudioPlayer?
+    private lazy var chime: Data = chimeWAV()
     private var holding = false
     private var voice: AVSpeechSynthesisVoice?
     /// Incremented on release so an in-flight activation cannot speak or chime after the trip ends.
@@ -42,7 +48,7 @@ final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, 
         holding = true
         voice = AVSpeechSynthesisVoice(language: "en-US")
         let generation = playbackGeneration
-        activateSession { [weak self] in
+        activateSession(alert: false) { [weak self] in
             guard let self, generation == self.playbackGeneration else { return }
             self.haptic.prepare()
         }
@@ -63,16 +69,16 @@ final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, 
         releaseSession()
     }
 
-    func activateSession() throws {
+    func activateSession(alert: Bool = true) throws {
         let session = AVAudioSession.sharedInstance()
-        try session.setCategory(Self.category, mode: Self.mode, options: Self.options)
+        try session.setCategory(Self.category, mode: Self.mode, options: alert ? Self.options : Self.idleOptions)
         try session.setAllowHapticsAndSystemSoundsDuringRecording(true)
         try session.setActive(true)
     }
 
     func speakWarning() throws {
         let generation = playbackGeneration
-        activateSession { [weak self] in
+        activateSession(alert: true) { [weak self] in
             guard let self, generation == self.playbackGeneration else { return }
             self.player?.stop()
             if self.synthesizer.isSpeaking {
@@ -88,14 +94,14 @@ final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, 
 
     func playChime() throws {
         let generation = playbackGeneration
-        activateSession { [weak self] in
+        activateSession(alert: true) { [weak self] in
             guard let self, generation == self.playbackGeneration else { return }
             if self.synthesizer.isSpeaking {
                 self.synthesizer.stopSpeaking(at: .immediate)
             }
             let player: AVAudioPlayer
             do {
-                player = try AVAudioPlayer(data: self.chimeWAV())
+                player = try AVAudioPlayer(data: self.chime)
             } catch {
                 return
             }
@@ -106,19 +112,32 @@ final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, 
     }
 
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        if !holding { releaseSession() }
+        alertFinished()
     }
 
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        if !holding { releaseSession() }
+        alertFinished()
+    }
+
+    /// Inside a trip, drop back to mixing so other audio returns to full volume. Outside one, release.
+    private func alertFinished() {
+        guard holding else {
+            releaseSession()
+            return
+        }
+        let generation = playbackGeneration
+        sessionQueue.async { [weak self] in
+            guard let self, generation == self.playbackGeneration else { return }
+            try? self.activateSession(alert: false)
+        }
     }
 
     /// Configures the shared session off the main thread, then continues on the main thread.
-    private func activateSession(then completion: @escaping () -> Void) {
+    private func activateSession(alert: Bool, then completion: @escaping () -> Void) {
         sessionQueue.async { [weak self] in
             guard let self else { return }
             do {
-                try self.activateSession()
+                try self.activateSession(alert: alert)
             } catch {
                 return
             }

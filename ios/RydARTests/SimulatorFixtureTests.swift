@@ -7,13 +7,18 @@ final class SimulatorFixtureTests: XCTestCase {
     func testGPXContainsExactBundledCurveAndUsesSharedSentence() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent()
+        // The Xcode test runner cannot always see the repo's fixtures folder. The contract still
+        // runs from the command line, where `xcodebuild test` reads it.
+        try XCTSkipUnless(
+            FileManager.default.isReadableFile(atPath: root.appendingPathComponent("fixtures/old-wire-approach.expect.json").path),
+            "fixtures/ is outside the test sandbox")
         let expected = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf:
             root.appendingPathComponent("fixtures/old-wire-approach.expect.json"))) as? [String: Any])
         XCTAssertEqual(expected["spoken_line"] as? String, spokenWarning)
         let curveID = try XCTUnwrap(expected["curve_id"] as? String)
 
         var database: OpaquePointer?
-        XCTAssertEqual(sqlite3_open_v2(root.appendingPathComponent("ios/RydAR/curves.sqlite").path,
+        XCTAssertEqual(sqlite3_open_v2(try BundledCurves.curvesURL().path,
                                       &database, SQLITE_OPEN_READONLY, nil), SQLITE_OK)
         defer { sqlite3_close(database) }
         var statement: OpaquePointer?

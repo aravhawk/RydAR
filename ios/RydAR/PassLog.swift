@@ -61,6 +61,9 @@ func contextSaysLate(_ memory: ApproachMemory) -> Bool {
 }
 
 final class PassLog {
+    /// Stored in the file's `user_version`. Raise it with a migration step in `init` when a table changes.
+    static let schemaVersion = 1
+
     private let connection: SQLiteConnection
     private let lock = NSLock()
     private let dates = ISO8601DateFormatter()
@@ -110,10 +113,12 @@ final class PassLog {
             );
             """
         )
+        try connection.execute("CREATE INDEX IF NOT EXISTS trip_passes_curve ON trip_passes (curve_id);")
         try connection.execute("DROP TABLE IF EXISTS approach_model;")
         try ensureBrakingColumn()
         try ensureOnsetColumns()
         try ensureOnsetNet()
+        try connection.execute("PRAGMA user_version = \(Self.schemaVersion);")
     }
 
     /// Copies made before braking distance was stored still open.
@@ -462,11 +467,18 @@ final class PassLog {
     func deleteAll() throws {
         lock.lock()
         defer { lock.unlock() }
-        try connection.execute("DELETE FROM trip_passes;")
-        try connection.execute("DELETE FROM approach_memory;")
-        try connection.execute("DELETE FROM curve_memory;")
-        try connection.execute("DELETE FROM trips;")
-        try connection.execute("DELETE FROM onset_net;")
+        try connection.execute("BEGIN IMMEDIATE")
+        do {
+            try connection.execute("DELETE FROM trip_passes;")
+            try connection.execute("DELETE FROM approach_memory;")
+            try connection.execute("DELETE FROM curve_memory;")
+            try connection.execute("DELETE FROM trips;")
+            try connection.execute("DELETE FROM onset_net;")
+            try connection.execute("COMMIT")
+        } catch {
+            try? connection.execute("ROLLBACK")
+            throw error
+        }
     }
 
     /// Caller holds the lock, inside record()'s transaction. Do not lock again.

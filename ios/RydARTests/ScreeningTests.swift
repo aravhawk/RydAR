@@ -393,6 +393,9 @@ final class ScreeningTests: XCTestCase {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .appendingPathComponent("fixtures/trace.expect.json")
+        // The Xcode test runner cannot always see the repo's fixtures folder. The contract still
+        // runs from the command line, where `xcodebuild test` reads it.
+        try XCTSkipUnless(FileManager.default.isReadableFile(atPath: url.path), "fixtures/ is outside the test sandbox")
         let data = try Data(contentsOf: url)
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         XCTAssertEqual(json?["spoken_line"] as? String, spokenWarning)
