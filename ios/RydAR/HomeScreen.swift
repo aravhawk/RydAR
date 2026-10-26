@@ -19,7 +19,7 @@ struct HomeScreen: View {
                     Text(dashEnabled ? "Dash is on." : "Co-pilot. Camera off.")
                         .font(.title3)
                         .foregroundStyle(.secondary)
-                    Text("Alerts speak with Maps in front. Not for an under-18 driver.")
+                    Text("Alerts speak with Maps in front. Not for a teen driver.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     if !trip.timingNote.isEmpty {

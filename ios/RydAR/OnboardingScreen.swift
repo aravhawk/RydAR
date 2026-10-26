@@ -59,7 +59,7 @@ struct OnboardingScreen: View {
                     Text("“\(spokenWarning)”")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    Text("Under 18: no voice, camera, or upload.")
+                    Text("Teen driver: no voice, camera, or upload.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -74,7 +74,7 @@ struct OnboardingScreen: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Dash is on")
                         .font(.headline)
-                    Text("Reads the surface. Paved can only become unpaved. Off under 18.")
+                    Text("Reads the surface. Paved can only become unpaved. Off for a teen driver.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -91,7 +91,7 @@ struct OnboardingScreen: View {
                     Text("This is how counties learn which curves need fixing. You can turn it off in Settings.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    Text("Published after 20. Off under 18.")
+                    Text("Published after 20. Off for a teen driver.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -232,7 +232,7 @@ struct DriverGateScreen: View {
         NavigationStack {
             Form {
                 Section {
-                    ForEach([DriverMode.adult, .passenger, .under18], id: \.rawValue) { mode in
+                    ForEach([DriverMode.adult, .under18], id: \.rawValue) { mode in
                         Button {
                             selection = mode
                         } label: {

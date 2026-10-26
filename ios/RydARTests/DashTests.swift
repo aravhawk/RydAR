@@ -284,7 +284,7 @@ final class DashTests: XCTestCase {
         DashPreference.isOn = false
         let copilot = SpyDash()
         let copilotHarness = try makeSession(camera: copilot)
-        copilotHarness.bridge.start(mode: .passenger, style: .short, uploadOptIn: false)
+        copilotHarness.bridge.start(mode: .adult, style: .short, uploadOptIn: false)
         XCTAssertEqual(copilot.starts, 0)
         XCTAssertEqual(copilotHarness.bridge.drive.cameraStatus, "Off · Co-pilot mode")
         XCTAssertNil(copilotHarness.bridge.drive.cameraEvidence)
@@ -386,6 +386,6 @@ private final class IdleCurves: CurveStore {
 }
 
 private final class IdleSpeech: PromptPlaying {
-    func speakWarning() throws {}
+    func speakWarning(_ line: String) throws {}
     func playChime() throws {}
 }

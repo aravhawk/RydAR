@@ -57,7 +57,8 @@ final class LiveTripTests: XCTestCase {
         )
         XCTAssertNil(harness.bridge.drive.cameraEvidence)
         XCTAssertEqual(harness.bridge.drive.cameraThreshold, DriveRules.materialConfidence)
-        XCTAssertEqual(harness.speech.spoken, [spokenWarning])
+        XCTAssertEqual(harness.speech.spoken, [spokenCurveWarning(advisoryMPH: advisorySpeedMPH(screeningRange(radiusFeet: 200, surface: .paved)))])
+        XCTAssertEqual(harness.bridge.drive.advisoryNotice, harness.speech.spoken.first)
         XCTAssertEqual(harness.speech.chimes, 0)
         harness.bridge.setPaused(true)
         XCTAssertTrue(harness.bridge.drive.isPaused)
@@ -68,7 +69,7 @@ final class LiveTripTests: XCTestCase {
     func testChimeOnlyDoesNotSpeak() throws {
         let harness = try makeHarness()
         let start = date(hour: 14)
-        harness.bridge.start(mode: .passenger, style: .chimeOnly, uploadOptIn: false)
+        harness.bridge.start(mode: .adult, style: .chimeOnly, uploadOptIn: false)
         let curve = line(id: "c", north: 80)
         for index in 0..<3 {
             let when = start.addingTimeInterval(Double(index))
@@ -361,6 +362,6 @@ private final class SpyUpload: PassSending {
 private final class SpySpeech: PromptPlaying {
     var spoken: [String] = []
     var chimes = 0
-    func speakWarning() throws { spoken.append(spokenWarning) }
+    func speakWarning(_ line: String) throws { spoken.append(line) }
     func playChime() throws { chimes += 1 }
 }

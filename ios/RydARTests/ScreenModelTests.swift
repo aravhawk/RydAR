@@ -39,7 +39,7 @@ final class ScreenModelTests: XCTestCase {
             XCTAssertEqual(uploads, [false])
             XCTAssertTrue(trip.debrief.passes.isEmpty)
             XCTAssertNil(trip.drive.distanceMeters)
-            trip.start(mode: .passenger, style: .short, uploadOptIn: true)
+            trip.start(mode: .adult, style: .short, uploadOptIn: true)
             XCTAssertEqual(uploads, [false, true])
         }
     }

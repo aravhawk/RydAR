@@ -7,6 +7,7 @@ struct RydARApp: App {
     private let session: LiveTripSession?
 
     init() {
+        DriverMode.migrateStoredSelection()
         do {
             let curves = try SQLiteCurveStore.openBundled()
             let engine = try TripEngine.bundled()

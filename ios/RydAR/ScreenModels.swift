@@ -40,6 +40,8 @@ struct DriveScreenSnapshot {
     var screeningRange: ScreeningRange?
     /// Co-pilot unless this trip opened the camera.
     var tripTitle = "Co-pilot"
+    /// Advisory sentence for this approach, including the mph to slow to.
+    var advisoryNotice: String?
 }
 
 struct TripCurvePass: Identifiable {

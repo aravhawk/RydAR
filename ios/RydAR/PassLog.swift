@@ -118,7 +118,13 @@ final class PassLog {
         try ensureBrakingColumn()
         try ensureOnsetColumns()
         try ensureOnsetNet()
+        try migratePassengerTrips()
         try connection.execute("PRAGMA user_version = \(Self.schemaVersion);")
+    }
+
+    /// Passenger mode is gone. Those trips are Driver trips.
+    private func migratePassengerTrips() throws {
+        try connection.execute("UPDATE trips SET driver_mode = 'adult' WHERE driver_mode = 'passenger';")
     }
 
     /// Copies made before braking distance was stored still open.
@@ -188,7 +194,7 @@ final class PassLog {
         try connection.query(
             "SELECT id, started_at, driver_mode, notes FROM trips WHERE id = ?",
             { statement in
-                guard let mode = DriverMode(rawValue: self.connection.text(statement, 2)) else { return }
+                guard let mode = DriverMode.fromStored(self.connection.text(statement, 2)) else { return }
                 let notes = self.connection.isNull(statement, 3) ? nil : self.connection.text(statement, 3)
                 found = TripRecord(
                     id: self.connection.text(statement, 0),
