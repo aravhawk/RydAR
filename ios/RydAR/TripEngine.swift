@@ -627,6 +627,8 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
     private var horizontalGs: [Double] = []
     private var lastSpeedSample: (speed: Double, time: Date)?
     private var previousLocation: CLLocation?
+    private var askedForAlways = false
+    private let precisePurposeKey = "PreciseCurve"
     private let motionQueue: OperationQueue = {
         let queue = OperationQueue()
         queue.name = "com.rydar.motion"
@@ -640,10 +642,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         self.speech = speech
         super.init()
         locationManager.delegate = self
-        locationManager.pausesLocationUpdatesAutomatically = false
-        locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
-        locationManager.activityType = .automotiveNavigation
-        locationManager.distanceFilter = kCLDistanceFilterNone
+        configurePreciseLocation()
         motionManager.deviceMotionUpdateInterval = 0.01
     }
 
@@ -679,6 +678,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
 
     func endTrip() {
         paused = false
+        askedForAlways = false
         speech.releaseAfterTrip()
         DriveLiveActivity.end()
         locationManager.stopUpdatingLocation()
@@ -819,7 +819,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         guard tripID != nil, !paused else { return }
-        enableBackgroundUpdatesIfAuthorized()
+        beginPreciseBackgroundUpdates()
     }
 
     deinit {
@@ -828,21 +828,38 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
     }
 
     private func startSensorsIfNeeded() {
-        locationManager.pausesLocationUpdatesAutomatically = false
-        enableBackgroundUpdatesIfAuthorized()
-        locationManager.requestWhenInUseAuthorization()
-        locationManager.startUpdatingLocation()
+        beginPreciseBackgroundUpdates()
         startMotion()
     }
 
-    private func enableBackgroundUpdatesIfAuthorized() {
+    /// Best-for-navigation accuracy, Precise Location, and location updates that continue with Maps in front.
+    private func configurePreciseLocation() {
+        locationManager.pausesLocationUpdatesAutomatically = false
+        locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
+        locationManager.activityType = .automotiveNavigation
+        locationManager.distanceFilter = kCLDistanceFilterNone
+    }
+
+    private func beginPreciseBackgroundUpdates() {
+        configurePreciseLocation()
         switch locationManager.authorizationStatus {
-        case .authorizedAlways, .authorizedWhenInUse:
-            locationManager.allowsBackgroundLocationUpdates = true
-            locationManager.showsBackgroundLocationIndicator = true
+        case .notDetermined:
+            locationManager.requestWhenInUseAuthorization()
+        case .authorizedWhenInUse where !askedForAlways:
+            askedForAlways = true
+            locationManager.requestAlwaysAuthorization()
         default:
             break
         }
+        if locationManager.accuracyAuthorization == .reducedAccuracy {
+            locationManager.requestTemporaryFullAccuracyAuthorization(withPurposeKey: precisePurposeKey)
+        }
+        if locationManager.authorizationStatus == .authorizedAlways
+            || locationManager.authorizationStatus == .authorizedWhenInUse {
+            locationManager.allowsBackgroundLocationUpdates = true
+            locationManager.showsBackgroundLocationIndicator = true
+        }
+        locationManager.startUpdatingLocation()
     }
 
     private func startMotion() {

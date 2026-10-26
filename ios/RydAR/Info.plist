@@ -10,6 +10,16 @@
 	<array>
 		<string>location</string>
 		<string>audio</string>
+		<string>processing</string>
+	</array>
+	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
+	<dict>
+		<key>PreciseCurve</key>
+		<string>RydAR needs your precise location to match the curve you are approaching.</string>
+	</dict>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>org.rydar.app.trip</string>
 	</array>
 </dict>
 </plist>

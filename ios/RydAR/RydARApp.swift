@@ -1,10 +1,16 @@
+import BackgroundTasks
 import SwiftUI
+
+private let tripBackgroundID = "org.rydar.app.trip"
 
 @main
 struct RydARApp: App {
     private let session: LiveTripSession
 
     init() {
+        BGTaskScheduler.shared.register(forTaskWithIdentifier: tripBackgroundID, using: nil) { task in
+            task.setTaskCompleted(success: true)
+        }
         do {
             let curves = try SQLiteCurveStore.openBundled()
             let engine = try TripEngine.bundled()
