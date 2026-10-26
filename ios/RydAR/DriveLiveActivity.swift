@@ -1,17 +1,47 @@
 import ActivityKit
 import Foundation
 
+/// Orders start and stop so a trip that ends while the previous activity is
+/// still closing cannot leave a lock-screen card up, or erase the new one.
+struct ActivitySession: Equatable {
+    private(set) var generation = 0
+    private(set) var active = false
+
+    mutating func begin() -> Int {
+        generation += 1
+        active = true
+        return generation
+    }
+
+    mutating func end() -> Int {
+        generation += 1
+        active = false
+        return generation
+    }
+
+    func shouldStart(_ token: Int) -> Bool {
+        active && token == generation
+    }
+
+    func shouldStop(_ token: Int) -> Bool {
+        !active && token == generation
+    }
+}
+
 enum DriveLiveActivity {
     private static var last: DriveActivityAttributes.ContentState?
-    private static var active = false
+    private static var session = ActivitySession()
 
     static func begin(speaks: Bool) {
-        active = true
-        if last == nil { last = waiting(speaks: speaks) }
+        let token = session.begin()
+        last = waiting(speaks: speaks)
         Task { @MainActor in
+            guard session.shouldStart(token) else { return }
             for activity in Activity<DriveActivityAttributes>.activities {
                 await activity.end(nil, dismissalPolicy: .immediate)
+                guard session.shouldStart(token) else { return }
             }
+            guard session.shouldStart(token) else { return }
             guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
             let state = last ?? waiting(speaks: speaks)
             _ = try? Activity.request(
@@ -27,14 +57,15 @@ enum DriveLiveActivity {
         let state = content(drive, speaks: speaks)
         guard state != last else { return }
         last = state
-        guard active else { return }
+        guard session.active else { return }
         update(state)
     }
 
     static func end() {
-        active = false
+        let token = session.end()
         last = nil
         Task { @MainActor in
+            guard session.shouldStop(token) else { return }
             for activity in Activity<DriveActivityAttributes>.activities {
                 await activity.end(nil, dismissalPolicy: .immediate)
             }

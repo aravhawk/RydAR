@@ -46,6 +46,15 @@ enum TreadStore {
         UserDefaults.standard.set(0.0, forKey: metersKey)
     }
 
+    /// A parked phone drifts. Only a moving fix, over a short gap, counts toward the next tread check.
+    static func countsTowardReview(meters: Double, speedMps: Double, elapsed: TimeInterval) -> Bool {
+        guard speedMps >= DriveRules.movingSpeedMps else { return false }
+        guard meters > 0, meters < 300 else { return false }
+        guard elapsed > 0, elapsed < 30 else { return false }
+        let fastest = speedMps * elapsed * 1.5 + 15
+        return meters <= fastest
+    }
+
     /// Distance comes from GPS fixes on this phone, not the car's odometer.
     static func addMeters(_ meters: Double) {
         guard meters > 0, meters < 300, choice != nil else { return }

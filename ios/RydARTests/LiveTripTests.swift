@@ -59,6 +59,10 @@ final class LiveTripTests: XCTestCase {
         XCTAssertEqual(harness.bridge.drive.cameraThreshold, DriveRules.materialConfidence)
         XCTAssertEqual(harness.speech.spoken, [spokenWarning])
         XCTAssertEqual(harness.speech.chimes, 0)
+        harness.bridge.setPaused(true)
+        XCTAssertTrue(harness.bridge.drive.isPaused)
+        XCTAssertEqual(harness.bridge.drive.nextCurve?.id, "c")
+        XCTAssertEqual(harness.bridge.drive.gpsStatus, "GPS ready")
     }
 
     func testChimeOnlyDoesNotSpeak() throws {

@@ -30,6 +30,21 @@ final class TripEngineTests: XCTestCase {
         XCTAssertFalse(gpsIsGood(still, now: now))
         XCTAssertEqual(gpsStatusText(for: lost, now: now), "Waiting for location")
         XCTAssertEqual(gpsStatusText(for: ready, now: now), "GPS ready")
+        let coarse = LocationFix(
+            latitude: baseLat, longitude: baseLon, speedMps: 12, speedAccuracyMps: 1,
+            courseDegrees: 90, horizontalAccuracyMeters: 120, timestamp: now
+        )
+        XCTAssertEqual(gpsStatusText(for: coarse, now: now), "Location is too coarse")
+        XCTAssertFalse(gpsIsGood(coarse, now: now))
+        let noCourse = LocationFix(
+            latitude: baseLat, longitude: baseLon, speedMps: 12, speedAccuracyMps: 1,
+            courseDegrees: -1, horizontalAccuracyMeters: 8, timestamp: now
+        )
+        XCTAssertEqual(gpsStatusText(for: noCourse, now: now), "Direction unknown")
+        XCTAssertEqual(locationBanner(authorization: .denied, accuracy: .fullAccuracy), "Location is off")
+        XCTAssertEqual(locationBanner(authorization: .restricted, accuracy: .fullAccuracy), "Location is off")
+        XCTAssertEqual(locationBanner(authorization: .authorizedWhenInUse, accuracy: .reducedAccuracy), "Precise location is off")
+        XCTAssertEqual(locationBanner(authorization: .authorizedAlways, accuracy: .fullAccuracy), "Waiting for location")
     }
 
     func testSpeechSessionUsesTheVoicePrompt() {
@@ -105,11 +120,86 @@ final class TripEngineTests: XCTestCase {
         XCTAssertTrue(harness.speech.spoken.isEmpty)
         XCTAssertEqual(harness.speech.chimes, 0)
         XCTAssertEqual(harness.speech.taps, 0)
+        XCTAssertEqual(harness.speech.holds, 0)
 
         let parked = harness.engine.handle(fix: fix(speed: 0, at: moment), nearby: [], now: moment)
         XCTAssertFalse(parked.gate.allowsSound)
         XCTAssertFalse(parked.gate.allowsCamera)
         XCTAssertFalse(parked.gate.allowsUpload)
+    }
+
+    func testUnder18DoesNotArmAudioAndPauseReleasesItForAnAdult() throws {
+        let harness = try makeHarness()
+        let start = date(hour: 14)
+        try harness.engine.beginTrip(driverMode: .under18, at: start, startSensors: true)
+        XCTAssertEqual(harness.speech.holds, 0)
+        harness.engine.pause()
+        harness.engine.resume()
+        XCTAssertEqual(harness.speech.holds, 0)
+        XCTAssertEqual(harness.speech.releases, 0)
+        harness.engine.endTrip()
+
+        try harness.engine.beginTrip(driverMode: .passenger, at: start, startSensors: true)
+        XCTAssertEqual(harness.speech.holds, 1)
+        harness.engine.pause()
+        XCTAssertEqual(harness.speech.releases, 1)
+        harness.engine.resume()
+        XCTAssertEqual(harness.speech.holds, 2)
+        harness.engine.endTrip()
+        XCTAssertEqual(harness.speech.releases, 2)
+    }
+
+    func testGpsNoiseAndANewTripDoNotCountAsBraking() throws {
+        let harness = try makeHarness()
+        let start = date(hour: 14)
+        XCTAssertFalse(harness.engine.detectBraking(fix(speed: 20, speedAccuracy: 0.4, at: start)))
+        XCTAssertFalse(harness.engine.detectBraking(fix(speed: 19.5, speedAccuracy: 0.4, at: start.addingTimeInterval(0.3))))
+        try harness.engine.beginTrip(driverMode: .adult, at: start, startSensors: false)
+        XCTAssertFalse(harness.engine.detectBraking(fix(speed: 20, speedAccuracy: 0.2, at: start)))
+        XCTAssertTrue(harness.engine.detectBraking(fix(speed: 15, speedAccuracy: 0.2, at: start.addingTimeInterval(1))))
+        harness.engine.endTrip()
+        try harness.engine.beginTrip(driverMode: .adult, at: start.addingTimeInterval(1), startSensors: false)
+        XCTAssertFalse(harness.engine.detectBraking(fix(speed: 5, speedAccuracy: 0, at: start.addingTimeInterval(1.4))))
+    }
+
+    func testABrakeOutsideTheWarningWindowDoesNotSetOnset() throws {
+        let harness = try makeHarness()
+        let start = date(hour: 14)
+        try harness.engine.beginTrip(driverMode: .adult, at: start, startSensors: false)
+        let curve = line(id: "bend", north: 400, length: 40)
+        var completed = 0
+        var north = 0.0
+        for index in 0..<40 {
+            let when = start.addingTimeInterval(Double(index))
+            let update = harness.engine.handle(
+                fix: fix(north: north, speed: 20, speedAccuracy: 0, at: when),
+                nearby: [curve],
+                braking: (400 - north) > 200,
+                now: when
+            )
+            completed += update.completed.count
+            north += 20
+            if completed > 0 { break }
+        }
+        XCTAssertEqual(completed, 1)
+        let tripID = try XCTUnwrap(harness.engine.snapshot.tripID)
+        let rows = try harness.log.passes(forTrip: tripID)
+        XCTAssertEqual(rows.count, 1)
+        XCTAssertNil(rows[0].pass.brakingDistanceMeters)
+        XCTAssertEqual(try harness.log.onset(forCurve: "bend").count, 0)
+    }
+
+    func testAStaleLiveActivityTokenDoesNotStartOrStopTheNextTrip() {
+        var session = ActivitySession()
+        let first = session.begin()
+        XCTAssertTrue(session.shouldStart(first))
+        let ended = session.end()
+        XCTAssertFalse(session.shouldStart(first))
+        XCTAssertTrue(session.shouldStop(ended))
+        let second = session.begin()
+        XCTAssertFalse(session.shouldStop(ended))
+        XCTAssertTrue(session.shouldStart(second))
+        XCTAssertTrue(session.active)
     }
 
     func testPassengerChimeDoesNotSpeakASpeed() throws {
@@ -489,7 +579,11 @@ private final class SpyPrompt: PromptPlaying {
     var spoken: [String] = []
     var chimes = 0
     var taps = 0
+    var holds = 0
+    var releases = 0
     func speakWarning() throws { spoken.append(spokenWarning) }
     func playChime() throws { chimes += 1 }
     func playCurveTap() { taps += 1 }
+    func holdForTrip() { holds += 1 }
+    func releaseAfterTrip() { releases += 1 }
 }

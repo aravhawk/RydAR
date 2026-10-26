@@ -51,6 +51,9 @@ struct TripCurvePass: Identifiable {
     var surfaceUsed: RoadSurface
     var brakingDistanceMeters: Double?
     var apparentTiltDegrees: Double?
+    /// Direction and hour the anonymous upload contract accepts or rejects.
+    var direction: String = ""
+    var hourBucket: Int = 0
     var gapAboveLowEnd: Double { max(0, effectiveMPH - range.low) }
 }
 

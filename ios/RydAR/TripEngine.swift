@@ -263,8 +263,26 @@ func gpsStatusText(for fix: LocationFix, now: Date) -> String {
     let fresh = age >= -1 && age <= DriveRules.gpsMaxAgeSeconds
     let motionUnknown = fix.speedMps < 0 || fix.speedAccuracyMps < 0
         || fix.courseDegrees < 0 || fix.courseDegrees > 360
-    if positioned && fresh && motionUnknown { return "Standing still" }
+    if positioned && fresh && motionUnknown {
+        if fix.speedMps >= DriveRules.movingSpeedMps { return "Direction unknown" }
+        return "Standing still"
+    }
+    if fresh, fix.horizontalAccuracyMeters > DriveRules.gpsAccuracyLimitMeters, fix.horizontalAccuracyMeters.isFinite {
+        return "Location is too coarse"
+    }
     return "Waiting for location"
+}
+
+/// What to show before a usable fix arrives. A denied or reduced-accuracy
+/// choice is not still loading.
+func locationBanner(authorization: CLAuthorizationStatus, accuracy: CLAccuracyAuthorization) -> String {
+    switch authorization {
+    case .denied, .restricted:
+        return "Location is off"
+    default:
+        if accuracy == .reducedAccuracy { return "Precise location is off" }
+        return "Waiting for location"
+    }
 }
 
 func canWarn(on curve: Curve) -> Bool {
@@ -441,7 +459,10 @@ struct TripMatcher {
             if item.distance <= DriveRules.lateSpeedMeters && shouldSpeak(effectiveSpeed: item.effective, range: item.range) {
                 track.fastInside40 = true
             }
-            if braking, !ambiguous, hot.first?.curve.id == item.curve.id, track.brakingOnset == nil {
+            // A brake beyond this warning window is for something else. Counting it
+            // as an early curve brake blocks a later, real onset from moving the prompt.
+            if braking, !ambiguous, hot.first?.curve.id == item.curve.id, track.brakingOnset == nil,
+               item.distance <= item.lookAhead {
                 track.brakingOnset = item.distance
                 track.baseWhenBraking = item.baseLookAhead
                 track.onsetSpeedMps = max(0, fix.speedMps)
@@ -645,6 +666,8 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
     var tread: TreadChoice = .unsure
     /// Screen hook. The engine still matches, speaks, and logs. The screen does not.
     var onHandled: ((TripUpdate, Curve?) -> Void)?
+    /// Fires when location permission changes during a trip, including a denial.
+    var onLocationAuthorization: (() -> Void)?
     private(set) var snapshot = DriveSnapshot()
 
     private let store: any CurveStore
@@ -658,8 +681,10 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
     private var latestCamera: CameraEvidence?
     private var cameraAcceptedAt: Date?
     private var horizontalGs: [Double] = []
-    private var lastSpeedSample: (speed: Double, time: Date)?
+    private var lastSpeedSample: (speed: Double, accuracy: Double, time: Date)?
     private var previousLocation: CLLocation?
+    /// True only after an adult or passenger trip has taken the audio session.
+    private var speechHeld = false
     private let precisePurposeKey = "PreciseCurve"
     private let askedAlwaysKey = "rydar.askedAlwaysLocation"
     private let askedPreciseKey = "rydar.askedPreciseLocation"
@@ -691,11 +716,16 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
     }
 
     func beginTrip(driverMode: DriverMode, at date: Date = Date(), startSensors: Bool = true) throws {
+        if speechHeld {
+            speech.releaseAfterTrip()
+            speechHeld = false
+        }
         let reported = TreadStore.choice ?? .unsure
         tread = reported
         matcher.begin(driverMode: driverMode, tread: reported)
         tripID = try passLog.startTrip(mode: driverMode, at: date, notes: nil)
         previousLocation = nil
+        resetMotionTracking()
         paused = false
         latestVision = VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false)
         latestCamera = nil
@@ -705,19 +735,27 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         snapshot.paused = false
         sensorsWanted = startSensors
         guard startSensors else { return }
-        speech.holdForTrip()
+        if allowsInDriveSound(driverMode) {
+            speech.holdForTrip()
+            speechHeld = true
+        }
         startSensorsIfNeeded()
-        DriveLiveActivity.begin(speaks: driverMode != .under18)
+        DriveLiveActivity.begin(speaks: allowsInDriveSound(driverMode))
     }
 
     func endTrip() {
+        let releaseSpeech = speechHeld
+        speechHeld = false
         paused = false
-        speech.releaseAfterTrip()
+        if releaseSpeech {
+            speech.releaseAfterTrip()
+        }
         DriveLiveActivity.end()
         locationManager.stopUpdatingLocation()
         if motionManager.isDeviceMotionActive {
             motionManager.stopDeviceMotionUpdates()
         }
+        resetMotionTracking()
         matcher.end()
         tripID = nil
         latestVision = VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false)
@@ -730,10 +768,15 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
 
     func pause() {
         paused = true
+        if speechHeld {
+            speech.releaseAfterTrip()
+            speechHeld = false
+        }
         locationManager.stopUpdatingLocation()
         if motionManager.isDeviceMotionActive {
             motionManager.stopDeviceMotionUpdates()
         }
+        resetMotionTracking()
         snapshot.paused = true
     }
 
@@ -742,7 +785,18 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         paused = false
         snapshot.paused = false
         guard sensorsWanted else { return }
+        if matcher.driverMode.map(allowsInDriveSound) == true {
+            speech.holdForTrip()
+            speechHeld = true
+        }
         startSensorsIfNeeded()
+    }
+
+    func waitingStatus() -> String {
+        locationBanner(
+            authorization: locationManager.authorizationStatus,
+            accuracy: locationManager.accuracyAuthorization
+        )
     }
 
     func updateVision(_ caution: VisionCaution, camera: CameraEvidence?, acceptedAt: Date = Date()) {
@@ -857,8 +911,13 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard tripID != nil, !paused, let location = locations.last else { return }
         if let previous = previousLocation,
-           location.horizontalAccuracy >= 0, location.horizontalAccuracy <= 50 {
-            TreadStore.addMeters(location.distance(from: previous))
+           location.horizontalAccuracy >= 0, location.horizontalAccuracy <= 50,
+           previous.horizontalAccuracy >= 0, previous.horizontalAccuracy <= 50 {
+            let elapsed = location.timestamp.timeIntervalSince(previous.timestamp)
+            let moved = location.distance(from: previous)
+            if TreadStore.countsTowardReview(meters: moved, speedMps: location.speed, elapsed: elapsed) {
+                TreadStore.addMeters(moved)
+            }
         }
         previousLocation = location
         let fix = LocationFix(location)
@@ -869,6 +928,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         guard tripID != nil, !paused else { return }
         beginPreciseBackgroundUpdates()
+        onLocationAuthorization?()
     }
 
     deinit {
@@ -928,23 +988,31 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
     }
 
     private func noteHorizontalG(_ value: Double) {
+        guard !paused else { return }
         horizontalGs.append(value)
         if horizontalGs.count > 10 {
             horizontalGs.removeFirst()
         }
     }
 
-    private func detectBraking(_ fix: LocationFix) -> Bool {
-        defer { lastSpeedSample = (fix.speedMps, fix.timestamp) }
+    private func resetMotionTracking() {
+        lastSpeedSample = nil
+        horizontalGs.removeAll()
+    }
+
+    func detectBraking(_ fix: LocationFix) -> Bool {
+        defer { lastSpeedSample = (fix.speedMps, max(0, fix.speedAccuracyMps), fix.timestamp) }
         guard fix.speedMps >= 0, let previous = lastSpeedSample, previous.speed >= 0 else { return false }
         let dt = fix.timestamp.timeIntervalSince(previous.time)
         guard dt > 0.2, dt < 5 else { return false }
-        let deceleration = (previous.speed - fix.speedMps) / dt
+        let drop = previous.speed - fix.speedMps
+        let deceleration = drop / dt
         let meanG = horizontalGs.isEmpty ? 0 : horizontalGs.reduce(0, +) / Double(horizontalGs.count)
         if meanG >= DriveRules.brakingGs && deceleration >= DriveRules.brakingDeceleration {
             return true
         }
-        if !motionManager.isDeviceMotionActive && deceleration >= DriveRules.gpsOnlyDeceleration {
+        let noise = previous.accuracy + max(0, fix.speedAccuracyMps)
+        if !motionManager.isDeviceMotionActive && drop > noise && deceleration >= DriveRules.gpsOnlyDeceleration {
             return true
         }
         return false

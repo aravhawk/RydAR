@@ -122,6 +122,10 @@ final class SQLiteConnection {
         Int(sqlite3_column_int(statement, index))
     }
 
+    func int64(_ statement: OpaquePointer, _ index: Int32) -> Int64 {
+        sqlite3_column_int64(statement, index)
+    }
+
     func bind(_ statement: OpaquePointer, _ index: Int32, _ value: String) {
         _ = value.withCString { pointer in
             sqlite3_bind_text(statement, index, pointer, -1, Self.transient)
@@ -136,6 +140,10 @@ final class SQLiteConnection {
         sqlite3_bind_int(statement, index, Int32(value))
     }
 
+    func bind(_ statement: OpaquePointer, _ index: Int32, _ value: Int64) {
+        sqlite3_bind_int64(statement, index, value)
+    }
+
     func bindNull(_ statement: OpaquePointer, _ index: Int32) {
         sqlite3_bind_null(statement, index)
     }
@@ -146,6 +154,30 @@ final class SQLiteConnection {
             throw CurveDatabaseError.statementFailed(String(cString: sqlite3_errmsg(db)))
         }
         return statement
+    }
+}
+
+private struct RoadIndex {
+    var keys: [String] = []
+    var start: [Int] = []
+    var count: [Int] = []
+    var rowids: [Int64] = []
+
+    func matchingRowids(_ needle: String, limit: Int) -> [Int64] {
+        guard limit > 0, !needle.isEmpty else { return [] }
+        var hits: [Int64] = []
+        hits.reserveCapacity(min(limit, 16))
+        for index in keys.indices {
+            guard keys[index].contains(needle) else { continue }
+            let begin = start[index]
+            let end = min(begin + count[index], rowids.count)
+            guard begin >= 0, begin < end else { continue }
+            for row in begin..<end {
+                hits.append(rowids[row])
+                if hits.count == limit { return hits }
+            }
+        }
+        return hits
     }
 }
 
@@ -197,6 +229,21 @@ final class SQLiteCurveStore: CurveStore {
     LIMIT ?
     """
 
+    /// Names only. Geometry stays out of the search path.
+    static let roadIndexSQL = """
+    SELECT rowid, road_name, surface, radius_ft, rd_class, rd_design \
+    FROM curves \
+    WHERE quality_flags = '' AND closed_loop = 0 AND radius_ft >= 50 \
+    AND road_name IS NOT NULL AND road_name != ''
+    """
+
+    static let curveByRowSQL = """
+    SELECT id, county, road_name, surface, radius_ft, deflection_deg, \
+    rd_class, rd_design, closed_loop, quality_flags, \
+    lat, lon, min_lat, max_lat, min_lon, max_lon, '[]' \
+    FROM curves WHERE rowid = ?
+    """
+
     static let countySQL = """
     SELECT county, MIN(min_lat), MAX(max_lat), MIN(min_lon), MAX(max_lon), COUNT(*) \
     FROM curves \
@@ -207,6 +254,7 @@ final class SQLiteCurveStore: CurveStore {
 
     private let connection: SQLiteConnection
     private let lock = NSLock()
+    private var roadIndex: RoadIndex?
 
     init(databaseURL: URL) throws {
         connection = try SQLiteConnection(url: databaseURL, readonly: true)
@@ -284,14 +332,124 @@ final class SQLiteCurveStore: CurveStore {
         }
     }
 
+    /// Builds the in-memory road list once. Safe to call off the main thread.
+    func warmSearchIndex() {
+        _ = ensureRoadIndex()
+    }
+
     func searchRoads(_ query: String, limit: Int) -> [Curve] {
-        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed.count >= 2, limit > 0 else { return [] }
-        let pattern = "%\(trimmed.replacingOccurrences(of: "%", with: "").replacingOccurrences(of: "_", with: ""))%"
+        let needle = Self.searchNeedle(query)
+        guard needle.count >= 2, limit > 0 else { return [] }
+        if let index = readyRoadIndex() {
+            return curves(at: index.matchingRowids(needle, limit: limit))
+        }
+        let pattern = "%\(needle)%"
         return rows(Self.searchSQL) { statement in
             self.connection.bind(statement, 1, pattern)
             self.connection.bind(statement, 2, limit)
+        }.filter { canWarn(on: $0) }
+    }
+
+    private static func searchNeedle(_ query: String) -> String {
+        query.trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .replacingOccurrences(of: "%", with: "")
+            .replacingOccurrences(of: "_", with: "")
+    }
+
+    private func readyRoadIndex() -> RoadIndex? {
+        lock.lock()
+        defer { lock.unlock() }
+        return roadIndex
+    }
+
+    private func ensureRoadIndex() -> RoadIndex? {
+        if let ready = readyRoadIndex() { return ready }
+        guard let built = buildRoadIndex() else { return nil }
+        lock.lock()
+        if roadIndex == nil { roadIndex = built }
+        let ready = roadIndex
+        lock.unlock()
+        return ready
+    }
+
+    private func buildRoadIndex() -> RoadIndex? {
+        final class Group {
+            var rows: [Int64] = []
         }
+        lock.lock()
+        defer { lock.unlock() }
+        do {
+            var groups: [String: Group] = [:]
+            try connection.query(Self.roadIndexSQL) { statement in
+                let name = self.connection.text(statement, 1)
+                let surface = roadSurface(from: self.connection.text(statement, 2))
+                let radius = self.connection.double(statement, 3)
+                let roadClass = self.connection.text(statement, 4)
+                let roadDesign = self.connection.text(statement, 5)
+                guard canWarn(on: Curve(
+                    id: "",
+                    county: "",
+                    roadName: name,
+                    surface: surface,
+                    radiusFeet: radius,
+                    deflectionDegrees: 0,
+                    qualityFlags: "",
+                    roadClass: roadClass,
+                    roadDesign: roadDesign,
+                    closedLoop: false,
+                    latitude: 35,
+                    longitude: -92,
+                    minLatitude: 35,
+                    maxLatitude: 35,
+                    minLongitude: -92,
+                    maxLongitude: -92,
+                    coordinates: []
+                )) else { return }
+                let key = name.lowercased()
+                let group = groups[key] ?? Group()
+                if groups[key] == nil { groups[key] = group }
+                group.rows.append(self.connection.int64(statement, 0))
+            }
+            var index = RoadIndex()
+            index.keys.reserveCapacity(groups.count)
+            index.start.reserveCapacity(groups.count)
+            index.count.reserveCapacity(groups.count)
+            for key in groups.keys.sorted() {
+                guard let group = groups[key] else { continue }
+                index.keys.append(key)
+                index.start.append(index.rowids.count)
+                index.count.append(group.rows.count)
+                index.rowids.append(contentsOf: group.rows)
+            }
+            return index
+        } catch {
+            print("Road index failed: \(error)")
+            return nil
+        }
+    }
+
+    private func curves(at rowids: [Int64]) -> [Curve] {
+        guard !rowids.isEmpty else { return [] }
+        lock.lock()
+        defer { lock.unlock() }
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(connection.db, Self.curveByRowSQL, -1, &statement, nil) == SQLITE_OK,
+              let statement else {
+            return []
+        }
+        defer { sqlite3_finalize(statement) }
+        var found: [Curve] = []
+        found.reserveCapacity(rowids.count)
+        for rowid in rowids {
+            sqlite3_reset(statement)
+            sqlite3_clear_bindings(statement)
+            connection.bind(statement, 1, rowid)
+            if sqlite3_step(statement) == SQLITE_ROW {
+                found.append(curve(from: statement))
+            }
+        }
+        return found
     }
 
     private func rows(_ sql: String, bind: (OpaquePointer) -> Void) -> [Curve] {
@@ -361,3 +519,5 @@ final class SQLiteCurveStore: CurveStore {
         }
     }
 }
+
+extension SQLiteCurveStore: @unchecked Sendable {}

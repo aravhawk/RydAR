@@ -27,6 +27,11 @@ final class ScreeningTests: XCTestCase {
             if let meters { defaults.set(meters, forKey: TreadStore.metersKey) }
             else { defaults.removeObject(forKey: TreadStore.metersKey) }
         }
+        XCTAssertFalse(TreadStore.countsTowardReview(meters: 40, speedMps: 0, elapsed: 1))
+        XCTAssertFalse(TreadStore.countsTowardReview(meters: 40, speedMps: -1, elapsed: 1))
+        XCTAssertFalse(TreadStore.countsTowardReview(meters: 400, speedMps: 30, elapsed: 1))
+        XCTAssertFalse(TreadStore.countsTowardReview(meters: 200, speedMps: 5, elapsed: 1))
+        XCTAssertTrue(TreadStore.countsTowardReview(meters: 25, speedMps: 12, elapsed: 1))
         TreadStore.save(.half)
         TreadStore.addMeters(200)
         XCTAssertEqual(TreadStore.choice, .half)

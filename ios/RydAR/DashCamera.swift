@@ -53,6 +53,21 @@ final class DashCamera: NSObject, DashRunning, AVCaptureVideoDataOutputSampleBuf
         surfaceLock.unlock()
     }
 
+    func noteCurveApproach(_ curveID: String?) {
+        queue.async { [weak self] in
+            self?.windows.noteCurveApproach(curveID)
+        }
+    }
+
+    func noteCurvePassed(_ curveID: String) {
+        queue.async { [weak self] in
+            guard let self else { return }
+            guard self.windows.noteCurvePassed(curveID) else { return }
+            guard self.running else { return }
+            self.publishCurrent(.running)
+        }
+    }
+
     func start() {
         if thermal() {
             publish(.unconfirmed, material: nil, friction: nil, uneven: nil)

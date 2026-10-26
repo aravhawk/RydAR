@@ -48,10 +48,12 @@ final class DashTests: XCTestCase {
         let unpaved: [Float] = [0.05, 0.75, 0.2]
         var material = DashWindows().material
         var accepted: DashVote?
-        for index in 0..<6 {
-            accepted = material.observe(index < 4 ? unpaved : [0.9, 0.05, 0.05])
+        for _ in 0..<6 {
+            accepted = material.observe(unpaved)
         }
         XCTAssertEqual(accepted?.label, DashHead.materialUnpaved)
+        XCTAssertGreaterThanOrEqual(accepted?.confidence ?? 0, DriveRules.materialConfidence)
+        XCTAssertLessThan(accepted?.confidence ?? 1, DriveRules.cameraConfidence)
 
         let water: [Float] = [0.05, 0.1, 0.75, 0.05, 0.05]
         var friction = DashWindows().friction
@@ -59,6 +61,73 @@ final class DashTests: XCTestCase {
             accepted = friction.observe(index < 4 ? water : [0.9, 0.02, 0.02, 0.03, 0.03])
         }
         XCTAssertNil(accepted)
+    }
+
+    func testMaterialSwitchesToUnpavedOnThreeOfSix() {
+        let unpaved: [Float] = [0.04, 0.92, 0.04]
+        let paved: [Float] = [0.51, 0.49, 0]
+        var two = DashWindows().material
+        var accepted: DashVote?
+        for index in 0..<6 {
+            accepted = two.observe(index < 2 ? unpaved : paved)
+        }
+        XCTAssertNil(accepted)
+
+        var low = DashWindows().material
+        let shy: [Float] = [0.05, 0.75, 0.2]
+        let pavedHard: [Float] = [0.9, 0.05, 0.05]
+        for index in 0..<6 {
+            accepted = low.observe(index < 3 ? shy : pavedHard)
+        }
+        XCTAssertNil(accepted)
+
+        var three = DashWindows().material
+        for index in 0..<6 {
+            accepted = three.observe(index < 3 ? unpaved : paved)
+        }
+        XCTAssertEqual(accepted?.label, DashHead.materialUnpaved)
+        XCTAssertEqual(accepted?.confidence ?? 0, (0.92 * 3 + 0.49 * 3) / 6, accuracy: 0.001)
+    }
+
+    func testMaterialSwitchesBackToPavedOnFiveOfSix() {
+        let unpaved: [Float] = [0.02, 0.96, 0.02]
+        let paved: [Float] = [0.92, 0.05, 0.03]
+        var material = DashWindows().material
+        var accepted: DashVote?
+        for _ in 0..<6 {
+            accepted = material.observe(unpaved)
+        }
+        XCTAssertEqual(accepted?.label, DashHead.materialUnpaved)
+
+        for _ in 0..<4 {
+            accepted = material.observe(paved)
+        }
+        XCTAssertEqual(accepted?.label, DashHead.materialUnpaved)
+
+        accepted = material.observe(paved)
+        XCTAssertEqual(accepted?.label, DashHead.materialPaved)
+    }
+
+    func testUnpavedHoldsUntilTheCurveIsPassed() {
+        let unpaved: [Float] = [0.02, 0.96, 0.02]
+        let paved: [Float] = [0.92, 0.05, 0.03]
+        var material = DashWindows().material
+        material.noteCurveApproach("bend")
+        var accepted: DashVote?
+        for _ in 0..<6 {
+            accepted = material.observe(unpaved)
+        }
+        XCTAssertEqual(accepted?.label, DashHead.materialUnpaved)
+
+        for _ in 0..<6 {
+            accepted = material.observe(paved)
+        }
+        XCTAssertEqual(accepted?.label, DashHead.materialUnpaved)
+        material.noteCurvePassed("other")
+        XCTAssertEqual(material.accepted()?.label, DashHead.materialUnpaved)
+
+        material.noteCurvePassed("bend")
+        XCTAssertEqual(material.accepted()?.label, DashHead.materialPaved)
     }
 
     func testDryWetAndSmoothChangeNothingAndWaterOrSevereOnlyMoveEarlier() {

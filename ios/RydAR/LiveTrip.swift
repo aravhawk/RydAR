@@ -24,7 +24,9 @@ enum LiveTripDebrief {
                 range: ScreeningRange(low: row.pass.vLoMPH, high: row.pass.vHiMPH),
                 surfaceUsed: row.pass.surfaceUsed,
                 brakingDistanceMeters: row.pass.brakingDistanceMeters,
-                apparentTiltDegrees: nil
+                apparentTiltDegrees: nil,
+                direction: row.pass.direction,
+                hourBucket: row.pass.hourBucket
             )
         }
         return TripScreenDebrief(
@@ -113,7 +115,14 @@ final class LiveTripSession {
             do {
                 try self.engine.beginTrip(driverMode: mode, startSensors: self.startSensors)
             } catch {
-                print("Trip did not start: \(error)")
+                self.assignDrive(self.snapshot(
+                    curve: nil,
+                    distance: nil,
+                    gps: "Trip did not start",
+                    paused: false,
+                    range: nil
+                ))
+                return
             }
             self.syncCamera(mode: mode, paused: false)
             self.publishIdle()
@@ -126,7 +135,7 @@ final class LiveTripSession {
                 self.engine.resume()
             }
             self.syncCamera(mode: self.engine.snapshot.driverMode, paused: paused)
-            self.publishPause(paused)
+            self.publishPause()
         }
         let onFinish: () -> Void = { [weak self] in
             self?.finish()
@@ -152,6 +161,13 @@ final class LiveTripSession {
                 }
             }
             self.publishDrive(update, curve: curve)
+        }
+        engine.onLocationAuthorization = { [weak self] in
+            guard let self, self.engine.snapshot.tripID != nil, !self.engine.snapshot.paused else { return }
+            let banner = self.engine.waitingStatus()
+            guard banner != "Waiting for location" else { return }
+            guard self.lastUpdate?.gpsGood != true else { return }
+            self.publishIdle()
         }
         let configured = (uploader as? PassUpload)?.isConfigured ?? true
         MainActor.assumeIsolated {
@@ -207,6 +223,10 @@ final class LiveTripSession {
         lastUpdate = update
         lastCurve = curve
         camera.noteMatchedSurface(update.gpsGood ? curve?.surface : nil)
+        for pass in update.completed {
+            camera.noteCurvePassed(pass.curveID)
+        }
+        camera.noteCurveApproach(update.gpsGood ? update.matchedCurveID : nil)
         let showCurve = update.gpsGood && curve != nil
         assignDrive(snapshot(
             curve: showCurve ? curve : nil,
@@ -223,7 +243,7 @@ final class LiveTripSession {
         assignDrive(snapshot(
             curve: nil,
             distance: nil,
-            gps: "Waiting for location",
+            gps: engine.waitingStatus(),
             paused: engine.snapshot.paused,
             range: nil
         ))
@@ -273,10 +293,12 @@ final class LiveTripSession {
         }
     }
 
-    private func publishPause(_ paused: Bool) {
-        var snapshot = bridgeDrive()
-        snapshot.isPaused = paused
-        assignDrive(snapshot)
+    private func publishPause() {
+        if let lastUpdate {
+            publishDrive(lastUpdate, curve: lastCurve)
+        } else {
+            publishIdle()
+        }
     }
 
     private func publishDebrief(_ debrief: TripScreenDebrief) {
@@ -289,18 +311,11 @@ final class LiveTripSession {
     }
 
     private func assignDrive(_ snapshot: DriveScreenSnapshot) {
-        let speaks = engine.snapshot.driverMode != .under18
+        let speaks = engine.snapshot.driverMode.map(allowsInDriveSound) == true
         hop {
             self.bridge.drive = snapshot
             DriveLiveActivity.render(snapshot, speaks: speaks)
         }
-    }
-
-    private func bridgeDrive() -> DriveScreenSnapshot {
-        if Thread.isMainThread {
-            return MainActor.assumeIsolated { bridge.drive }
-        }
-        return DriveScreenSnapshot()
     }
 
     private func hop(_ body: @escaping @MainActor () -> Void) {

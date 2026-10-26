@@ -22,7 +22,7 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             if !onboarded {
-                OnboardingScreen(store: store, isSampleStore: isSampleStore) { onboarded = true }
+                OnboardingScreen { onboarded = true }
             } else if treadRaw.isEmpty && phase == .home {
                 TreadCheckScreen { }
             } else {
@@ -47,8 +47,11 @@ struct ContentView: View {
                 trip.start(mode: mode, style: PromptStyle(rawValue: promptStyle) ?? .normal,
                            uploadOptIn: uploadOptIn)
                 showDriverGate = false
-                phase = .drive
+                if trip.drive.gpsStatus != "Trip did not start" {
+                    phase = .drive
+                }
             }
+            .tint(AuditTheme.accent)
         }
     }
 }

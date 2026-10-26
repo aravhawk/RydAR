@@ -4,6 +4,10 @@ struct DriveScreen: View {
     @ObservedObject var trip: TripScreenBridge
     var onFinish: () -> Void
     private var soundAllowed: Bool { trip.driverMode.map(allowsInDriveSound) ?? false }
+    /// GPS ready with no filed curve is the matched state. Every other banner is the location status.
+    private var unmatchedCurveStatus: String {
+        trip.drive.gpsStatus == "GPS ready" ? "No filed curve ahead" : trip.drive.gpsStatus
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -11,29 +15,40 @@ struct DriveScreen: View {
                 AuditEyebrow(text: trip.drive.isPaused ? "Trip paused" : trip.drive.tripTitle)
                 Spacer()
                 Image(systemName: soundAllowed ? "speaker.wave.2" : "speaker.slash")
+                    .symbolRenderingMode(.monochrome)
+                    .foregroundStyle(.secondary)
                     .accessibilityLabel(soundAllowed ? "Sound on" : "Sound off")
             }
-            Text(trip.driverMode?.screenTitle ?? "No driver selected").font(.headline)
+            Text(trip.driverMode?.screenTitle ?? "No driver selected")
+                .font(.headline)
             Spacer(minLength: 0)
             if !soundAllowed {
-                Image(systemName: "moon.zzz.fill").font(.system(size: 52)).foregroundStyle(AuditTheme.accent)
-                Text("Put the phone away.").font(.largeTitle.bold())
+                Image(systemName: "moon.zzz.fill")
+                    .font(.system(size: 52))
+                    .foregroundStyle(AuditTheme.accent)
+                Text("Put the phone away.")
+                    .font(.largeTitle.bold())
+                Text(trip.drive.gpsStatus)
+                    .font(.title2.weight(.semibold))
                 Text("No voice, camera, or upload.")
                     .foregroundStyle(.secondary)
             } else if trip.drive.isPaused {
-                Text("Paused").font(.system(.largeTitle, design: .rounded).bold())
-                Text("Alerts paused.").foregroundStyle(.secondary)
+                Text("Paused")
+                    .font(.system(.largeTitle, design: .rounded).bold())
+                Text("Alerts paused.")
+                    .foregroundStyle(.secondary)
             } else {
-                Text("NEXT CURVE").font(.caption.bold()).tracking(2).foregroundStyle(.secondary)
+                AuditEyebrow(text: "Next curve")
                 if let distance = trip.drive.distanceMeters, distance.isFinite, distance >= 0 {
                     Text(distance.formatted(.number.precision(.fractionLength(0))) + " m")
-                        .font(.system(size: 64, weight: .bold, design: .rounded)).minimumScaleFactor(0.6)
+                        .font(.system(size: 64, weight: .bold, design: .rounded))
+                        .minimumScaleFactor(0.6)
                         .accessibilityIdentifier("nextCurveDistance")
                 } else {
-                    Text("— m").font(.system(size: 64, weight: .bold, design: .rounded))
+                    Text("— m")
+                        .font(.system(size: 64, weight: .bold, design: .rounded))
                 }
-                Text(trip.drive.nextCurve?.roadName
-                     ?? (trip.drive.gpsStatus == "GPS ready" ? "No filed curve ahead" : "Waiting for a matched curve"))
+                Text(trip.drive.nextCurve?.roadName ?? unmatchedCurveStatus)
                     .font(.title2.weight(.semibold))
                 if let curve = trip.drive.nextCurve {
                     SurfaceBadge(fileSurface: curve.surface, camera: trip.drive.cameraEvidence,
@@ -47,19 +62,26 @@ struct DriveScreen: View {
                         Text("\(mph, specifier: "%.0f") mph")
                             .font(.title3.monospacedDigit().bold())
                             .accessibilityIdentifier("measuredSpeed")
-                        Text("measured").font(.caption).foregroundStyle(.secondary)
+                        Text("measured")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     } else {
-                        Text("Speed unknown").font(.subheadline).foregroundStyle(.secondary)
+                        Text("Speed unknown")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
                     Spacer()
                     Label(trip.drive.gpsStatus, systemImage: "location")
-                        .font(.subheadline).foregroundStyle(.secondary)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .symbolRenderingMode(.monochrome)
                 }
                 if let measured = trip.drive.measuredSpeedMPH,
                    let prompt = trip.drive.promptSpeedMPH,
                    measured - prompt > 3 {
                     Text("GPS uncertain. Prompt uses \(prompt, specifier: "%.0f") mph.")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
             Spacer(minLength: 0)
@@ -67,26 +89,37 @@ struct DriveScreen: View {
                 Label(soundAllowed && !trip.drive.isPaused ? trip.drive.cameraStatus : "Camera off",
                       systemImage: "camera")
                     .font(.subheadline.weight(.semibold))
+                    .symbolRenderingMode(.monochrome)
             }
             if !trip.isConnected {
                 Text("Not recording.")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
-            Button {
-                trip.setPaused(!trip.drive.isPaused)
-            } label: {
-                Label(trip.drive.isPaused ? "Resume" : "Pause",
-                      systemImage: trip.drive.isPaused ? "play.fill" : "pause.fill")
-                    .frame(minHeight: 20)
-            }
-            .buttonStyle(AuditPrimaryButton()).accessibilityIdentifier("pauseTrip")
-            if trip.drive.isPaused {
-                Button("I'm parked · end trip", action: onFinish)
-                    .font(.headline).frame(maxWidth: .infinity, minHeight: 44)
-                    .accessibilityIdentifier("endTrip")
+            RydarGlassGroup(spacing: 12) {
+                VStack(spacing: 12) {
+                    Button {
+                        trip.setPaused(!trip.drive.isPaused)
+                    } label: {
+                        Label(trip.drive.isPaused ? "Resume" : "Pause",
+                              systemImage: trip.drive.isPaused ? "play.fill" : "pause.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .rydarProminentAction()
+                    .accessibilityIdentifier("pauseTrip")
+                    if trip.drive.isPaused {
+                        Button(action: onFinish) {
+                            Text("I'm parked · end trip")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .rydarGlassAction()
+                        .accessibilityIdentifier("endTrip")
+                    }
+                }
             }
         }
-        .padding(24).background(AuditTheme.background)
-        .navigationBarBackButtonHidden().toolbar(.hidden, for: .navigationBar)
+        .padding(24)
+        .navigationBarBackButtonHidden()
+        .toolbar(.hidden, for: .navigationBar)
     }
 }

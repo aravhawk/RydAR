@@ -49,4 +49,14 @@ extension CurveStore {
     func counties() -> [CurveCounty] { [] }
     func searchRoads(_ query: String, limit: Int) -> [Curve] { [] }
     func curve(id: String) -> Curve? { nil }
+
+    /// Surface filtering stays here so a name query does not fill its limit with the hidden surface.
+    func searchRoads(_ query: String, limit: Int, includePaved: Bool, includeUnpaved: Bool) -> [Curve] {
+        guard limit > 0, includePaved || includeUnpaved else { return [] }
+        let fetchLimit = min(max(limit * (includePaved && includeUnpaved ? 4 : 20), limit), 200)
+        return Array(searchRoads(query, limit: fetchLimit).filter { curve in
+            guard canWarn(on: curve) else { return false }
+            return curve.surface == .paved ? includePaved : includeUnpaved
+        }.prefix(limit))
+    }
 }

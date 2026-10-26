@@ -12,47 +12,73 @@ struct HomeScreen: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
-                Text("Parked.").font(.largeTitle.bold())
-                Text(dashEnabled ? "Dash is on." : "Co-pilot. Camera off.")
-                    .foregroundStyle(.secondary)
-                Text("Alerts speak with Maps in front. Not for an under-18 driver.")
-                    .font(.subheadline).foregroundStyle(.secondary)
-                if !trip.timingNote.isEmpty {
-                    Text(trip.timingNote)
+            VStack(alignment: .leading, spacing: 28) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Parked.")
+                        .font(.largeTitle.bold())
+                    Text(dashEnabled ? "Dash is on." : "Co-pilot. Camera off.")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                    Text("Alerts speak with Maps in front. Not for an under-18 driver.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                        .accessibilityIdentifier("timingNote")
+                    if !trip.timingNote.isEmpty {
+                        Text(trip.timingNote)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("timingNote")
+                    }
+                    if tread?.replaceBeforeDriving == true {
+                        Text("Replace the tires before this trip.")
+                            .font(.headline)
+                    } else if tread == .low {
+                        Text("Low tread. Ranges sit lower.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                 }
-                if tread?.replaceBeforeDriving == true {
-                    Text("Replace the tires before this trip.")
-                        .font(.headline)
-                } else if tread == .low {
-                    Text("Low tread. Ranges sit lower.")
-                        .font(.subheadline).foregroundStyle(.secondary)
+
+                RydarGlassGroup(spacing: 12) {
+                    VStack(spacing: 12) {
+                        Button(action: onStart) {
+                            Label(tread?.replaceBeforeDriving == true ? "Start anyway" : "Start trip", systemImage: "arrow.right")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .rydarProminentAction()
+                        .accessibilityIdentifier("startTrip")
+
+                        NavigationLink {
+                            PreviewScreen(store: store, isSampleStore: isSampleStore)
+                        } label: {
+                            Label("Map", systemImage: "map")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .rydarGlassAction()
+                        .navigationLinkIndicatorVisibility(.hidden)
+                        .accessibilityIdentifier("previewRoute")
+                    }
                 }
-                Button(action: onStart) {
-                    Label(tread?.replaceBeforeDriving == true ? "Start anyway" : "Start trip", systemImage: "arrow.right")
-                }.buttonStyle(AuditPrimaryButton()).accessibilityIdentifier("startTrip")
-                NavigationLink {
-                    PreviewScreen(store: store, isSampleStore: isSampleStore)
-                } label: {
-                    Label("Map", systemImage: "map")
-                        .font(.headline).frame(maxWidth: .infinity, minHeight: 44)
-                }.accessibilityIdentifier("previewRoute")
+
                 if isSampleStore {
                     Text("Sample roads only.")
-                        .font(.footnote).foregroundStyle(.secondary)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
-            }.padding(24)
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
         }
-        .background(AuditTheme.background)
-        .navigationTitle("RydAR").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("RydAR")
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink { SettingsScreen(trip: trip) } label: {
-                    Image(systemName: "gearshape").accessibilityLabel("Settings")
-                }.accessibilityIdentifier("settings")
+                    Image(systemName: "gearshape")
+                        .symbolRenderingMode(.monochrome)
+                        .accessibilityLabel("Settings")
+                }
+                .accessibilityIdentifier("settings")
             }
         }
     }
