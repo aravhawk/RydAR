@@ -204,6 +204,13 @@
       gap: 8px;
     }
     .maplibregl-ctrl-bottom-right .maplibregl-ctrl { margin: 0; }
+    .maplibregl-ctrl-attrib.maplibregl-compact { min-height: 0; }
+    .maplibregl-ctrl-attrib.maplibregl-compact-show { max-width: min(16rem, 70vw); }
+    .maplibregl-ctrl-reset {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
     .maplibregl-popup { z-index: 4; }
     .maplibregl-popup-content {
       background: var(--card);
@@ -333,7 +340,7 @@
       container: "map",
       style: MAP_STYLES[activeTheme()],
       bounds: [[-94.8, 33.0], [-89.6, 36.6]],
-      fitBoundsOptions: { padding: { top: 24, right: 24, bottom: 24, left: 400 } },
+      fitBoundsOptions: { padding: mapPadding(), duration: 0 },
       attributionControl: false,
       dragRotate: false,
       touchPitch: false,
@@ -348,23 +355,39 @@
       map.setStyle(LIBERTY_STYLE);
       map.once("style.load", () => {
         acceptOverlays = true;
+        requestAnimationFrame(collapseAttribution);
         if (countyGeo || partsLoaded) redrawOverlays();
       });
     });
     map.addControl(new NavigationControl({ showCompass: false }), "top-right");
+    const resetControl = {
+      onAdd() {
+        this.container = document.createElement("div");
+        this.container.className = "maplibregl-ctrl maplibregl-ctrl-group";
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "maplibregl-ctrl-reset";
+        button.setAttribute("aria-label", "Reset the map");
+        button.innerHTML = '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M4.5 8V4.5H8M12 4.5h3.5V8M15.5 12v3.5H12M8 15.5H4.5V12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+        button.addEventListener("click", resetMap);
+        this.container.appendChild(button);
+        return this.container;
+      },
+      onRemove() { this.container.remove(); },
+    };
+    map.addControl(resetControl, "top-right");
     map.addControl(new ScaleControl({ unit: "imperial" }), "bottom-right");
     map.addControl(new AttributionControl({
-      compact: false,
-      customAttribution: [
-        '<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a>',
-        '<a href="https://www.openmaptiles.org/" target="_blank">© OpenMapTiles</a>',
-        '<a href="https://www.openstreetmap.org/copyright" target="_blank">© OpenStreetMap contributors</a>',
-        "Arkansas GIS Office · U.S. Census Bureau",
-      ],
+      compact: true,
+      customAttribution: "Arkansas GIS Office · U.S. Census Bureau",
     }), "bottom-right");
     map.touchZoomRotate.disableRotation();
+    function collapseAttribution() {
+      document.querySelector(".maplibregl-ctrl-attrib")?.classList.remove("maplibregl-compact-show");
+    }
     const mapReady = new Promise((resolve) => map.once("load", () => {
       if (!basemapSwapped && styleToken === 0) acceptOverlays = true;
+      requestAnimationFrame(collapseAttribution);
       resolve();
     }));
 
@@ -386,13 +409,32 @@
       return bounds;
     }
 
-    function frame(bounds, maxZoom) {
+    function mapPadding() {
       const narrow = matchMedia("(max-width: 760px)").matches;
       const sheet = document.querySelector("aside");
-      const padding = narrow
+      return narrow
         ? { top: 64, right: 16, bottom: Math.min(sheet?.offsetHeight ?? 280, window.innerHeight * 0.48) + 12, left: 16 }
         : { top: 24, right: 24, bottom: 28, left: (sheet?.offsetWidth ?? 368) + 36 };
-      map.fitBounds(bounds, { padding, maxZoom, duration: reduceMotion ? 0 : 600 });
+    }
+
+    function frame(bounds, maxZoom, duration) {
+      map.fitBounds(bounds, {
+        padding: mapPadding(),
+        maxZoom,
+        duration: duration ?? (reduceMotion ? 0 : 450),
+      });
+    }
+
+    function resetMap() {
+      if (popup) popup.remove();
+      if (selectedId) setSelected(selectedId, false);
+      selectedId = null;
+      selectedFeature = null;
+      if (!countyFeatures.length) {
+        frame(new LngLatBounds([-94.8, 33.0], [-89.6, 36.6]), 8, 0);
+        return;
+      }
+      chooseCounty("", true);
     }
 
     function curveFilter() {
@@ -656,7 +698,7 @@
       const bounds = new LngLatBounds();
       for (const feature of countyFeatures) bounds.extend(boundsOf(feature));
       map.resize();
-      frame(bounds, 8);
+      frame(bounds, 8, 0);
     }
 
     function redrawOverlays() {
@@ -679,6 +721,7 @@
       map.once("style.load", () => {
         if (token !== styleToken) return;
         acceptOverlays = true;
+        requestAnimationFrame(collapseAttribution);
         redrawOverlays();
       });
     }
