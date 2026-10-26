@@ -141,22 +141,18 @@
       gap: 12px;
       margin-top: 4px;
       padding: 12px 14px;
-      border-radius: 18px;
+      border-radius: 14px;
       background: #1b8aa0;
       color: #fff;
       text-decoration: none;
-      box-shadow: 0 6px 18px rgba(27, 138, 160, 0.35);
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
-    .get-app:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(27, 138, 160, 0.45); }
-    .get-app:active { transform: translateY(0); }
+    .get-app:active { opacity: 0.7; }
     .get-app:focus-visible { outline-color: var(--ink); }
     .get-app svg { width: 26px; height: 26px; flex: none; }
     .get-app .txt { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
     .get-app strong { font-size: 1rem; font-weight: 700; letter-spacing: -0.01em; }
     .get-app small { font-size: 0.78rem; opacity: 0.92; }
     .get-app .arrow { margin-left: auto; width: 18px; height: 18px; flex: none; }
-    @media (prefers-reduced-motion: reduce) { .get-app { transition: none; } }
     .note { padding: 0 6px 2px; }
 
     label.field { display: block; font-weight: 600; margin: 0; }
