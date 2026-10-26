@@ -124,6 +124,28 @@
       flex-direction: column;
       gap: 10px;
     }
+    .get-app {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 4px;
+      padding: 12px 14px;
+      border-radius: 18px;
+      background: #1b8aa0;
+      color: #fff;
+      text-decoration: none;
+      box-shadow: 0 6px 18px rgba(27, 138, 160, 0.35);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .get-app:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(27, 138, 160, 0.45); }
+    .get-app:active { transform: translateY(0); }
+    .get-app:focus-visible { outline-color: var(--ink); }
+    .get-app svg { width: 26px; height: 26px; flex: none; }
+    .get-app .txt { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+    .get-app strong { font-size: 1rem; font-weight: 700; letter-spacing: -0.01em; }
+    .get-app small { font-size: 0.78rem; opacity: 0.92; }
+    .get-app .arrow { margin-left: auto; width: 18px; height: 18px; flex: none; }
+    @media (prefers-reduced-motion: reduce) { .get-app { transition: none; } }
     .note { padding: 0 6px 2px; }
 
     label.field { display: block; font-weight: 600; margin: 0; }
@@ -277,6 +299,11 @@
         <h1>RydAR</h1>
       </div>
       <p class="lead">Bends tighter than 600 ft.</p>
+      <a class="get-app" href="https://testflight.apple.com/join/WRKVeXwc" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>
+        <span class="txt"><strong>Get the iPhone app</strong><small>Join the free beta on TestFlight</small></span>
+        <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M8 7h9v9"/></svg>
+      </a>
     </header>
 
     <section aria-labelledby="where-h">
