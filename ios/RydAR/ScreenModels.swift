@@ -79,6 +79,31 @@ struct TimingContextSummary: Identifiable {
         }
         return "Next prompt comes earlier."
     }
+
+    /// What the Review screen actually prints. Radius band is not part of it,
+    /// so two paved daytime bands would otherwise be two identical cards.
+    var reviewAdviceID: String {
+        let when = isNightHour(hour) ? "night" : "day"
+        return "\(message)|\(surface.rawValue)|\(when)"
+    }
+}
+
+/// One Review card. Contexts that would print the same sentence are combined.
+struct EarlierPromptCard: Identifiable, Equatable {
+    var message: String
+    var surface: RoadSurface
+    var night: Bool
+    var curveCount: Int
+    var id: String {
+        let when = night ? "night" : "day"
+        return "\(message)|\(surface.rawValue)|\(when)"
+    }
+    var caption: String {
+        let when = night ? "night" : "day"
+        let base = "\(surface.rawValue.capitalized) · \(when)"
+        guard curveCount > 1 else { return base }
+        return "\(base) · \(curveCount) curves"
+    }
 }
 
 struct TripScreenDebrief {
@@ -93,6 +118,35 @@ struct TripScreenDebrief {
             }
     }
     var lateContexts: [TimingContextSummary] { contexts.filter(\.movesPromptEarlier) }
+
+    /// Review advice, one card per distinct sentence. A paved day curve in a
+    /// tight band and another in a wide band both say "Next prompt comes earlier."
+    var earlierPromptCards: [EarlierPromptCard] {
+        let late = lateContexts
+        guard !late.isEmpty else { return [] }
+        var groups: [String: [TimingContextSummary]] = [:]
+        for context in late {
+            groups[context.reviewAdviceID, default: []].append(context)
+        }
+        return groups.keys.sorted().compactMap { key in
+            guard let group = groups[key], let sample = group.first else { return nil }
+            let contextIDs = Set(group.map(\.id))
+            let curveIDs = Set(passes.compactMap { pass -> String? in
+                let passKey = approachContextKey(
+                    surface: pass.surfaceUsed,
+                    radiusFeet: pass.curve.radiusFeet,
+                    hour: pass.hourBucket
+                )
+                return contextIDs.contains(passKey) ? pass.curve.id : nil
+            })
+            return EarlierPromptCard(
+                message: sample.message,
+                surface: sample.surface,
+                night: isNightHour(sample.hour),
+                curveCount: max(group.count, curveIDs.count)
+            )
+        }
+    }
 }
 
 /// UI boundary for Mac A. The engine publishes snapshots and this trip's saved rows;

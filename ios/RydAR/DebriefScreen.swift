@@ -92,13 +92,13 @@ struct DebriefScreen: View {
                         .accessibilityIdentifier("timingNote")
                 }
             }
-            ForEach(trip.debrief.lateContexts) { context in
+            ForEach(trip.debrief.earlierPromptCards) { card in
                 Section {
                     Label("Earlier next time", systemImage: "clock.arrow.circlepath")
                         .font(.headline)
-                    Text(trip.driverMode == .under18 ? "No prompt. Teen driver." : context.message)
+                    Text(trip.driverMode == .under18 ? "No prompt. Teen driver." : card.message)
                         .font(.subheadline)
-                    Text("\(context.surface.rawValue.capitalized) · \(isNightHour(context.hour) ? "night" : "day")")
+                    Text(card.caption)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

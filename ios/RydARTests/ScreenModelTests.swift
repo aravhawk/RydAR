@@ -4,6 +4,27 @@ import XCTest
 final class ScreenModelTests: XCTestCase {
     private let curve = PreviewCurves.samples[0]
 
+    private func advicePass(
+        _ id: String,
+        curveID: String,
+        radius: Double,
+        surface: RoadSurface,
+        hour: Int
+    ) -> TripCurvePass {
+        var bend = curve
+        bend.id = curveID
+        bend.radiusFeet = radius
+        bend.surface = surface
+        return TripCurvePass(
+            id: id,
+            curve: bend,
+            effectiveMPH: 40,
+            range: ScreeningRange(low: 15, high: 20),
+            surfaceUsed: surface,
+            hourBucket: hour
+        )
+    }
+
     private func pass(_ id: String, speed: Double, low: Double = 10, high: Double = 14) -> TripCurvePass {
         TripCurvePass(id: id, curve: curve, effectiveMPH: speed,
                       range: ScreeningRange(low: low, high: high), surfaceUsed: .unpaved)
@@ -25,6 +46,40 @@ final class ScreenModelTests: XCTestCase {
         XCTAssertTrue(late.movesPromptEarlier)
         XCTAssertEqual(late.message, "Tight unpaved. Next prompt comes earlier.")
         XCTAssertEqual(TripScreenDebrief(contexts: [one, late]).lateContexts.count, 1)
+        XCTAssertEqual(TripScreenDebrief(contexts: [one, late]).earlierPromptCards.count, 1)
+    }
+
+    func testTheSameEarlierAdviceIsOneReviewCard() {
+        let memory = ApproachMemory(latePasses: 3, earlyPasses: 0)
+        let tight = TimingContextSummary(surface: .paved, representativeRadiusFeet: 120,
+                                         hour: 14, memory: memory)
+        let wide = TimingContextSummary(surface: .paved, representativeRadiusFeet: 400,
+                                        hour: 15, memory: memory)
+        let night = TimingContextSummary(surface: .paved, representativeRadiusFeet: 200,
+                                         hour: 21, memory: memory)
+        let gravel = TimingContextSummary(surface: .unpaved, representativeRadiusFeet: 100,
+                                          hour: 14, memory: memory)
+        let debrief = TripScreenDebrief(
+            passes: [
+                advicePass("p1", curveID: "c1", radius: 120, surface: .paved, hour: 14),
+                advicePass("p2", curveID: "c2", radius: 400, surface: .paved, hour: 15),
+                advicePass("p3", curveID: "c3", radius: 200, surface: .paved, hour: 21),
+                advicePass("p4", curveID: "c4", radius: 100, surface: .unpaved, hour: 14),
+            ],
+            contexts: [tight, wide, night, gravel]
+        )
+        XCTAssertEqual(debrief.lateContexts.count, 4)
+        let cards = debrief.earlierPromptCards
+        XCTAssertEqual(cards.count, 3)
+        let pavedDay = cards.first { $0.id.hasPrefix("Next prompt comes earlier.|paved|day") }
+        XCTAssertEqual(pavedDay?.curveCount, 2)
+        XCTAssertEqual(pavedDay?.caption, "Paved · day · 2 curves")
+        XCTAssertEqual(cards.first { $0.night }?.caption, "Paved · night")
+        XCTAssertEqual(
+            cards.first { $0.surface == .unpaved }?.message,
+            "Tight unpaved. Next prompt comes earlier."
+        )
+        XCTAssertEqual(cards.first { $0.surface == .unpaved }?.curveCount, 1)
     }
 
     func testNewTripClearsPreviousRowsAndUnder18CannotOptInWhileMoving() async {
