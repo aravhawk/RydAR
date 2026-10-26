@@ -1,14 +1,20 @@
 import CoreLocation
 import CoreMotion
 import Foundation
+import UIKit
 
 enum DriveRules {
     static let matchConfidenceMinimum = 0.9
     static let requiredFixes = 3
     static let matchGapSeconds: TimeInterval = 5
-    static let cooldownSeconds: TimeInterval = 10
     static let junctionGapMeters = 30.0
     static let onCurveMeters = 25.0
+    /// Past the closest approach by this much, and no longer aimed at the curve, counts as passed.
+    static let passClearMeters = 25.0
+    /// A locked curve that heading has lost stays on screen while the car is still this close.
+    static let lockHoldMeters = 45.0
+    /// Inside that hold, moving this far back out means the curve was left behind.
+    static let lockLeaveMeters = 15.0
     static let lateSpeedMeters = 40.0
     static let searchRadiusMeters = 450.0
     static let movingSpeedMps = 1.0
@@ -219,6 +225,8 @@ struct TripUpdate: Equatable {
     var measuredSpeedMPH: Double? = nil
     var promptSpeedMPH: Double? = nil
     var screeningRange: ScreeningRange? = nil
+    /// What the drive screen shows for the advisory, including the mph to slow to.
+    var advisoryNotice: String? = nil
 }
 
 func driveGate(mode: DriverMode?, speedMps: Double, dashEnabled: Bool, uploadOptIn: Bool) -> DriveGate {
@@ -234,7 +242,7 @@ func driveGate(mode: DriverMode?, speedMps: Double, dashEnabled: Bool, uploadOpt
             allowsCamera: false,
             allowsUpload: false
         )
-    case .adult, .passenger:
+    case .adult:
         return DriveGate(
             allowsSound: sound,
             allowsChime: sound,
@@ -315,9 +323,11 @@ struct TripMatcher {
     private var streakID: String?
     private var streak = 0
     private var lastMatchAt: Date?
-    private var lastPromptAt: Date?
     private var spokenThisPass: Set<String> = []
     private var tracks: [String: ApproachTrack] = [:]
+    /// The curve the drive screen is counting down. It stays put when a close-range
+    /// heading wobble drops the match below the speaking threshold.
+    private var lockedID: String?
 
     mutating func begin(driverMode: DriverMode, tread: TreadChoice = .unsure) {
         self.driverMode = driverMode
@@ -325,9 +335,9 @@ struct TripMatcher {
         streakID = nil
         streak = 0
         lastMatchAt = nil
-        lastPromptAt = nil
         spokenThisPass = []
         tracks = [:]
+        lockedID = nil
     }
 
     /// Forgets the approach in progress but keeps the trip's mode and tread. A pause means the car
@@ -338,6 +348,7 @@ struct TripMatcher {
         lastMatchAt = nil
         spokenThisPass = []
         tracks = [:]
+        lockedID = nil
     }
 
     mutating func end() {
@@ -347,6 +358,7 @@ struct TripMatcher {
         lastMatchAt = nil
         spokenThisPass = []
         tracks = [:]
+        lockedID = nil
     }
 
     mutating func ingest(
@@ -371,9 +383,12 @@ struct TripMatcher {
             uploadOptIn: uploadOptIn
         )
         guard gpsIsGood(fix, now: moment) else {
-            streak = 0
-            streakID = nil
-            lastMatchAt = nil
+            if let lastMatchAt, moment.timeIntervalSince(lastMatchAt) > DriveRules.matchGapSeconds {
+                streak = 0
+                streakID = nil
+                self.lastMatchAt = nil
+                lockedID = nil
+            }
             return TripUpdate(
                 prompt: nil,
                 spokenLine: nil,
@@ -412,20 +427,17 @@ struct TripMatcher {
         if hot.count >= 2, hot[1].distance - hot[0].distance < DriveRules.junctionGapMeters {
             ambiguous = true
         }
-        if ambiguous || hot.isEmpty {
-            streak = 0
-            streakID = nil
-            lastMatchAt = nil
-        } else {
-            let identifier = hot[0].curve.id
-            let gap = lastMatchAt.map { moment.timeIntervalSince($0) } ?? 0
-            if identifier == streakID, gap <= DriveRules.matchGapSeconds {
-                streak += 1
+        if let lockedID {
+            if let held = scored.first(where: { $0.curve.id == lockedID }) {
+                if !keepsLock(held, track: tracks[lockedID]) {
+                    self.lockedID = nil
+                }
             } else {
-                streakID = identifier
-                streak = 1
+                self.lockedID = nil
             }
-            lastMatchAt = moment
+        }
+        if self.lockedID == nil, !ambiguous, let candidate = hot.first {
+            self.lockedID = candidate.curve.id
         }
 
         var completed: [CompletedPass] = []
@@ -471,13 +483,18 @@ struct TripMatcher {
             }
             // A brake beyond this warning window is for something else. Counting it
             // as an early curve brake blocks a later, real onset from moving the prompt.
-            if braking, !ambiguous, hot.first?.curve.id == item.curve.id, track.brakingOnset == nil,
+            if braking, !ambiguous, lockedID == item.curve.id, track.brakingOnset == nil,
                item.distance <= item.lookAhead {
                 track.brakingOnset = item.distance
                 track.baseWhenBraking = item.baseLookAhead
                 track.onsetSpeedMps = max(0, fix.speedMps)
             }
-            if track.entered && !item.ahead {
+            if spokenThisPass.contains(item.curve.id) {
+                track.spoke = true
+            }
+            let passed = track.entered && !item.ahead
+                && item.distance > track.minDistance + DriveRules.passClearMeters
+            if passed {
                 tracks.removeValue(forKey: item.curve.id)
                 spokenThisPass.remove(item.curve.id)
                 completed.append(makePass(track, at: moment))
@@ -493,31 +510,63 @@ struct TripMatcher {
             }
         }
 
-        let focus = ambiguous ? nil : hot.first
+        if let lockedID, completed.contains(where: { $0.curveID == lockedID }) {
+            self.lockedID = nil
+        }
+        if self.lockedID == nil, !ambiguous {
+            let done = Set(completed.map(\.curveID))
+            if let next = hot.first(where: { !done.contains($0.curve.id) }) {
+                self.lockedID = next.curve.id
+            }
+        }
+        let focus = lockedID.flatMap { id in scored.first { $0.curve.id == id } }
+        noteStreak(for: focus, at: moment)
+
         var prompt: DrivePrompt?
         var spokenLine: String?
+        var advisoryNotice: String?
         if let focus {
-            let over = shouldSpeak(effectiveSpeed: focus.effective, range: focus.range)
+            let approaches = scored.filter(\.ahead).map {
+                CurveApproach(
+                    id: $0.curve.id,
+                    distanceMeters: $0.distance,
+                    advisoryMPH: advisorySpeedMPH($0.range)
+                )
+            }
+            let focusApproach = CurveApproach(
+                id: focus.curve.id,
+                distanceMeters: focus.distance,
+                advisoryMPH: advisorySpeedMPH(focus.range)
+            )
+            let stretch = CurveAlerts.stretch(focus: focusApproach, ahead: approaches)
+            let tightestID = stretch.min { $0.advisoryMPH < $1.advisoryMPH }?.id ?? focus.curve.id
+            let tightestRange = scored.first { $0.curve.id == tightestID }?.range ?? focus.range
+            let over = shouldSpeak(effectiveSpeed: focus.effective, range: tightestRange)
+            advisoryNotice = CurveAlerts.displayNotice(stretch: stretch, overAdvisory: over)
             let quiet = suppressRepeatPrompt(
                 passesUnderRange: passesUnderRange(focus.curve.id),
                 effectiveSpeed: focus.effective,
                 range: focus.range
             )
-            let cooled = lastPromptAt.map { moment.timeIntervalSince($0) >= DriveRules.cooldownSeconds } ?? true
             let firstTime = !spokenThisPass.contains(focus.curve.id)
             let inWindow = focus.distance <= focus.lookAhead
-            let ready = over && !quiet && cooled && firstTime && inWindow && streak >= DriveRules.requiredFixes
+            let confident = focus.confidence >= DriveRules.matchConfidenceMinimum
+            let ready = over && !quiet && firstTime && inWindow && streak >= DriveRules.requiredFixes
+                && confident && !ambiguous
             if ready && gate.allowsSound && promptStyle == .chimeOnly && gate.allowsChime {
                 prompt = .chime
             } else if ready && gate.allowsSound && promptStyle != .chimeOnly {
                 prompt = .speak
-                spokenLine = spokenWarning
+                spokenLine = CurveAlerts.spokenLine(stretch: stretch)
             }
-            if prompt != nil, var track = tracks[focus.curve.id] {
-                track.spoke = true
-                tracks[focus.curve.id] = track
-                spokenThisPass.insert(focus.curve.id)
-                lastPromptAt = moment
+            if prompt != nil {
+                for identifier in stretch.map(\.id) {
+                    spokenThisPass.insert(identifier)
+                    if var track = tracks[identifier] {
+                        track.spoke = true
+                        tracks[identifier] = track
+                    }
+                }
             }
         }
 
@@ -538,8 +587,44 @@ struct TripMatcher {
             gpsStatus: "GPS ready",
             measuredSpeedMPH: measuredSpeedMPH(speedMps: fix.speedMps),
             promptSpeedMPH: focus?.effective,
-            screeningRange: focus?.range
+            screeningRange: focus?.range,
+            advisoryNotice: advisoryNotice
         )
+    }
+
+    /// Hold a curve that was acquired at the speaking threshold until it is passed
+    /// or the car has clearly left it. A heading dip near the curve does not qualify.
+    private func keepsLock(_ item: ScoredCurve, track: ApproachTrack?) -> Bool {
+        guard item.ahead else {
+            let close = item.distance <= DriveRules.lockHoldMeters
+            let leaving = track.map { item.distance > $0.minDistance + DriveRules.lockLeaveMeters } ?? true
+            return close && !leaving
+        }
+        return true
+    }
+
+    /// The locked curve keeps earning the speaking streak, including fixes whose
+    /// heading is too noisy to speak. A curve that was already confirmed does not
+    /// make the next one wait out another three fixes.
+    private mutating func noteStreak(for focus: ScoredCurve?, at moment: Date) {
+        if let focus {
+            let gap = lastMatchAt.map { moment.timeIntervalSince($0) }
+            let continuous = gap.map { $0 <= DriveRules.matchGapSeconds } ?? false
+            if focus.curve.id == streakID, continuous {
+                streak += 1
+            } else if continuous, streak >= DriveRules.requiredFixes {
+                streakID = focus.curve.id
+                streak = DriveRules.requiredFixes
+            } else {
+                streakID = focus.curve.id
+                streak = 1
+            }
+            lastMatchAt = moment
+        } else if let lastMatchAt, moment.timeIntervalSince(lastMatchAt) > DriveRules.matchGapSeconds {
+            streak = 0
+            streakID = nil
+            self.lastMatchAt = nil
+        }
     }
 
     private func score(
@@ -703,7 +788,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
     private static let nearbyCacheMarginMeters = 100.0
     private var lastSpeedSample: (speed: Double, accuracy: Double, time: Date)?
     private var previousLocation: CLLocation?
-    /// True only after an adult or passenger trip has taken the audio session.
+    /// True only after a driver trip has taken the audio session.
     private var speechHeld = false
     private let precisePurposeKey = "PreciseCurve"
     private let askedAlwaysKey = "rydar.askedAlwaysLocation"
@@ -743,6 +828,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         tread = reported
         matcher.begin(driverMode: driverMode, tread: reported)
         tripID = try passLog.startTrip(mode: driverMode, at: date, notes: nil)
+        setScreenAwake(true)
         previousLocation = nil
         nearbyCache = nil
         resetMotionTracking()
@@ -764,6 +850,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
     }
 
     func endTrip() {
+        setScreenAwake(false)
         let releaseSpeech = speechHeld
         speechHeld = false
         paused = false
@@ -878,7 +965,9 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
             switch update.prompt {
             case .speak:
                 speech.playCurveTap()
-                try? speech.speakWarning()
+                if let line = update.spokenLine {
+                    try? speech.speakWarning(line)
+                }
             case .chime:
                 speech.playCurveTap()
                 try? speech.playChime()
@@ -979,6 +1068,17 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
     deinit {
         locationManager.stopUpdatingLocation()
         motionManager.stopDeviceMotionUpdates()
+        setScreenAwake(false)
+    }
+
+    /// The drive screen stays on for the whole trip, including a pause, and sleeps again when it ends.
+    private func setScreenAwake(_ awake: Bool) {
+        let apply = { UIApplication.shared.isIdleTimerDisabled = awake }
+        if Thread.isMainThread {
+            apply()
+        } else {
+            DispatchQueue.main.async(execute: apply)
+        }
     }
 
     private func startSensorsIfNeeded() {

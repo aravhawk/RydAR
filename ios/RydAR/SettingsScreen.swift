@@ -67,7 +67,7 @@ struct SettingsScreen: View {
                 Text("Privacy")
                     .textCase(nil)
             } footer: {
-                Text("Helps counties find the curves that need fixing. Curve, direction, 5 mph band, hour. No name or route. Published after 20. Off under 18.")
+                Text("Helps counties find the curves that need fixing. Curve, direction, 5 mph band, hour. No name or route. Published after 20. Off for a teen driver.")
             }
 
             Section {
@@ -89,7 +89,7 @@ struct SettingsScreen: View {
                 Text("Trip setup")
                     .textCase(nil)
             } footer: {
-                Text("Paved can only be read as unpaved. Off under 18.")
+                Text("Paved can only be read as unpaved. Off for a teen driver.")
             }
 
             Section {

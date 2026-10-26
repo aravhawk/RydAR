@@ -55,6 +55,14 @@ struct DriveScreen: View {
                 }
                 Text(trip.drive.nextCurve?.roadName ?? unmatchedCurveStatus)
                     .font(.title2.weight(.semibold))
+                if let notice = trip.drive.advisoryNotice {
+                    let warning = notice.hasPrefix("Slow") || notice.hasPrefix("Curves")
+                    Text(notice)
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(warning ? AuditTheme.warningText : .primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("advisorySpeed")
+                }
                 if let curve = trip.drive.nextCurve {
                     SurfaceBadge(fileSurface: curve.surface, camera: trip.drive.cameraEvidence,
                                  threshold: trip.drive.cameraThreshold)

@@ -125,16 +125,14 @@ struct CurveMap: View {
 extension DriverMode {
     var screenTitle: String {
         switch self {
-        case .adult: return "Adult driver"
-        case .passenger: return "Passenger operating"
-        case .under18: return "Under-18 driver"
+        case .adult: return "Driver"
+        case .under18: return "Teen driver"
         }
     }
     var screenDetail: String {
         switch self {
-        case .adult: return "Prompts can speak."
-        case .passenger: return "An adult is driving. The student is holding the phone."
-        case .under18: return "No voice, no chime, no tap, and no camera or upload."
+        case .adult: return "Full warnings and speech."
+        case .under18: return "Put the phone away. No voice, camera, or upload."
         }
     }
 }
