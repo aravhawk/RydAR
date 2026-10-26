@@ -37,8 +37,8 @@ final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, 
     func holdForTrip() {
         holding = true
         voice = AVSpeechSynthesisVoice(language: "en-US")
-        haptic.prepare()
         try? activateSession()
+        haptic.prepare()
     }
 
     func playCurveTap() {
@@ -58,6 +58,7 @@ final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, 
     func activateSession() throws {
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(Self.category, mode: Self.mode, options: Self.options)
+        try session.setAllowHapticsAndSystemSoundsDuringRecording(true)
         try session.setActive(true)
     }
 

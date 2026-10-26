@@ -18,19 +18,28 @@ func hapticRoute(appIsActive: Bool, hardwareSupportsHaptics: Bool) -> HapticRout
 final class CurveHaptic {
     private var engine: CHHapticEngine?
     private var pattern: CHHapticPattern?
+    /// Kept alive until the second tap has played. A local player is cancelled as soon as it is released.
+    private var player: CHHapticPatternPlayer?
+    private let heavy = UIImpactFeedbackGenerator(style: .heavy)
+    private let rigid = UIImpactFeedbackGenerator(style: .rigid)
 
     func prepare() {
+        heavy.prepare()
+        rigid.prepare()
         guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return }
         do {
             let engine = try CHHapticEngine()
-            engine.isAutoShutdownEnabled = true
+            engine.isAutoShutdownEnabled = false
             engine.playsHapticsOnly = true
             engine.resetHandler = { [weak self] in
                 try? self?.engine?.start()
             }
-            try engine.start()
+            engine.stoppedHandler = { [weak self] _ in
+                try? self?.engine?.start()
+            }
             self.engine = engine
             pattern = try Self.curvePattern()
+            try engine.start()
         } catch {
             engine = nil
             pattern = nil
@@ -38,6 +47,7 @@ final class CurveHaptic {
     }
 
     func stop() {
+        player = nil
         engine?.stop()
         engine = nil
     }
@@ -61,17 +71,22 @@ final class CurveHaptic {
     }
 
     private func playTaptic() {
-        if engine == nil { prepare() }
-        guard let engine, let pattern else {
-            AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
-            return
+        // UIKit taps use the Taptic Engine even while the trip's playback session is active.
+        heavy.impactOccurred(intensity: 1)
+        heavy.prepare()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) { [weak self] in
+            self?.rigid.impactOccurred(intensity: 1)
         }
-        do {
-            try engine.start()
-            let player = try engine.makePlayer(with: pattern)
-            try player.start(atTime: CHHapticTimeImmediate)
-        } catch {
-            AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
+        guard let engine, let pattern else { return }
+        engine.start { [weak self] error in
+            guard error == nil, let self else { return }
+            do {
+                let player = try engine.makePlayer(with: pattern)
+                self.player = player
+                try player.start(atTime: CHHapticTimeImmediate)
+            } catch {
+                self.player = nil
+            }
         }
     }
 

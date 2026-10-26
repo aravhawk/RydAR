@@ -113,4 +113,37 @@ struct PreviewCurves: CurveStore {
                 MapPoint(longitude: -94.019636, latitude: 36.223803),
               ]),
     ]
+
+    func curves(
+        minLatitude: Double, maxLatitude: Double, minLongitude: Double, maxLongitude: Double,
+        limit: Int, includeCoordinates: Bool = true
+    ) -> [Curve] {
+        Array(Self.samples.filter {
+            $0.maxLatitude >= minLatitude && $0.minLatitude <= maxLatitude
+                && $0.maxLongitude >= minLongitude && $0.minLongitude <= maxLongitude
+        }.prefix(max(0, limit)))
+    }
+
+    func counties() -> [CurveCounty] {
+        Dictionary(grouping: Self.samples, by: \.county).map { name, curves in
+            CurveCounty(
+                name: name,
+                minLatitude: curves.map(\.minLatitude).min() ?? 0,
+                maxLatitude: curves.map(\.maxLatitude).max() ?? 0,
+                minLongitude: curves.map(\.minLongitude).min() ?? 0,
+                maxLongitude: curves.map(\.maxLongitude).max() ?? 0,
+                count: curves.count
+            )
+        }.sorted { $0.name < $1.name }
+    }
+
+    func searchRoads(_ query: String, limit: Int) -> [Curve] {
+        let needle = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard needle.count >= 2 else { return [] }
+        return Array(Self.samples.filter { $0.roadName.lowercased().contains(needle) }.prefix(max(0, limit)))
+    }
+
+    func curve(id: String) -> Curve? {
+        Self.samples.first { $0.id == id }
+    }
 }

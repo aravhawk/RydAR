@@ -31,7 +31,7 @@ struct HomeScreen: View {
                 NavigationLink {
                     PreviewScreen(store: store, isSampleStore: isSampleStore)
                 } label: {
-                    Label("Look at a road", systemImage: "map")
+                    Label("Map", systemImage: "map")
                         .font(.headline).frame(maxWidth: .infinity, minHeight: 44)
                 }.accessibilityIdentifier("previewRoute")
                 if isSampleStore {

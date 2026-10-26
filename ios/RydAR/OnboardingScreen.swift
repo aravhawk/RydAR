@@ -30,8 +30,11 @@ final class ScreenPermissions: NSObject, ObservableObject, CLLocationManagerDele
 }
 
 struct OnboardingScreen: View {
+    let store: any CurveStore
+    var isSampleStore: Bool
     var onContinue: () -> Void
     @StateObject private var permissions = ScreenPermissions()
+    @State private var showNearby = false
     @State private var tread: TreadChoice?
     @Environment(\.openURL) private var openURL
 
@@ -52,8 +55,11 @@ struct OnboardingScreen: View {
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
                 if permissions.locationStatus == .notDetermined {
-                    Button("Allow location", action: permissions.requestLocation)
-                        .buttonStyle(.bordered).accessibilityIdentifier("allowLocation")
+                    Button("Allow location") {
+                        permissions.requestLocation()
+                        showNearby = true
+                    }
+                    .buttonStyle(.bordered).accessibilityIdentifier("allowLocation")
                 } else if permissions.locationStatus == .denied {
                     Button("Turn on location in Settings") {
                         if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
@@ -100,6 +106,9 @@ struct OnboardingScreen: View {
             }.padding(24)
         }
         .background(AuditTheme.background)
+        .navigationDestination(isPresented: $showNearby) {
+            PreviewScreen(store: store, isSampleStore: isSampleStore)
+        }
     }
 }
 
