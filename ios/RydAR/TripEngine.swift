@@ -326,6 +326,7 @@ struct TripMatcher {
         curveMemory: (String) -> ApproachMemory = { _ in ApproachMemory(latePasses: 0, earlyPasses: 0) },
         contextOnset: (String) -> OnsetMemory = { _ in .empty },
         curveOnset: (String) -> OnsetMemory = { _ in .empty },
+        onsetNet: () -> OnsetNet = { OnsetNet.initial },
         vision: VisionCaution = VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false),
         camera: CameraEvidence? = nil,
         braking: Bool = false,
@@ -370,7 +371,8 @@ struct TripMatcher {
             memoryForContext: memoryForContext,
             curveMemory: curveMemory,
             contextOnset: contextOnset,
-            curveOnset: curveOnset
+            curveOnset: curveOnset,
+            onsetNet: onsetNet
         )
         let hot = scored
             .filter { $0.confidence >= DriveRules.matchConfidenceMinimum }
@@ -415,7 +417,8 @@ struct TripMatcher {
                 surface: item.surface,
                 vLo: item.range.low,
                 vHi: item.range.high,
-                radiusFeet: item.curve.radiusFeet
+                radiusFeet: item.curve.radiusFeet,
+                onsetSpeedMps: 0
             )
             track.lastDistance = item.distance
             track.baseLookAhead = item.baseLookAhead
@@ -438,6 +441,7 @@ struct TripMatcher {
             if braking, !ambiguous, hot.first?.curve.id == item.curve.id, track.brakingOnset == nil {
                 track.brakingOnset = item.distance
                 track.baseWhenBraking = item.baseLookAhead
+                track.onsetSpeedMps = max(0, fix.speedMps)
             }
             if track.entered && !item.ahead {
                 tracks.removeValue(forKey: item.curve.id)
@@ -514,9 +518,12 @@ struct TripMatcher {
         memoryForContext: (String) -> ApproachMemory,
         curveMemory: (String) -> ApproachMemory,
         contextOnset: (String) -> OnsetMemory,
-        curveOnset: (String) -> OnsetMemory
+        curveOnset: (String) -> OnsetMemory,
+        onsetNet: () -> OnsetNet
     ) -> [ScoredCurve] {
         let hour = Calendar.current.component(.hour, from: moment)
+        let night = isNightHour(hour)
+        let net = onsetNet()
         let visionUsed = gate.allowsCamera
             ? vision
             : VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false)
@@ -544,7 +551,11 @@ struct TripMatcher {
                 vision: visionUsed,
                 curveMemory: curveMemory(curve.id),
                 contextOnset: contextOnset(key),
-                curveOnset: curveOnset(curve.id)
+                curveOnset: curveOnset(curve.id),
+                onsetNet: net,
+                radiusFeet: curve.radiusFeet,
+                surface: fused.0,
+                night: night
             )
             return ScoredCurve(
                 curve: curve,
@@ -581,7 +592,9 @@ struct TripMatcher {
             radiusBand: radiusBand(feet: track.radiusFeet),
             lookAheadMeters: track.lookAhead,
             contextKey: approachContextKey(surface: track.surface, radiusFeet: track.radiusFeet, hour: hour),
-            brakingDistanceMeters: track.brakingOnset
+            brakingDistanceMeters: track.brakingOnset,
+            onsetSpeedMps: track.brakingOnset == nil ? nil : track.onsetSpeedMps,
+            onsetRadiusFeet: track.radiusFeet
         )
     }
 }
@@ -616,6 +629,7 @@ private struct ApproachTrack {
     var vLo: Double
     var vHi: Double
     var radiusFeet: Double
+    var onsetSpeedMps: Double
 }
 
 final class TripEngine: NSObject, CLLocationManagerDelegate {
@@ -767,6 +781,9 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
             },
             curveOnset: { identifier in
                 (try? self.passLog.onset(forCurve: identifier)) ?? .empty
+            },
+            onsetNet: {
+                (try? self.passLog.onsetNet()) ?? OnsetNet.initial
             },
             vision: latestVision,
             camera: cameraForIngest(at: moment),

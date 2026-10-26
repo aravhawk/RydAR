@@ -1,60 +1,28 @@
 # RydAR
 
-iPhone app for curve screening on Arkansas roads, plus a public Cloudflare map. The product spec is `docs/RydAR-Product-Brief.md`. If this README and that file disagree, the build contract at the top of the brief wins.
+An iPhone co-pilot for tight Arkansas bends, and a public map of those bends. The long product brief is not in this repository. The rules below are the ones the code has to keep.
 
-Repository: `git@github.com:aravhawk/RydAR.git`
+Repository: [github.com/aravhawk/RydAR](https://github.com/aravhawk/RydAR)
+
+Public map: [rydar.org](https://rydar.org)
 
 ## Stack
 
-- iOS 17, SwiftUI, MapKit, one SQLite file for curves and trips
-- Python for the curve importer and the training script
-- Cloudflare Worker, D1, and static files for the public page and anonymous passes
-- One vision model with three heads on MobileNetV4-Conv-Small. Fine-tuned in PyTorch on Google Colab from Mac A, converted to Core ML on Mac A, and bundled in the app. See `ml/README.md`. The curve database is also bundled. A drive does not download data. An on-device timing memory can speak earlier. Nothing in the app predicts a speed.
+- iOS 17, SwiftUI, MapKit, one bundled SQLite file for the curves and the trips
+- The public site is plain HTML on Vercel. Anonymous passes go to Neon. A drive does not wait on either.
+- One bundled vision model, MobileNetV4-Conv-Small with three heads, trained on RSCD and converted to Core ML. Dash loads it. Launch does not. It can only lower a paved label to unpaved, or move a warning earlier. It does not change the advisory speed. Do not quote an accuracy number in the app or in a video.
+- A second on-device model, `OnsetNet`, remembers where this phone starts braking and can place the warning sooner. A measured start on that road wins over the network. It does not change the advisory speed.
 
-## Who works where
+The spoken line is exactly "Curve ahead. Above advisory speed."
 
-| Computer | Open | Do not open |
-|---|---|---|
-| Mac A (this Mac: paid Apple team, the phone, Colab) | `ios/RydAR.xcodeproj`, `ml/train_colab.ipynb` | the website |
-| Mac B | the same Xcode project, simulator | a second copy of `Screening.swift` |
-| Windows | `tools/`, `web/` | the Xcode project, the Colab notebook |
-
-`main` stays buildable. One person owns a file at a time.
-
-## Mac
+## App
 
 ```bash
 open ios/RydAR.xcodeproj
 ```
 
-Pick the parent's paid team when you install on a phone. The simulator does not need that for the shell. The shell shows a sample screening range. Location, speech, and the camera are not connected yet.
-
-## Windows or either Mac, curve file
-
-```bash
-python3 tools/geojson_to_sqlite.py
-```
-
-That reads `data/curves/curves.geojson` and writes `ios/RydAR/curves.sqlite`.
+Builds need `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`. The team is `XLR6H6DKHH`. The phone has to be unlocked to install. The curve database and the model are already in the app. Do not rebuild the SQLite file and do not download curves after install.
 
 ## Website
 
-```bash
-cd web
-npm install
-npx wrangler d1 migrations apply rydar-passes --local
-npm run dev
-```
-
-The `database_id` in `web/wrangler.jsonc` is a placeholder. The first person with a Cloudflare login replaces it:
-
-```bash
-npx wrangler login
-npx wrangler d1 create rydar-passes
-```
-
-Paste the printed id into `wrangler.jsonc`, then `npm run types`.
-
-## Model
-
-Train the camera model from Mac A with `ml/train_colab.ipynb`, then convert the checkpoint on Mac A. Instructions are in `ml/README.md`. The phone already contains `curves.sqlite`. Do not make it rebuild curves or download them. Launch does not load every curve or the Core ML file. Dash mode loads the model. A drive queries the curves ahead of the car. The overnight task list is `docs/BUILD_PLAN.md`.
+The live site deploys from `main`, with the Vercel project rooted at `web/`. Do not point the phone back at the old Cloudflare worker. That worker is still up and should be left alone.

@@ -193,6 +193,195 @@ final class ScreeningTests: XCTestCase {
         )
     }
 
+    func testUntrainedOnsetNetPredictsOnTime() {
+        let net = OnsetNet.initial
+        let calm = ApproachMemory(latePasses: 0, earlyPasses: 0)
+        let none = VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false)
+        XCTAssertFalse(habitExtendsLookAhead(calm))
+        for speed in [5.0, 20.0, 80.0] {
+            let base = baseLookAheadMeters(speedMps: speed)
+            XCTAssertEqual(
+                net.predictMeters(speedMps: speed, radiusFeet: 180, paved: false, night: true),
+                base,
+                accuracy: 0.001
+            )
+            XCTAssertEqual(
+                net.predictMeters(speedMps: speed, radiusFeet: 400, paved: true, night: false),
+                base,
+                accuracy: 0.001
+            )
+            XCTAssertEqual(
+                placedLookAheadMeters(
+                    baseMeters: base,
+                    context: calm,
+                    contextOnset: .empty,
+                    curveOnset: .empty,
+                    onsetNet: net,
+                    speedMps: speed,
+                    radiusFeet: 180,
+                    surface: .unpaved,
+                    night: true
+                ),
+                base,
+                accuracy: 0.001
+            )
+        }
+        var eligible = net
+        eligible.sampleCount = OnsetNet.minimumSamples
+        let base = baseLookAheadMeters(speedMps: 20)
+        XCTAssertEqual(
+            lookAheadMeters(
+                speedMps: 20, memory: calm, vision: none, onsetNet: eligible,
+                radiusFeet: 180, surface: .unpaved, night: true
+            ),
+            base,
+            accuracy: 0.001
+        )
+    }
+
+    func testTrainedOnsetNetLengthensLookAhead() {
+        var net = OnsetNet.initial
+        let calm = ApproachMemory(latePasses: 0, earlyPasses: 0)
+        let none = VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false)
+        let base = baseLookAheadMeters(speedMps: 20)
+        XCTAssertEqual(base, 140, accuracy: 0.001)
+        for _ in 0..<7 {
+            net.learn(speedMps: 20, radiusFeet: 200, paved: true, night: false, measuredMeters: 40)
+        }
+        XCTAssertEqual(
+            placedLookAheadMeters(
+                baseMeters: base, context: calm, contextOnset: .empty, curveOnset: .empty,
+                onsetNet: net, speedMps: 20, radiusFeet: 200, surface: .paved, night: false
+            ),
+            base,
+            accuracy: 0.001
+        )
+        let late = ApproachMemory(latePasses: 3, earlyPasses: 0)
+        XCTAssertEqual(
+            lookAheadMeters(
+                speedMps: 20, memory: late, vision: none, onsetNet: net,
+                radiusFeet: 200, surface: .paved, night: false
+            ),
+            min(450, base * 1.4),
+            accuracy: 0.001
+        )
+        for _ in 0..<5 {
+            net.learn(speedMps: 20, radiusFeet: 200, paved: true, night: false, measuredMeters: 40)
+        }
+        XCTAssertGreaterThanOrEqual(net.sampleCount, OnsetNet.minimumSamples)
+        let predicted = net.predictMeters(speedMps: 20, radiusFeet: 200, paved: true, night: false)
+        XCTAssertLessThan(abs(predicted - 40), abs(base - 40))
+        let placed = placedLookAheadMeters(
+            baseMeters: base, context: calm, curve: calm, contextOnset: .empty, curveOnset: .empty,
+            onsetNet: net, speedMps: 20, radiusFeet: 200, surface: .paved, night: false
+        )
+        XCTAssertEqual(placed, min(450, base + max(0, base - predicted)), accuracy: 0.001)
+        XCTAssertGreaterThan(placed, base)
+        XCTAssertLessThanOrEqual(placed, 450)
+        XCTAssertEqual(
+            lookAheadMeters(
+                speedMps: 20, memory: calm, vision: none, onsetNet: net,
+                radiusFeet: 200, surface: .paved, night: false
+            ),
+            placed,
+            accuracy: 0.001
+        )
+        let water = VisionCaution(standingWaterOrSnow: true, severeUnevenOnPaved: false)
+        let camera = min(450, base * 1.3)
+        XCTAssertEqual(
+            lookAheadMeters(
+                speedMps: 20, memory: calm, vision: water, onsetNet: net,
+                radiusFeet: 200, surface: .paved, night: false
+            ),
+            min(450, max(base, placed, camera)),
+            accuracy: 0.001
+        )
+    }
+
+    func testOnsetNetOnlyLengthensAndCapsAt450() {
+        let base = baseLookAheadMeters(speedMps: 20)
+        let calm = ApproachMemory(latePasses: 0, earlyPasses: 0)
+        var early = OnsetNet.initial
+        early.sampleCount = OnsetNet.minimumSamples
+        early.outputBias = 80
+        XCTAssertEqual(
+            placedLookAheadMeters(
+                baseMeters: base, context: calm, onsetNet: early,
+                speedMps: 20, radiusFeet: 200, surface: .paved, night: false
+            ),
+            base,
+            accuracy: 0.001
+        )
+        var veryLate = OnsetNet.initial
+        veryLate.sampleCount = OnsetNet.minimumSamples
+        veryLate.outputBias = -500
+        XCTAssertEqual(
+            placedLookAheadMeters(
+                baseMeters: base, context: calm, onsetNet: veryLate,
+                speedMps: 20, radiusFeet: 200, surface: .paved, night: false
+            ),
+            450,
+            accuracy: 0.001
+        )
+    }
+
+    func testCurveOnsetsOverrideATrainedOnsetNet() {
+        var net = OnsetNet.initial
+        let base = baseLookAheadMeters(speedMps: 20)
+        for _ in 0..<12 {
+            net.learn(speedMps: 20, radiusFeet: 200, paved: true, night: false, measuredMeters: 40)
+        }
+        let calm = ApproachMemory(latePasses: 0, earlyPasses: 0)
+        let none = VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false)
+        let lengthened = lookAheadMeters(
+            speedMps: 20, memory: calm, vision: none, onsetNet: net,
+            radiusFeet: 200, surface: .paved, night: false
+        )
+        XCTAssertGreaterThan(lengthened, base)
+        let onTime = OnsetMemory(count: 3, sumMeters: base * 3)
+        XCTAssertEqual(
+            lookAheadMeters(
+                speedMps: 20, memory: calm, vision: none, curveOnset: onTime, onsetNet: net,
+                radiusFeet: 200, surface: .paved, night: false
+            ),
+            base,
+            accuracy: 0.001
+        )
+        let lateSituation = ApproachMemory(latePasses: 3, earlyPasses: 0)
+        XCTAssertEqual(
+            lookAheadMeters(
+                speedMps: 20, memory: lateSituation, vision: none, curveOnset: onTime, onsetNet: net,
+                radiusFeet: 200, surface: .paved, night: false
+            ),
+            base,
+            accuracy: 0.001
+        )
+        let situation = OnsetMemory(count: 3, sumMeters: 40 * 3)
+        XCTAssertEqual(
+            lookAheadMeters(
+                speedMps: 20, memory: calm, vision: none, contextOnset: situation, onsetNet: net,
+                radiusFeet: 200, surface: .paved, night: false
+            ),
+            lookAheadMeters(speedMps: 20, memory: calm, vision: none, contextOnset: situation),
+            accuracy: 0.001
+        )
+    }
+
+    func testAdvisoryRangeDoesNotChangeWhenTheOnsetNetTrains() {
+        let before = screeningRange(radiusFeet: 200, surface: .paved)
+        var net = OnsetNet.initial
+        for _ in 0..<12 {
+            net.learn(speedMps: 20, radiusFeet: 200, paved: true, night: false, measuredMeters: 40)
+        }
+        XCTAssertGreaterThanOrEqual(net.sampleCount, OnsetNet.minimumSamples)
+        let after = screeningRange(radiusFeet: 200, surface: .paved)
+        XCTAssertEqual(after.low, before.low, accuracy: 0.0001)
+        XCTAssertEqual(after.high, before.high, accuracy: 0.0001)
+        XCTAssertEqual(before.low, 19.7, accuracy: 0.05)
+        XCTAssertEqual(before.high, 22.6, accuracy: 0.05)
+        XCTAssertEqual(spokenWarning, "Curve ahead. Above advisory speed.")
+    }
+
     func testSpokenLineMatchesTheContract() throws {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

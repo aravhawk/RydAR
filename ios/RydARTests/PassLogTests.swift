@@ -128,6 +128,68 @@ final class PassLogTests: XCTestCase {
         XCTAssertEqual(try log.curvesWithEarlierPrompt(), 0)
     }
 
+    func testDeleteAllClearsOnsetWeights() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("net-\(UUID().uuidString).sqlite")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let log = try PassLog(databaseURL: url)
+        let tripID = try log.startTrip(mode: .adult)
+        let base = baseLookAheadMeters(speedMps: 20)
+        XCTAssertEqual(try log.onsetNet(), OnsetNet.initial)
+        XCTAssertEqual(
+            try log.onsetNet().predictMeters(speedMps: 20, radiusFeet: 200, paved: true, night: false),
+            base,
+            accuracy: 0.001
+        )
+
+        let key = approachContextKey(surface: .paved, radiusFeet: 200, hour: 14)
+        var quiet = sample(curveID: "quiet", speed: 20 * 2.23694, low: 19, late: false, key: key, band: "150-300", hour: 14, surface: .paved)
+        quiet.brakingDistanceMeters = nil
+        quiet.onsetSpeedMps = 20
+        quiet.onsetRadiusFeet = 200
+        try log.record(quiet, tripID: tripID)
+        XCTAssertEqual(try log.onsetNet(), OnsetNet.initial)
+
+        for _ in 0..<12 {
+            var pass = sample(curveID: "net", speed: 20 * 2.23694, low: 19, late: true, key: key, band: "150-300", hour: 14, surface: .paved)
+            pass.brakingDistanceMeters = 40
+            pass.onsetSpeedMps = 20
+            pass.onsetRadiusFeet = 200
+            try log.record(pass, tripID: tripID)
+        }
+        try log.record(quiet, tripID: tripID)
+
+        let again = try PassLog(databaseURL: url)
+        let net = try again.onsetNet()
+        XCTAssertEqual(net.sampleCount, 12)
+        XCTAssertEqual(net, try log.onsetNet())
+        let predicted = net.predictMeters(speedMps: 20, radiusFeet: 200, paved: true, night: false)
+        XCTAssertLessThan(abs(predicted - 40), abs(base - 40))
+        let placed = placedLookAheadMeters(
+            baseMeters: base,
+            context: ApproachMemory(latePasses: 0, earlyPasses: 0),
+            contextOnset: .empty,
+            curveOnset: .empty,
+            onsetNet: net,
+            speedMps: 20,
+            radiusFeet: 200,
+            surface: .paved,
+            night: false
+        )
+        XCTAssertGreaterThan(placed, base)
+        XCTAssertLessThanOrEqual(placed, 450)
+
+        try again.deleteAll()
+        XCTAssertEqual(try again.onsetNet(), OnsetNet.initial)
+        let cleared = try PassLog(databaseURL: url)
+        XCTAssertEqual(try cleared.onsetNet(), OnsetNet.initial)
+        XCTAssertEqual(
+            try cleared.onsetNet().predictMeters(speedMps: 20, radiusFeet: 200, paved: true, night: false),
+            base,
+            accuracy: 0.001
+        )
+    }
+
     private func sample(
         curveID: String,
         speed: Double,

@@ -1,0 +1,306 @@
+{
+  "do_not_say_in_the_app_or_the_video": true,
+  "not_an_arkansas_road_test": true,
+  "not_the_phone_gate": "Argmax on one 240x360 patch. The phone accepts a head only when 4 of the last 6 frames agree and the weakest of those votes is at least 0.8. That gate was not applied here.",
+  "checkpoint": "/content/roadsurface.pt",
+  "what_this_is": "Held-out RSCD test-set: 12 sequences, 30 frames, 8 patches. The training run did not load these frames. Beijing roads, not Arkansas. Do not quote the random validation split as this number.",
+  "device": "cuda",
+  "frames": 360,
+  "patches": 2880,
+  "heads": {
+    "material": {
+      "correct": 2532,
+      "seen": 2880,
+      "accuracy": 0.8791666666666667,
+      "recall_by_class": {
+        "paved": {
+          "support": 2284,
+          "recall": 0.9141856392294221
+        },
+        "unpaved": {
+          "support": 596,
+          "recall": 0.7449664429530202
+        },
+        "cant_tell": {
+          "support": 0,
+          "recall": null
+        }
+      }
+    },
+    "friction": {
+      "correct": 2065,
+      "seen": 2880,
+      "accuracy": 0.7170138888888888,
+      "recall_by_class": {
+        "dry": {
+          "support": 1162,
+          "recall": 0.6833046471600689
+        },
+        "wet": {
+          "support": 1295,
+          "recall": 0.7258687258687259
+        },
+        "water": {
+          "support": 423,
+          "recall": 0.7825059101654847
+        },
+        "snow_ice": {
+          "support": 0,
+          "recall": null
+        },
+        "cant_tell": {
+          "support": 0,
+          "recall": null
+        }
+      }
+    },
+    "uneven": {
+      "correct": 1611,
+      "seen": 2284,
+      "accuracy": 0.7053415061295972,
+      "recall_by_class": {
+        "smooth": {
+          "support": 1719,
+          "recall": 0.7399650959860384
+        },
+        "slight": {
+          "support": 486,
+          "recall": 0.5493827160493827
+        },
+        "severe": {
+          "support": 79,
+          "recall": 0.9113924050632911
+        },
+        "cant_tell": {
+          "support": 0,
+          "recall": null
+        }
+      }
+    }
+  },
+  "sequences": {
+    "1": {
+      "material": {
+        "correct": 240,
+        "seen": 240,
+        "accuracy": 1.0
+      },
+      "friction": {
+        "correct": 169,
+        "seen": 240,
+        "accuracy": 0.7041666666666667
+      },
+      "uneven": {
+        "correct": 226,
+        "seen": 240,
+        "accuracy": 0.9416666666666667
+      }
+    },
+    "2": {
+      "material": {
+        "correct": 240,
+        "seen": 240,
+        "accuracy": 1.0
+      },
+      "friction": {
+        "correct": 185,
+        "seen": 240,
+        "accuracy": 0.7708333333333334
+      },
+      "uneven": {
+        "correct": 232,
+        "seen": 240,
+        "accuracy": 0.9666666666666667
+      }
+    },
+    "3": {
+      "material": {
+        "correct": 237,
+        "seen": 240,
+        "accuracy": 0.9875
+      },
+      "friction": {
+        "correct": 182,
+        "seen": 240,
+        "accuracy": 0.7583333333333333
+      },
+      "uneven": {
+        "correct": 158,
+        "seen": 240,
+        "accuracy": 0.6583333333333333
+      }
+    },
+    "4": {
+      "material": {
+        "correct": 240,
+        "seen": 240,
+        "accuracy": 1.0
+      },
+      "friction": {
+        "correct": 220,
+        "seen": 240,
+        "accuracy": 0.9166666666666666
+      },
+      "uneven": {
+        "correct": 118,
+        "seen": 240,
+        "accuracy": 0.49166666666666664
+      }
+    },
+    "5": {
+      "material": {
+        "correct": 240,
+        "seen": 240,
+        "accuracy": 1.0
+      },
+      "friction": {
+        "correct": 143,
+        "seen": 240,
+        "accuracy": 0.5958333333333333
+      },
+      "uneven": {
+        "correct": 185,
+        "seen": 240,
+        "accuracy": 0.7708333333333334
+      }
+    },
+    "6": {
+      "material": {
+        "correct": 163,
+        "seen": 240,
+        "accuracy": 0.6791666666666667
+      },
+      "friction": {
+        "correct": 216,
+        "seen": 240,
+        "accuracy": 0.9
+      },
+      "uneven": {
+        "correct": 157,
+        "seen": 240,
+        "accuracy": 0.6541666666666667
+      }
+    },
+    "7": {
+      "material": {
+        "correct": 198,
+        "seen": 240,
+        "accuracy": 0.825
+      },
+      "friction": {
+        "correct": 164,
+        "seen": 240,
+        "accuracy": 0.6833333333333333
+      },
+      "uneven": {
+        "correct": 144,
+        "seen": 240,
+        "accuracy": 0.6
+      }
+    },
+    "8": {
+      "material": {
+        "correct": 218,
+        "seen": 240,
+        "accuracy": 0.9083333333333333
+      },
+      "friction": {
+        "correct": 150,
+        "seen": 240,
+        "accuracy": 0.625
+      },
+      "uneven": {
+        "correct": 122,
+        "seen": 200,
+        "accuracy": 0.61
+      }
+    },
+    "9": {
+      "material": {
+        "correct": 203,
+        "seen": 240,
+        "accuracy": 0.8458333333333333
+      },
+      "friction": {
+        "correct": 187,
+        "seen": 240,
+        "accuracy": 0.7791666666666667
+      },
+      "uneven": {
+        "correct": 166,
+        "seen": 240,
+        "accuracy": 0.6916666666666667
+      }
+    },
+    "10": {
+      "material": {
+        "correct": 172,
+        "seen": 240,
+        "accuracy": 0.7166666666666667
+      },
+      "friction": {
+        "correct": 158,
+        "seen": 240,
+        "accuracy": 0.6583333333333333
+      },
+      "uneven": {
+        "correct": 1,
+        "seen": 3,
+        "accuracy": 0.3333333333333333
+      }
+    },
+    "11": {
+      "material": {
+        "correct": 153,
+        "seen": 240,
+        "accuracy": 0.6375
+      },
+      "friction": {
+        "correct": 161,
+        "seen": 240,
+        "accuracy": 0.6708333333333333
+      },
+      "uneven": {
+        "correct": 37,
+        "seen": 77,
+        "accuracy": 0.4805194805194805
+      }
+    },
+    "12": {
+      "material": {
+        "correct": 228,
+        "seen": 240,
+        "accuracy": 0.95
+      },
+      "friction": {
+        "correct": 130,
+        "seen": 240,
+        "accuracy": 0.5416666666666666
+      },
+      "uneven": {
+        "correct": 65,
+        "seen": 84,
+        "accuracy": 0.7738095238095238
+      }
+    }
+  },
+  "phone_uses": {
+    "material_can_only_lower_paved_to_unpaved": true,
+    "water_or_snow_and_severe_only_move_the_warning_earlier": true,
+    "masked_label": -1
+  },
+  "phone_decisions_argmax": {
+    "true_paved_called_unpaved": 196,
+    "true_paved": 2284,
+    "true_unpaved_called_paved": 152,
+    "true_unpaved": 596,
+    "true_dry_called_water_or_snow": 74,
+    "true_dry": 1162,
+    "true_water_called_water": 331,
+    "true_water": 423,
+    "true_snow_ice_called_snow_ice": 0,
+    "true_snow_ice": 0,
+    "true_severe_called_severe": 72,
+    "true_severe": 79
+  }
+}

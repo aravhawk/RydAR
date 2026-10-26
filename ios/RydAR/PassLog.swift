@@ -14,6 +14,9 @@ struct CompletedPass: Equatable {
     var lookAheadMeters: Double
     var contextKey: String
     var brakingDistanceMeters: Double? = nil
+    /// Not stored. record() reads these while it trains the onset network.
+    var onsetSpeedMps: Double? = nil
+    var onsetRadiusFeet: Double? = nil
 }
 
 struct StoredPass: Equatable {
@@ -110,6 +113,7 @@ final class PassLog {
         try connection.execute("DROP TABLE IF EXISTS approach_model;")
         try ensureBrakingColumn()
         try ensureOnsetColumns()
+        try ensureOnsetNet()
     }
 
     /// Copies made before braking distance was stored still open.
@@ -136,6 +140,20 @@ final class PassLog {
                 try connection.execute("ALTER TABLE \(table) ADD COLUMN onset_sum_m REAL NOT NULL DEFAULT 0;")
             }
         }
+    }
+
+    /// One row of onset-network weights. Old databases get the table at open.
+    private func ensureOnsetNet() throws {
+        try connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS onset_net (
+              id INTEGER PRIMARY KEY CHECK (id = 1),
+              sample_count INTEGER NOT NULL,
+              weights TEXT NOT NULL,
+              bias TEXT NOT NULL
+            );
+            """
+        )
     }
 
     func startTrip(mode: DriverMode, at date: Date = Date(), notes: String? = nil) throws -> String {
@@ -252,6 +270,7 @@ final class PassLog {
                 connection.bind(statement, 4, onsetCount)
                 connection.bind(statement, 5, onsetSum)
             }
+            try learnOnsetLocked(pass)
             try connection.execute("COMMIT")
         } catch {
             try? connection.execute("ROLLBACK")
@@ -433,7 +452,13 @@ final class PassLog {
             .sorted { $0.latePasses > $1.latePasses }
     }
 
-    /// Clears trips and timing memory. The curve table stays.
+    func onsetNet() throws -> OnsetNet {
+        lock.lock()
+        defer { lock.unlock() }
+        return try onsetNetLocked()
+    }
+
+    /// Clears trips, timing memory, and onset weights. The curve table stays.
     func deleteAll() throws {
         lock.lock()
         defer { lock.unlock() }
@@ -441,6 +466,66 @@ final class PassLog {
         try connection.execute("DELETE FROM approach_memory;")
         try connection.execute("DELETE FROM curve_memory;")
         try connection.execute("DELETE FROM trips;")
+        try connection.execute("DELETE FROM onset_net;")
+    }
+
+    /// Caller holds the lock, inside record()'s transaction. Do not lock again.
+    private func learnOnsetLocked(_ pass: CompletedPass) throws {
+        guard let measured = pass.brakingDistanceMeters, measured.isFinite else { return }
+        let speed: Double
+        if let onset = pass.onsetSpeedMps, onset.isFinite {
+            speed = max(0, onset)
+        } else {
+            speed = max(0, pass.effectiveSpeedMPH / 2.23694)
+        }
+        let radius: Double
+        if let feet = pass.onsetRadiusFeet, feet.isFinite, feet > 0 {
+            radius = feet
+        } else {
+            radius = radiusBandCenterFeet(pass.radiusBand)
+        }
+        var net = try onsetNetLocked()
+        net.learn(
+            speedMps: speed,
+            radiusFeet: radius,
+            paved: pass.surfaceUsed == .paved,
+            night: isNightHour(pass.hourBucket),
+            measuredMeters: measured
+        )
+        try saveOnsetNetLocked(net)
+    }
+
+    private func onsetNetLocked() throws -> OnsetNet {
+        var net = OnsetNet.initial
+        try connection.query(
+            "SELECT sample_count, weights, bias FROM onset_net WHERE id = 1"
+        ) { statement in
+            let count = self.connection.int(statement, 0)
+            let weights = self.connection.text(statement, 1)
+            let bias = self.connection.text(statement, 2)
+            if let restored = OnsetNet.restored(sampleCount: count, weights: weights, bias: bias) {
+                net = restored
+            }
+        }
+        return net
+    }
+
+    private func saveOnsetNetLocked(_ net: OnsetNet) throws {
+        let record = net.weightRecord()
+        try connection.run(
+            """
+            INSERT INTO onset_net (id, sample_count, weights, bias)
+            VALUES (1, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+              sample_count = excluded.sample_count,
+              weights = excluded.weights,
+              bias = excluded.bias
+            """
+        ) { statement in
+            connection.bind(statement, 1, net.sampleCount)
+            connection.bind(statement, 2, record.weights)
+            connection.bind(statement, 3, record.bias)
+        }
     }
 
     private func storedPass(from statement: OpaquePointer) -> StoredPass {

@@ -2,7 +2,7 @@
 
 The two-county curve study below is the original Benton and Washington file. `tools/build_arkansas.py` adds the other Arkansas counties from the same Arkansas GIS Office layer and keeps these Benton and Washington curves unchanged. That layer does not include a belt of roads in the surrounding states.
 
-The product spec in this repo is `docs/RydAR-Product-Brief.md`. If this folder and that file disagree, the **build contract** at the top of the brief wins. This folder is the copy of record. The Downloads copy of these files has been removed.
+This folder is the copy of record for the crash tables and the original two-county curve file. The product brief is not in the repository. If this folder and the app disagree, the app wins: the formula, the tread table, and the spoken line live in `ios/RydAR/Screening.swift`.
 
 This folder is the evidence and the prototype curve file. It is not the app.
 
@@ -14,7 +14,7 @@ Use the geometry, the road name, the county, the surface label, the radius, the 
 
 Do **not** use `screening_mph_paved_wet`, `screening_mph_unpaved`, or `screening_mph_unpaved_f008` as the warning threshold. Those three fields were computed at one superelevation, `e = +0.02`, with `f` of 0.15, 0.10, and 0.08. The app recomputes a range with `e` from −0.02 to +0.02 and speaks when speed is above the low end. Paved `f = 0.15`. Unpaved `f = 0.10`. The 0.08 column stays in this file as a research sensitivity only.
 
-Warn only where `quality_flags` is empty. Skip private roads, ramps, closed loops, and corners flagged under 50 ft. The public county map and county PDF are county-class roads only. Driving warnings may also include state and municipal roads.
+Warn only where `quality_flags` is empty. Skip private roads, ramps, closed loops, and corners flagged under 50 ft. The shipped phone database and the public map are the warnable bends in all 75 counties, including state and municipal roads. Loops, ramps, and corners under 50 ft stay off both. The 20,776 figure below is the original Benton and Washington extract, not the shipped count.
 
 ## curves/
 

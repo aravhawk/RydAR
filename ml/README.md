@@ -1,6 +1,6 @@
 # Road-state model
 
-The phone does not retrain this network. Core ML is the file bundled inside the app. A separate on-device timing memory, in `Screening.swift`, learns when to speak earlier. It does not learn a speed.
+The phone does not retrain this network. Core ML is the file bundled inside the app. A separate on-device network, `ios/RydAR/OnsetNet.swift`, learns where this phone starts braking and can move a warning earlier. It does not learn a speed, and it does not replace a road that already has three measured braking starts.
 
 ## What to train
 
@@ -20,13 +20,13 @@ This is the only trained model, so it is the only split.
 
 - Train: 90% of each of the 27 class folders. Snow and ice stay in, with material and unevenness masked. Gravel and mud stay in, with unevenness masked.
 - Validation: the other 10% of each folder, for early stopping only. Neighboring frames can leak across this cut because the folders do not name the drive. Do not quote this number as the model's accuracy.
-- Test: the official 12 sequences, 30 frames each, 8 labeled patches per frame, 2,880 patches. Use them once, after training stops. Report the three heads separately.
+- Test: the official 12 sequences, 30 frames each, 8 labeled patches per frame, 2,880 patches. `ml/eval_sequences.py` scores the shipped checkpoint on those frames. They were not in the training folders. Report the three heads separately. Do not quote the validation split, in the app or in a video. The sequences are Beijing roads, not an Arkansas test.
 
 The timing memory has no split. It starts from a prior of two late and two early passes and updates on the phone. The county ranking is a confidence bound after 20 passes, not a fitted model.
 
 ## Train, then convert
 
-Mac A opens `ml/train_colab.ipynb` in Google Colab. No API key. The repo is private, so the notebook tells you to upload a zip of the training scripts. Choose an H100 runtime if the menu allows it. On Colab Pro, H100 is often greyed out. Choose A100 and start. Download `roadsurface.pt` and the metrics file to this Mac when the run finishes. A Colab runtime can still be deleted.
+The checkpoint already exists at `ml/runs/roadsurface.pt` (gitignored) and the held-out sequence result is `ml/sequence-test.json`. Do not retrain to refresh a number. Do not open the Colab website, and do not run `colab drivemount`, `colab repl`, `colab console`, or `colab auth`. A new GPU job, if one is actually required, is `colab new -s rydar --gpu A100` (then `G4`, then `L4` if A100 returns 400). Pass `--timeout` on `colab exec`. Do not request an H100. Do not download the million-image release.
 
 On a Mac:
 

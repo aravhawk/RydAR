@@ -123,21 +123,39 @@ struct OnsetMemory: Equatable {
     }
 }
 
-/// How far out the next warning should start. A specific road wins over the
-/// situation once this phone has three measured approaches on it. Either way
-/// the result stays at or beyond the physics distance.
+/// How far out the next warning should start. A specific road wins once this
+/// phone has three measured approaches on it, then the situation. Before either
+/// has three, eight measured braking distances let the onset network lengthen
+/// the warning. Until those exist, a mostly-late habit still stretches by 1.4.
+/// The result stays at or beyond the physics distance.
 func placedLookAheadMeters(
     baseMeters: Double,
     context: ApproachMemory,
     curve: ApproachMemory = ApproachMemory(latePasses: 0, earlyPasses: 0),
     contextOnset: OnsetMemory = .empty,
-    curveOnset: OnsetMemory = .empty
+    curveOnset: OnsetMemory = .empty,
+    onsetNet: OnsetNet = .initial,
+    speedMps: Double = 0,
+    radiusFeet: Double = 0,
+    surface: RoadSurface = .unpaved,
+    night: Bool = false
 ) -> Double {
     if curveOnset.count >= 3 {
         return onsetLookAhead(baseMeters: baseMeters, onset: curveOnset)
     }
     if contextOnset.count >= 3 {
         return onsetLookAhead(baseMeters: baseMeters, onset: contextOnset)
+    }
+    if onsetNet.canPlaceWarning {
+        let predicted = onsetNet.predictMeters(
+            speedMps: speedMps,
+            radiusFeet: radiusFeet,
+            paved: surface == .paved,
+            night: night
+        )
+        if predicted.isFinite {
+            return onsetDistanceLookAhead(baseMeters: baseMeters, typicalMeters: predicted)
+        }
     }
     if habitExtendsLookAhead(context) || habitExtendsLookAhead(curve) {
         return min(450, baseMeters * 1.4)
@@ -146,20 +164,28 @@ func placedLookAheadMeters(
 }
 
 func onsetLookAhead(baseMeters: Double, onset: OnsetMemory) -> Double {
-    let typical = onset.typicalMeters(baseMeters: baseMeters)
-    let shortfall = max(0, baseMeters - typical)
+    onsetDistanceLookAhead(baseMeters: baseMeters, typicalMeters: onset.typicalMeters(baseMeters: baseMeters))
+}
+
+func onsetDistanceLookAhead(baseMeters: Double, typicalMeters: Double) -> Double {
+    let shortfall = max(0, baseMeters - typicalMeters)
     return min(450, baseMeters + shortfall)
 }
 
-/// Physics sets the floor. Past braking and the camera can only lengthen it,
-/// and only up to 450 m. The advisory speed itself does not change here.
+/// Physics sets the floor. Past braking, including the onset network, and the
+/// camera can only lengthen it, and only up to 450 m. They do not multiply.
+/// The advisory speed itself does not change here.
 func lookAheadMeters(
     speedMps: Double,
     memory: ApproachMemory,
     vision: VisionCaution,
     curveMemory: ApproachMemory = ApproachMemory(latePasses: 0, earlyPasses: 0),
     contextOnset: OnsetMemory = .empty,
-    curveOnset: OnsetMemory = .empty
+    curveOnset: OnsetMemory = .empty,
+    onsetNet: OnsetNet = .initial,
+    radiusFeet: Double = 0,
+    surface: RoadSurface = .unpaved,
+    night: Bool = false
 ) -> Double {
     let base = baseLookAheadMeters(speedMps: speedMps)
     let placed = placedLookAheadMeters(
@@ -167,7 +193,12 @@ func lookAheadMeters(
         context: memory,
         curve: curveMemory,
         contextOnset: contextOnset,
-        curveOnset: curveOnset
+        curveOnset: curveOnset,
+        onsetNet: onsetNet,
+        speedMps: speedMps,
+        radiusFeet: radiusFeet,
+        surface: surface,
+        night: night
     )
     let fromCamera = (vision.standingWaterOrSnow || vision.severeUnevenOnPaved)
         ? min(450, base * 1.3)
