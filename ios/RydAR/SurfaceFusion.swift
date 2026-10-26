@@ -2,8 +2,22 @@ import Foundation
 
 enum DriverMode: String {
     case adult
-    case passenger
     case under18
+
+    /// Trips saved before passenger mode was removed, and any leftover setting.
+    static func fromStored(_ raw: String) -> DriverMode? {
+        if raw == "passenger" || raw == DriverMode.adult.rawValue { return .adult }
+        if raw == DriverMode.under18.rawValue { return .under18 }
+        return nil
+    }
+
+    /// Rewrites a saved passenger choice to Driver. Safe to call more than once.
+    static func migrateStoredSelection(defaults: UserDefaults = .standard) {
+        let keys = ["rydar.driverMode", "rydar.lastDriverMode"]
+        for key in keys where defaults.string(forKey: key) == "passenger" {
+            defaults.set(DriverMode.adult.rawValue, forKey: key)
+        }
+    }
 }
 
 enum CameraLabel {
@@ -29,7 +43,7 @@ struct CameraEvidence {
 
 func allowsInDriveSound(_ mode: DriverMode) -> Bool {
     switch mode {
-    case .adult, .passenger:
+    case .adult:
         return true
     case .under18:
         return false

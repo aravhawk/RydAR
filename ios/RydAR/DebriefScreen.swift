@@ -9,7 +9,7 @@ struct DebriefScreen: View {
     /// The Settings switch can stay on while this trip sent nothing.
     private var uploadSentence: String {
         if trip.driverMode == .under18 {
-            return "Not uploaded. Under 18."
+            return "Not uploaded. Teen driver."
         }
         if !uploadOptIn {
             return "Uploads are off."
@@ -96,7 +96,7 @@ struct DebriefScreen: View {
                 Section {
                     Label("Earlier next time", systemImage: "clock.arrow.circlepath")
                         .font(.headline)
-                    Text(trip.driverMode == .under18 ? "No prompt. Under 18." : context.message)
+                    Text(trip.driverMode == .under18 ? "No prompt. Teen driver." : context.message)
                         .font(.subheadline)
                     Text("\(context.surface.rawValue.capitalized) · \(isNightHour(context.hour) ? "night" : "day")")
                         .font(.caption)

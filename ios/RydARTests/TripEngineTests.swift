@@ -1,4 +1,5 @@
 import AVFoundation
+import UIKit
 import XCTest
 @testable import RydAR
 
@@ -52,11 +53,40 @@ final class TripEngineTests: XCTestCase {
         XCTAssertEqual(SpeechPrompt.mode, .voicePrompt)
         XCTAssertTrue(SpeechPrompt.options.contains(.duckOthers))
         XCTAssertTrue(SpeechPrompt.options.contains(.interruptSpokenAudioAndMixWithOthers))
-        XCTAssertEqual(SpeechPrompt.line, "Curve ahead. Above advisory speed.")
+        XCTAssertEqual(SpeechPrompt.line, "Slow to 25 mph for the curve ahead.")
         XCTAssertEqual(SpeechPrompt.line, spokenWarning)
-        XCTAssertNil(SpeechPrompt.line.range(of: #"\d"#, options: .regularExpression))
-        XCTAssertFalse(SpeechPrompt.line.lowercased().contains("safe speed"))
-        XCTAssertFalse(SpeechPrompt.line.lowercased().contains("reduce speed"))
+        XCTAssertEqual(SpeechPrompt.speechRate, AVSpeechUtteranceDefaultSpeechRate * 0.95, accuracy: 0.0001)
+        XCTAssertEqual(SpeechVoicePicker.rank(.premium), 3)
+        XCTAssertGreaterThan(SpeechVoicePicker.rank(.premium), SpeechVoicePicker.rank(.enhanced))
+        XCTAssertGreaterThan(SpeechVoicePicker.rank(.enhanced), SpeechVoicePicker.rank(.default))
+    }
+
+    func testVoicePickerPrefersPremiumForTheCurrentLanguage() {
+        struct Sample {
+            var quality: AVSpeechSynthesisVoiceQuality
+            var language: String
+        }
+        let voices = [
+            Sample(quality: .default, language: "en-US"),
+            Sample(quality: .enhanced, language: "en-GB"),
+            Sample(quality: .premium, language: "fr-FR"),
+        ]
+        let enhanced = SpeechVoicePicker.best(
+            from: voices, languageCode: "en-US", quality: \.quality, language: \.language
+        )
+        XCTAssertEqual(enhanced?.language, "en-US")
+        XCTAssertEqual(SpeechVoicePicker.rank(enhanced?.quality ?? .default), SpeechVoicePicker.rank(.default))
+        let withPremium = voices + [Sample(quality: .premium, language: "en-US")]
+        let premium = SpeechVoicePicker.best(
+            from: withPremium, languageCode: "en-US", quality: \.quality, language: \.language
+        )
+        XCTAssertEqual(premium?.language, "en-US")
+        XCTAssertEqual(SpeechVoicePicker.rank(premium?.quality ?? .default), SpeechVoicePicker.rank(.premium))
+        let french = SpeechVoicePicker.best(
+            from: voices, languageCode: "fr-FR", quality: \.quality, language: \.language
+        )
+        XCTAssertEqual(french?.language, "fr-FR")
+        XCTAssertEqual(SpeechVoicePicker.rank(french?.quality ?? .default), SpeechVoicePicker.rank(.premium))
     }
 
     func testNothingIsPreselectedAndLocationDoesNotPause() throws {
@@ -90,7 +120,7 @@ final class TripEngineTests: XCTestCase {
             }
         }
         XCTAssertEqual(last.prompt, nil)
-        XCTAssertEqual(harness.speech.spoken, [spokenWarning])
+        XCTAssertEqual(harness.speech.spoken, [advisoryLine()])
         XCTAssertEqual(harness.speech.chimes, 0)
         XCTAssertEqual(harness.speech.taps, 1)
         XCTAssertGreaterThanOrEqual(last.matchStreak, 3)
@@ -139,7 +169,7 @@ final class TripEngineTests: XCTestCase {
         XCTAssertEqual(harness.speech.releases, 0)
         harness.engine.endTrip()
 
-        try harness.engine.beginTrip(driverMode: .passenger, at: start, startSensors: true)
+        try harness.engine.beginTrip(driverMode: .adult, at: start, startSensors: true)
         XCTAssertEqual(harness.speech.holds, 1)
         harness.engine.pause()
         XCTAssertEqual(harness.speech.releases, 1)
@@ -174,7 +204,7 @@ final class TripEngineTests: XCTestCase {
             let update = harness.engine.handle(
                 fix: fix(north: north, speed: 20, speedAccuracy: 0, at: when),
                 nearby: [curve],
-                braking: (400 - north) > 200,
+                braking: (400 - north) > baseLookAheadMeters(speedMps: 20) + 5,
                 now: when
             )
             completed += update.completed.count
@@ -202,10 +232,10 @@ final class TripEngineTests: XCTestCase {
         XCTAssertTrue(session.active)
     }
 
-    func testPassengerChimeDoesNotSpeakASpeed() throws {
+    func testChimeOnlyDoesNotSpeakASpeed() throws {
         let harness = try makeHarness()
         harness.engine.promptStyle = .chimeOnly
-        try harness.engine.beginTrip(driverMode: .passenger, at: date(hour: 14), startSensors: false)
+        try harness.engine.beginTrip(driverMode: .adult, at: date(hour: 14), startSensors: false)
         for index in 0..<3 {
             let when = date(hour: 14).addingTimeInterval(Double(index))
             _ = harness.engine.handle(fix: fix(speed: 20, at: when), nearby: [line(id: "c", north: 80)], now: when)
@@ -221,7 +251,7 @@ final class TripEngineTests: XCTestCase {
         let three = ApproachMemory(latePasses: 3, earlyPasses: 0)
         let quiet = VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false)
         let water = VisionCaution(standingWaterOrSnow: true, severeUnevenOnPaved: false)
-        let curve = line(id: "far", north: 130)
+        let curve = line(id: "far", north: baseLookAheadMeters(speedMps: 15) + 25)
         let moment = date(hour: 14)
 
         let baseline = run(mode: .adult, speed: 15, curve: curve, memory: calm, vision: quiet, at: moment)
@@ -235,7 +265,7 @@ final class TripEngineTests: XCTestCase {
         let learned = run(mode: .adult, speed: 15, curve: curve, memory: three, vision: quiet, at: moment)
         let expected = lookAheadMeters(speedMps: 15, memory: three, vision: quiet)
         XCTAssertEqual(learned.prompt, .speak)
-        XCTAssertEqual(learned.spokenLine, spokenWarning)
+        XCTAssertEqual(learned.spokenLine, advisoryLine())
         XCTAssertEqual(learned.lookAheadMeters ?? 0, expected, accuracy: 0.01)
         XCTAssertGreaterThan(expected, baseLookAheadMeters(speedMps: 15))
 
@@ -291,39 +321,29 @@ final class TripEngineTests: XCTestCase {
         XCTAssertLessThan(offCourse.matchConfidence, 0.9)
     }
 
-    func testCooldownAndAGapInTheFixStreak() {
+    func testTheNextCurveIsNotHeldBackByThePreviousPrompt() {
         var matcher = TripMatcher()
         matcher.begin(driverMode: .adult)
         let start = date(hour: 14)
+        var first: TripUpdate?
         for index in 0..<3 {
             let update = matcher.ingest(
                 fix: fix(speed: 20, at: start.addingTimeInterval(Double(index))),
                 nearby: [line(id: "a", north: 80)]
             )
-            if index == 2 {
-                XCTAssertEqual(update.prompt, .speak)
-            }
+            if index == 2 { first = update }
         }
-        var blocked = matcher.ingest(fix: fix(speed: 20, at: start), nearby: [])
-        for index in 0..<3 {
-            let when = start.addingTimeInterval(Double(3 + index))
-            blocked = matcher.ingest(fix: fix(speed: 20, at: when), nearby: [line(id: "b", north: 80)])
-        }
-        XCTAssertEqual(blocked.matchStreak, 3)
-        XCTAssertNil(blocked.prompt)
+        XCTAssertEqual(first?.prompt, .speak)
+        XCTAssertEqual(first?.spokenLine, advisoryLine())
 
-        var spokeAgain = false
-        for index in 0..<10 {
-            let when = start.addingTimeInterval(Double(6 + index))
-            let update = matcher.ingest(fix: fix(speed: 20, at: when), nearby: [line(id: "b", north: 80)])
-            if update.prompt == .speak {
-                spokeAgain = true
-                XCTAssertGreaterThanOrEqual(when.timeIntervalSince(start), 12)
-                XCTAssertEqual(update.spokenLine, spokenWarning)
-                break
-            }
-        }
-        XCTAssertTrue(spokeAgain)
+        _ = matcher.ingest(fix: fix(speed: 20, at: start.addingTimeInterval(3)), nearby: [])
+        let next = matcher.ingest(
+            fix: fix(speed: 20, at: start.addingTimeInterval(4)),
+            nearby: [line(id: "b", north: 80)]
+        )
+        XCTAssertEqual(next.matchedCurveID, "b")
+        XCTAssertEqual(next.prompt, .speak)
+        XCTAssertEqual(next.spokenLine, advisoryLine())
 
         matcher = TripMatcher()
         matcher.begin(driverMode: .adult)
@@ -340,7 +360,7 @@ final class TripEngineTests: XCTestCase {
         XCTAssertNil(quiet.prompt)
         let still = run(mode: .adult, speed: 12, curve: line(id: "known", north: 80), passesUnder: 3, at: moment)
         XCTAssertEqual(still.prompt, .speak)
-        XCTAssertEqual(still.spokenLine, "Curve ahead. Above advisory speed.")
+        XCTAssertEqual(still.spokenLine, advisoryLine())
     }
 
     func testLoggedMemoryLengthensTheNextApproach() throws {
@@ -374,7 +394,7 @@ final class TripEngineTests: XCTestCase {
             let when = moment.addingTimeInterval(Double(index))
             update = harness.engine.handle(
                 fix: fix(speed: 15, speedAccuracy: 0, at: when),
-                nearby: [line(id: "far", north: 130)],
+                nearby: [line(id: "far", north: baseLookAheadMeters(speedMps: 15) + 25)],
                 now: when
             )
         }
@@ -386,7 +406,7 @@ final class TripEngineTests: XCTestCase {
         XCTAssertEqual(update.lookAheadMeters ?? 0, expected, accuracy: 0.01)
         XCTAssertGreaterThan(expected, baseLookAheadMeters(speedMps: 15))
         XCTAssertEqual(update.prompt, .speak)
-        XCTAssertEqual(harness.speech.spoken, [spokenWarning])
+        XCTAssertEqual(harness.speech.spoken, [advisoryLine()])
     }
 
     func testALatePassIsWrittenOnceTheCurveIsBehind() throws {
@@ -420,7 +440,7 @@ final class TripEngineTests: XCTestCase {
         XCTAssertTrue(rows[0].pass.late)
         XCTAssertTrue(rows[0].pass.spoke)
         XCTAssertEqual(rows[0].pass.curveID, "bend")
-        XCTAssertEqual(harness.speech.spoken, [spokenWarning])
+        XCTAssertEqual(harness.speech.spoken, [advisoryLine()])
         let key = approachContextKey(surface: .paved, radiusFeet: 200, hour: 14)
         XCTAssertEqual(rows[0].pass.contextKey, key)
         XCTAssertEqual(try harness.log.memory(for: key).latePasses, 1)
@@ -532,6 +552,10 @@ final class TripEngineTests: XCTestCase {
         return Calendar.current.date(from: parts) ?? Date(timeIntervalSince1970: 0)
     }
 
+    private func advisoryLine(radius: Double = 200, surface: RoadSurface = .paved) -> String {
+        spokenCurveWarning(advisoryMPH: advisorySpeedMPH(screeningRange(radiusFeet: radius, surface: surface)))
+    }
+
     private func makeHarness() throws -> (engine: TripEngine, speech: SpyPrompt, log: PassLog) {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("engine-\(UUID().uuidString).sqlite")
@@ -569,6 +593,84 @@ final class TripEngineTests: XCTestCase {
         XCTAssertTrue(isRampDesign("At-Grade Ramp"))
         XCTAssertTrue(isRampDesign("Driveway"))
     }
+
+    func testScreenStaysAwakeWhileTheTripIsRunning() throws {
+        let harness = try makeHarness()
+        UIApplication.shared.isIdleTimerDisabled = false
+        try harness.engine.beginTrip(driverMode: .adult, at: date(hour: 14), startSensors: false)
+        XCTAssertTrue(UIApplication.shared.isIdleTimerDisabled)
+        harness.engine.pause()
+        XCTAssertTrue(UIApplication.shared.isIdleTimerDisabled)
+        harness.engine.endTrip()
+        XCTAssertFalse(UIApplication.shared.isIdleTimerDisabled)
+    }
+
+    func testAHeadingDipKeepsTheLockedCurveAndStillRequiresConfidenceToSpeak() {
+        var matcher = TripMatcher()
+        matcher.begin(driverMode: .adult)
+        let start = date(hour: 14)
+        let curve = line(id: "bend", north: 80)
+        var last = TripUpdate(prompt: nil, spokenLine: nil, gate: driveGate(mode: .adult, speedMps: 20, dashEnabled: false, uploadOptIn: false), matchedCurveID: nil, matchConfidence: 0, matchStreak: 0, junctionAmbiguous: false, lookAheadMeters: nil, distanceMeters: nil, surface: nil, surfaceUI: nil, completed: [])
+        for index in 0..<2 {
+            last = matcher.ingest(
+                fix: fix(speed: 20, course: 0, at: start.addingTimeInterval(Double(index))),
+                nearby: [curve]
+            )
+            XCTAssertEqual(last.matchedCurveID, "bend")
+            XCTAssertNil(last.prompt)
+        }
+        let dipped = matcher.ingest(
+            fix: fix(speed: 20, course: 50, at: start.addingTimeInterval(2)),
+            nearby: [curve]
+        )
+        XCTAssertEqual(dipped.matchedCurveID, "bend")
+        XCTAssertNotNil(dipped.distanceMeters)
+        XCTAssertGreaterThan(dipped.distanceMeters ?? 0, 0)
+        XCTAssertLessThan(dipped.matchConfidence, DriveRules.matchConfidenceMinimum)
+        XCTAssertNil(dipped.prompt)
+        XCTAssertGreaterThanOrEqual(dipped.matchStreak, 3)
+        let recovered = matcher.ingest(
+            fix: fix(speed: 20, course: 0, at: start.addingTimeInterval(3)),
+            nearby: [curve]
+        )
+        XCTAssertEqual(recovered.prompt, .speak)
+        XCTAssertEqual(recovered.spokenLine, advisoryLine())
+        XCTAssertEqual(recovered.advisoryNotice, advisoryLine())
+    }
+
+    func testASharperCurveStillSpeaksAfterAMildOne() {
+        var matcher = TripMatcher()
+        matcher.begin(driverMode: .adult)
+        let start = date(hour: 14)
+        let mild = line(id: "mild", north: 80, radius: 400)
+        let sharp = line(id: "sharp", north: 220, radius: 90)
+        let mildLine = advisoryLine(radius: 400)
+        let sharpLine = advisoryLine(radius: 90)
+        XCTAssertGreaterThanOrEqual(
+            advisorySpeedMPH(screeningRange(radiusFeet: 400, surface: .paved))
+                - advisorySpeedMPH(screeningRange(radiusFeet: 90, surface: .paved)),
+            CurveAlerts.sharperByMPH
+        )
+        var first: TripUpdate?
+        for index in 0..<3 {
+            first = matcher.ingest(
+                fix: fix(speed: 20, speedAccuracy: 0, at: start.addingTimeInterval(Double(index))),
+                nearby: [mild, sharp]
+            )
+        }
+        XCTAssertEqual(first?.prompt, .speak)
+        XCTAssertEqual(first?.spokenLine, mildLine)
+        XCTAssertFalse(first?.spokenLine?.contains("Curves ahead") ?? true)
+
+        _ = matcher.ingest(fix: fix(speed: 20, speedAccuracy: 0, at: start.addingTimeInterval(3)), nearby: [])
+        let second = matcher.ingest(
+            fix: fix(speed: 20, speedAccuracy: 0, at: start.addingTimeInterval(4)),
+            nearby: [sharp]
+        )
+        XCTAssertEqual(second.matchedCurveID, "sharp")
+        XCTAssertEqual(second.prompt, .speak)
+        XCTAssertEqual(second.spokenLine, sharpLine)
+    }
 }
 
 private final class EmptyCurveStore: CurveStore {
@@ -581,7 +683,7 @@ private final class SpyPrompt: PromptPlaying {
     var taps = 0
     var holds = 0
     var releases = 0
-    func speakWarning() throws { spoken.append(spokenWarning) }
+    func speakWarning(_ line: String) throws { spoken.append(line) }
     func playChime() throws { chimes += 1 }
     func playCurveTap() { taps += 1 }
     func holdForTrip() { holds += 1 }
