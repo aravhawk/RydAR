@@ -96,7 +96,7 @@ struct DebriefScreen: View {
                 Section {
                     Label("Earlier next time", systemImage: "clock.arrow.circlepath")
                         .font(.headline)
-                    Text(trip.driverMode == .under18 ? "No prompt. Teen driver." : card.message)
+                    Text(card.message)
                         .font(.subheadline)
                     Text(card.caption)
                         .font(.caption)

@@ -239,7 +239,7 @@ func driveGate(mode: DriverMode?, speedMps: Double, dashEnabled: Bool, uploadOpt
     switch mode {
     case .under18:
         return DriveGate(
-            allowsSound: false,
+            allowsSound: true,
             allowsChime: false,
             allowsCamera: false,
             allowsUpload: false
@@ -585,9 +585,11 @@ struct TripMatcher {
             let confident = focus.confidence >= DriveRules.matchConfidenceMinimum
             let ready = over && !quiet && firstTime && inWindow && streak >= DriveRules.requiredFixes
                 && confident && !ambiguous
-            if ready && gate.allowsSound && promptStyle == .chimeOnly && gate.allowsChime {
+            // Audio-only teen trips always speak the advisory, regardless of the adult prompt preference.
+            let style = driverMode == .under18 ? PromptStyle.normal : promptStyle
+            if ready && gate.allowsSound && style == .chimeOnly && gate.allowsChime {
                 prompt = .chime
-            } else if ready && gate.allowsSound && promptStyle != .chimeOnly {
+            } else if ready && gate.allowsSound && style != .chimeOnly {
                 prompt = .speak
                 spokenLine = CurveAlerts.spokenLine(stretch: stretch)
             }
@@ -861,7 +863,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         tread = reported
         matcher.begin(driverMode: driverMode, tread: reported)
         tripID = try passLog.startTrip(mode: driverMode, at: date, notes: nil)
-        setScreenAwake(true)
+        setScreenAwake(driverMode != .under18)
         previousLocation = nil
         nearbyCache = nil
         resetMotionTracking()
@@ -879,7 +881,11 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
             speechHeld = true
         }
         startSensorsIfNeeded()
-        DriveLiveActivity.begin(speaks: allowsInDriveSound(driverMode))
+        if driverMode == .adult {
+            DriveLiveActivity.begin(speaks: true)
+        } else {
+            DriveLiveActivity.end()
+        }
     }
 
     func endTrip() {
@@ -997,12 +1003,12 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         if !paused {
             switch update.prompt {
             case .speak:
-                speech.playCurveTap()
+                if matcher.driverMode == .adult { speech.playCurveTap() }
                 if let line = update.spokenLine {
                     try? speech.speakWarning(line)
                 }
             case .chime:
-                speech.playCurveTap()
+                if matcher.driverMode == .adult { speech.playCurveTap() }
                 try? speech.playChime()
             case nil:
                 break
@@ -1104,7 +1110,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         setScreenAwake(false)
     }
 
-    /// The drive screen stays on for the whole trip, including a pause, and sleeps again when it ends.
+    /// Driver trips stay awake through pause. Audio-only teen trips allow the screen to sleep.
     private func setScreenAwake(_ awake: Bool) {
         let apply = { UIApplication.shared.isIdleTimerDisabled = awake }
         if Thread.isMainThread {

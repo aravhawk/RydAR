@@ -4,7 +4,7 @@ RydAR is an iPhone co-pilot for tight bends in Arkansas, and a public map of tho
 
 A drive warns from the curve database bundled in the app and from the formula in `ios/RydAR/Screening.swift`. The drive does not wait on the website. A single-curve prompt says "Slow to N mph for the curve ahead," using the rounded low end of the computed range. Confidently matched bends on the same named road can share a "Curves ahead" warning, with a separate warning for a notably sharper bend. The base warning lead is 12 seconds of travel, clamped to 100–450 m. The on-screen caption is "Advisory." That number is the formula. It is the range the app computed, and it is separate from a posted plaque.
 
-An under-18 driver gets no voice, no chime, no haptic, no camera, and no upload, including while parked. The trip choices are Driver and Teen driver. For a road test, an adult drives and a student holds the phone; choose Driver for the adult. Older passenger selections and saved trips migrate to Driver.
+Teen driver mode speaks the same numeric curve advisories with no haptic, camera, upload, curve display, or Live Activity. It always uses speech, including when the adult prompt preference is Chime only, and lets the screen sleep. Pause and end controls remain available for use while parked. The trip choices are Driver and Teen driver. For a road test, an adult drives and a student holds the phone; choose Driver for the adult. Older passenger selections and saved trips migrate to Driver.
 
 The long product brief lives outside this repository.
 

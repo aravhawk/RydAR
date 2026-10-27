@@ -126,7 +126,7 @@ final class TripEngineTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(last.matchStreak, 3)
     }
 
-    func testUnder18IsSilentWhileMoving() throws {
+    func testTeenSpeaksAdvisoryWithoutHapticsCameraOrUploadEvenWithChimePreference() throws {
         let harness = try makeHarness()
         harness.engine.dashEnabled = true
         harness.engine.uploadOptIn = true
@@ -142,41 +142,36 @@ final class TripEngineTests: XCTestCase {
                 now: when
             )
         }
-        XCTAssertNil(update.prompt)
-        XCTAssertFalse(update.gate.allowsSound)
+        XCTAssertEqual(update.prompt, .speak)
+        XCTAssertTrue(update.gate.allowsSound)
         XCTAssertFalse(update.gate.allowsChime)
         XCTAssertFalse(update.gate.allowsCamera)
         XCTAssertFalse(update.gate.allowsUpload)
-        XCTAssertTrue(harness.speech.spoken.isEmpty)
+        XCTAssertEqual(harness.speech.spoken, [advisoryLine()])
         XCTAssertEqual(harness.speech.chimes, 0)
         XCTAssertEqual(harness.speech.taps, 0)
         XCTAssertEqual(harness.speech.holds, 0)
 
         let parked = harness.engine.handle(fix: fix(speed: 0, at: moment), nearby: [], now: moment)
-        XCTAssertFalse(parked.gate.allowsSound)
+        XCTAssertTrue(parked.gate.allowsSound)
+        XCTAssertNil(parked.prompt)
         XCTAssertFalse(parked.gate.allowsCamera)
         XCTAssertFalse(parked.gate.allowsUpload)
     }
 
-    func testUnder18DoesNotArmAudioAndPauseReleasesItForAnAdult() throws {
-        let harness = try makeHarness()
-        let start = date(hour: 14)
-        try harness.engine.beginTrip(driverMode: .under18, at: start, startSensors: true)
-        XCTAssertEqual(harness.speech.holds, 0)
-        harness.engine.pause()
-        harness.engine.resume()
-        XCTAssertEqual(harness.speech.holds, 0)
-        XCTAssertEqual(harness.speech.releases, 0)
-        harness.engine.endTrip()
-
-        try harness.engine.beginTrip(driverMode: .adult, at: start, startSensors: true)
-        XCTAssertEqual(harness.speech.holds, 1)
-        harness.engine.pause()
-        XCTAssertEqual(harness.speech.releases, 1)
-        harness.engine.resume()
-        XCTAssertEqual(harness.speech.holds, 2)
-        harness.engine.endTrip()
-        XCTAssertEqual(harness.speech.releases, 2)
+    func testBothDriverModesHoldAudioAndReleaseItOnPauseAndEnd() throws {
+        for mode in [DriverMode.under18, .adult] {
+            let harness = try makeHarness()
+            let start = date(hour: 14)
+            try harness.engine.beginTrip(driverMode: mode, at: start, startSensors: true)
+            XCTAssertEqual(harness.speech.holds, 1)
+            harness.engine.pause()
+            XCTAssertEqual(harness.speech.releases, 1)
+            harness.engine.resume()
+            XCTAssertEqual(harness.speech.holds, 2)
+            harness.engine.endTrip()
+            XCTAssertEqual(harness.speech.releases, 2)
+        }
     }
 
     func testGpsNoiseAndANewTripDoNotCountAsBraking() throws {
@@ -683,6 +678,16 @@ final class TripEngineTests: XCTestCase {
             XCTAssertNil(result?.prompt)
         }
         XCTAssertNil(result?.matchedCurveID)
+    }
+
+    func testTeenTripLetsTheScreenSleep() throws {
+        let harness = try makeHarness()
+        UIApplication.shared.isIdleTimerDisabled = false
+        try harness.engine.beginTrip(driverMode: .under18, at: date(hour: 14), startSensors: false)
+        XCTAssertFalse(UIApplication.shared.isIdleTimerDisabled)
+        harness.engine.pause()
+        XCTAssertFalse(UIApplication.shared.isIdleTimerDisabled)
+        harness.engine.endTrip()
     }
 
     func testScreenStaysAwakeWhileTheTripIsRunning() throws {

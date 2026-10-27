@@ -46,7 +46,7 @@ func allowsInDriveSound(_ mode: DriverMode) -> Bool {
     case .adult:
         return true
     case .under18:
-        return false
+        return true
     }
 }
 

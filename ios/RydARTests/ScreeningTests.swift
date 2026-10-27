@@ -70,8 +70,8 @@ final class ScreeningTests: XCTestCase {
         XCTAssertEqual(mph, 9 * 2.23694, accuracy: 0.001)
     }
 
-    func testUnder18DriverIsSilent() {
-        XCTAssertFalse(allowsInDriveSound(.under18))
+    func testBothDriverModesAllowAudio() {
+        XCTAssertTrue(allowsInDriveSound(.under18))
         XCTAssertTrue(allowsInDriveSound(.adult))
         XCTAssertEqual(DriverMode.fromStored("passenger"), .adult)
         XCTAssertEqual(DriverMode.fromStored("adult"), .adult)

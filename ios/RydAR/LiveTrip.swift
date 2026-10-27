@@ -238,7 +238,7 @@ final class LiveTripSession {
             camera.noteCurvePassed(pass.curveID)
         }
         camera.noteCurveApproach(update.gpsGood ? update.matchedCurveID : nil)
-        let showCurve = update.gpsGood && curve != nil
+        let showCurve = update.gpsGood && curve != nil && engine.snapshot.driverMode != .under18
         assignDrive(snapshot(
             curve: showCurve ? curve : nil,
             distance: showCurve ? update.distanceMeters : nil,
@@ -328,10 +328,10 @@ final class LiveTripSession {
     }
 
     private func assignDrive(_ snapshot: DriveScreenSnapshot) {
-        let speaks = engine.snapshot.driverMode.map(allowsInDriveSound) == true
+        let showsDetails = engine.snapshot.driverMode == .adult
         hop {
             self.bridge.drive = snapshot
-            DriveLiveActivity.render(snapshot, speaks: speaks)
+            if showsDetails { DriveLiveActivity.render(snapshot, speaks: true) }
         }
     }
 

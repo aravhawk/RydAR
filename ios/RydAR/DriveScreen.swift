@@ -5,6 +5,7 @@ struct DriveScreen: View {
     var onFinish: () -> Void
     @ScaledMetric(relativeTo: .largeTitle) private var distanceSize: CGFloat = 64
     private var soundAllowed: Bool { trip.driverMode.map(allowsInDriveSound) ?? false }
+    private var audioOnly: Bool { trip.driverMode == .under18 }
     /// GPS ready with no filed curve is the matched state. Every other banner is the location status.
     private var unmatchedCurveStatus: String {
         trip.drive.gpsStatus == "GPS ready" ? "No filed curve ahead" : trip.drive.gpsStatus
@@ -23,15 +24,15 @@ struct DriveScreen: View {
             Text(trip.driverMode?.screenTitle ?? "No driver selected")
                 .font(.headline)
             Spacer(minLength: 0)
-            if !soundAllowed {
+            if audioOnly || !soundAllowed {
                 Image(systemName: "moon.zzz.fill")
                     .font(.system(size: 52))
                     .foregroundStyle(AuditTheme.accent)
                 Text("Put the phone away.")
                     .font(.largeTitle.bold())
-                Text(trip.drive.gpsStatus)
+                Text(trip.drive.isPaused ? "Audio warnings paused." : "Audio warnings on.")
                     .font(.title2.weight(.semibold))
-                Text("No voice, camera, or upload.")
+                Text("No screen use, camera, or upload.")
                     .foregroundStyle(.secondary)
             } else if trip.drive.isPaused {
                 Text("Paused")

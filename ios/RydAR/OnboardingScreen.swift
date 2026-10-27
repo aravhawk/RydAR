@@ -59,7 +59,7 @@ struct OnboardingScreen: View {
                     Text("“\(spokenWarning)”")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    Text("Teen driver: no voice, camera, or upload.")
+                    Text("Teen driver: audio warnings only. No screen use, camera, or upload.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }

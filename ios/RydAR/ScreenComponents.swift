@@ -132,7 +132,7 @@ extension DriverMode {
     var screenDetail: String {
         switch self {
         case .adult: return "Full warnings and speech."
-        case .under18: return "Put the phone away. No voice, camera, or upload."
+        case .under18: return "Audio warnings only. No screen use, camera, or upload."
         }
     }
 }

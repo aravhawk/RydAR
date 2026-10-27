@@ -31,8 +31,17 @@ final class LiveTripTests: XCTestCase {
         XCTAssertFalse(harness.engine.dashEnabled)
         let gate = driveGate(mode: .under18, speedMps: 15, dashEnabled: harness.engine.dashEnabled, uploadOptIn: harness.engine.uploadOptIn)
         XCTAssertFalse(gate.allowsCamera)
-        XCTAssertFalse(gate.allowsSound)
+        XCTAssertTrue(gate.allowsSound)
         XCTAssertFalse(gate.allowsUpload)
+        let start = date(hour: 14)
+        for index in 0..<3 {
+            let when = start.addingTimeInterval(Double(index))
+            _ = harness.engine.handle(fix: fix(speed: 20, at: when), nearby: [line(id: "c", north: 80)], now: when)
+        }
+        XCTAssertEqual(harness.speech.spoken.count, 1)
+        XCTAssertNil(harness.bridge.drive.nextCurve)
+        XCTAssertNil(harness.bridge.drive.distanceMeters)
+        XCTAssertNil(harness.bridge.drive.advisoryNotice)
     }
 
     func testLocationUpdatePublishesTheMatchedCurveOnTheBridge() throws {
