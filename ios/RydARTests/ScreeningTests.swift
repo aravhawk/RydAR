@@ -188,7 +188,7 @@ final class ScreeningTests: XCTestCase {
         let calm = ApproachMemory(latePasses: 0, earlyPasses: 0)
         let none = VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false)
         let base = baseLookAheadMeters(speedMps: 20)
-        XCTAssertEqual(base, 140, accuracy: 0.001)
+        XCTAssertEqual(base, 20 * warningLeadSeconds, accuracy: 0.001)
         let lateBrakes = OnsetMemory(count: 3, sumMeters: 40 * 3)
         let typical = lateBrakes.typicalMeters(baseMeters: base)
         XCTAssertEqual(typical, (120 + 2 * base) / 5, accuracy: 0.001)
@@ -281,7 +281,7 @@ final class ScreeningTests: XCTestCase {
         let calm = ApproachMemory(latePasses: 0, earlyPasses: 0)
         let none = VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false)
         let base = baseLookAheadMeters(speedMps: 20)
-        XCTAssertEqual(base, 140, accuracy: 0.001)
+        XCTAssertEqual(base, 20 * warningLeadSeconds, accuracy: 0.001)
         for _ in 0..<7 {
             net.learn(speedMps: 20, radiusFeet: 200, paved: true, night: false, measuredMeters: 40)
         }

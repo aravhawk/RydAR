@@ -233,7 +233,9 @@ enum SpeechVoicePicker {
     ) -> Voice? {
         let wanted = languageCode.replacingOccurrences(of: "_", with: "-")
         let family = wanted.split(separator: "-").first.map(String.init) ?? wanted
-        let normalized: (Voice) -> String = { language($0).replacingOccurrences(of: "_", with: "-") }
+        func normalized(_ voice: Voice) -> String {
+            language(voice).replacingOccurrences(of: "_", with: "-")
+        }
         let exact = voices.filter { normalized($0).caseInsensitiveCompare(wanted) == .orderedSame }
         let relatives = voices.filter { voice in
             let code = normalized(voice)
