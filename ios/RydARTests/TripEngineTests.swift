@@ -594,6 +594,97 @@ final class TripEngineTests: XCTestCase {
         XCTAssertTrue(isRampDesign("Driveway"))
     }
 
+    func testReviewGroupingExcludesLowConfidenceCurveOnAnotherRoad() {
+        var matcher = TripMatcher()
+        matcher.begin(driverMode: .adult)
+        let start = date(hour: 14)
+        let route = line(id: "route", north: 80, radius: 400)
+        let sideRoad = line(id: "side-road", north: 120, east: 160, radius: 300)
+        var result: TripUpdate?
+        for index in 0..<3 {
+            result = matcher.ingest(fix: fix(speed: 20, at: start.addingTimeInterval(Double(index))), nearby: [route, sideRoad])
+        }
+        XCTAssertEqual(result?.matchedCurveID, "route")
+        XCTAssertEqual(result?.spokenLine, advisoryLine(radius: 400), "A low-confidence side-road curve must not lower the warning or be marked spoken")
+    }
+
+    func testReviewLockReleasesAfterTurningTowardAnotherCurve() {
+        var matcher = TripMatcher()
+        matcher.begin(driverMode: .adult)
+        let start = date(hour: 14)
+        let oldRoad = line(id: "old-road", north: 200, radius: 400)
+        let turnedRoad = line(id: "turned-road", north: 100, east: 84, radius: 90)
+        for index in 0..<3 {
+            _ = matcher.ingest(fix: fix(speed: 20, course: 0, at: start.addingTimeInterval(Double(index))), nearby: [oldRoad, turnedRoad])
+        }
+        var result: TripUpdate?
+        var prompts: [String] = []
+        for index in 3..<6 {
+            result = matcher.ingest(fix: fix(speed: 20, course: 40, at: start.addingTimeInterval(Double(index))), nearby: [oldRoad, turnedRoad])
+            if let line = result?.spokenLine { prompts.append(line) }
+        }
+        XCTAssertEqual(result?.matchedCurveID, "turned-road", "A sustained turn must allow the now-confident closer curve to become the focus")
+        XCTAssertEqual(prompts, [advisoryLine(radius: 90)])
+    }
+
+    func testEnglishWarningsKeepAnEnglishVoiceOnNonEnglishDevices() {
+        XCTAssertEqual(SpeechVoicePicker.warningLanguage(for: "fr-FR"), "en-US")
+        XCTAssertEqual(SpeechVoicePicker.warningLanguage(for: "es-MX"), "en-US")
+        XCTAssertEqual(SpeechVoicePicker.warningLanguage(for: "en_GB"), "en-GB")
+    }
+
+    func testGroupingExcludesAConfidentCurveOnADifferentRoad() {
+        var matcher = TripMatcher()
+        matcher.begin(driverMode: .adult)
+        let start = date(hour: 14)
+        let route = line(id: "route", north: 80, radius: 400)
+        var sideRoad = line(id: "side-road", north: 220, radius: 300)
+        sideRoad.roadName = "Other Rd"
+        var result: TripUpdate?
+        for index in 0..<3 {
+            result = matcher.ingest(fix: fix(speed: 20, at: start.addingTimeInterval(Double(index))), nearby: [route, sideRoad])
+        }
+        XCTAssertEqual(result?.spokenLine, advisoryLine(radius: 400))
+    }
+
+    func testGroupedWarningUsesTheTightestCurveForLiveActivityAlerting() {
+        var matcher = TripMatcher()
+        matcher.begin(driverMode: .adult)
+        let start = date(hour: 14)
+        let curves = [line(id: "mild", north: 80, radius: 400),
+                      line(id: "tighter", north: 220, radius: 300)]
+        var result: TripUpdate?
+        for index in 0..<3 {
+            result = matcher.ingest(fix: fix(speed: 12, at: start.addingTimeInterval(Double(index))), nearby: curves)
+        }
+        XCTAssertEqual(result?.prompt, .speak)
+        XCTAssertEqual(result?.advisoryWarning, true)
+        XCTAssertLessThan(result?.promptSpeedMPH ?? 0, result?.screeningRange?.low ?? 0)
+        let drive = DriveScreenSnapshot(
+            promptSpeedMPH: result?.promptSpeedMPH,
+            screeningRange: result?.screeningRange,
+            advisoryNotice: result?.advisoryNotice,
+            advisoryWarning: result?.advisoryWarning
+        )
+        XCTAssertTrue(DriveLiveActivity.aboveAdvisory(drive))
+    }
+
+    func testSustainedHeadingLossReleasesADistantCurve() {
+        var matcher = TripMatcher()
+        matcher.begin(driverMode: .adult)
+        let start = date(hour: 14)
+        let curve = line(id: "old-road", north: 200)
+        for index in 0..<3 {
+            _ = matcher.ingest(fix: fix(speed: 20, course: 0, at: start.addingTimeInterval(Double(index))), nearby: [curve])
+        }
+        var result: TripUpdate?
+        for index in 3..<6 {
+            result = matcher.ingest(fix: fix(speed: 20, course: 60, at: start.addingTimeInterval(Double(index))), nearby: [curve])
+            XCTAssertNil(result?.prompt)
+        }
+        XCTAssertNil(result?.matchedCurveID)
+    }
+
     func testScreenStaysAwakeWhileTheTripIsRunning() throws {
         let harness = try makeHarness()
         UIApplication.shared.isIdleTimerDisabled = false

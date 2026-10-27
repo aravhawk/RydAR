@@ -59,6 +59,7 @@ final class LiveTripTests: XCTestCase {
         XCTAssertEqual(harness.bridge.drive.cameraThreshold, DriveRules.materialConfidence)
         XCTAssertEqual(harness.speech.spoken, [spokenCurveWarning(advisoryMPH: advisorySpeedMPH(screeningRange(radiusFeet: 200, surface: .paved)))])
         XCTAssertEqual(harness.bridge.drive.advisoryNotice, harness.speech.spoken.first)
+        XCTAssertEqual(harness.bridge.drive.advisoryWarning, true)
         XCTAssertEqual(harness.speech.chimes, 0)
         harness.bridge.setPaused(true)
         XCTAssertTrue(harness.bridge.drive.isPaused)

@@ -81,7 +81,7 @@ final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, 
     func speakWarning(_ line: String) throws {
         let generation = playbackGeneration
         let spoken = line
-        let voice = Self.resolvedVoice()
+        let voice = self.voice ?? Self.resolvedVoice()
         self.voice = voice
         activateSession(alert: true) { [weak self] in
             guard let self, generation == self.playbackGeneration else { return }
@@ -98,10 +98,12 @@ final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, 
         }
     }
 
-    /// Premium, then enhanced, then the default voice for the current language.
+    /// Warning text is English. Prefer the user's English locale, or US English
+    /// when the device uses another language.
     static func resolvedVoice(
         languageCode: String = AVSpeechSynthesisVoice.currentLanguageCode()
     ) -> AVSpeechSynthesisVoice? {
+        let languageCode = SpeechVoicePicker.warningLanguage(for: languageCode)
         let voices = AVSpeechSynthesisVoice.speechVoices()
         if let best = SpeechVoicePicker.best(
             from: voices,
@@ -214,6 +216,12 @@ final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, 
 }
 
 enum SpeechVoicePicker {
+    static func warningLanguage(for languageCode: String) -> String {
+        let normalized = languageCode.replacingOccurrences(of: "_", with: "-")
+        let family = normalized.split(separator: "-").first?.lowercased()
+        return family == "en" ? normalized : "en-US"
+    }
+
     static func rank(_ quality: AVSpeechSynthesisVoiceQuality) -> Int {
         switch quality {
         case .premium: return 3

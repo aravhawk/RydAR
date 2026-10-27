@@ -135,7 +135,8 @@ enum DriveLiveActivity {
         )
     }
 
-    private static func aboveAdvisory(_ drive: DriveScreenSnapshot) -> Bool {
+    static func aboveAdvisory(_ drive: DriveScreenSnapshot) -> Bool {
+        if let warning = drive.advisoryWarning { return warning }
         guard let range = drive.screeningRange else { return false }
         let speed = drive.promptSpeedMPH ?? drive.measuredSpeedMPH
         guard let speed else { return false }

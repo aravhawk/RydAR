@@ -56,7 +56,7 @@ struct DriveScreen: View {
                 Text(trip.drive.nextCurve?.roadName ?? unmatchedCurveStatus)
                     .font(.title2.weight(.semibold))
                 if let notice = trip.drive.advisoryNotice {
-                    let warning = notice.hasPrefix("Slow") || notice.hasPrefix("Curves")
+                    let warning = trip.drive.advisoryWarning ?? false
                     Text(notice)
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(warning ? AuditTheme.warningText : .primary)

@@ -227,6 +227,8 @@ struct TripUpdate: Equatable {
     var screeningRange: ScreeningRange? = nil
     /// What the drive screen shows for the advisory, including the mph to slow to.
     var advisoryNotice: String? = nil
+    /// Uses the tightest bend in a grouped warning, rather than only the focused bend.
+    var advisoryWarning: Bool? = nil
 }
 
 func driveGate(mode: DriverMode?, speedMps: Double, dashEnabled: Bool, uploadOptIn: Bool) -> DriveGate {
@@ -328,6 +330,7 @@ struct TripMatcher {
     /// The curve the drive screen is counting down. It stays put when a close-range
     /// heading wobble drops the match below the speaking threshold.
     private var lockedID: String?
+    private var lowConfidenceLockFixes = 0
 
     mutating func begin(driverMode: DriverMode, tread: TreadChoice = .unsure) {
         self.driverMode = driverMode
@@ -338,6 +341,7 @@ struct TripMatcher {
         spokenThisPass = []
         tracks = [:]
         lockedID = nil
+        lowConfidenceLockFixes = 0
     }
 
     /// Forgets the approach in progress but keeps the trip's mode and tread. A pause means the car
@@ -349,6 +353,7 @@ struct TripMatcher {
         spokenThisPass = []
         tracks = [:]
         lockedID = nil
+        lowConfidenceLockFixes = 0
     }
 
     mutating func end() {
@@ -359,6 +364,7 @@ struct TripMatcher {
         spokenThisPass = []
         tracks = [:]
         lockedID = nil
+        lowConfidenceLockFixes = 0
     }
 
     mutating func ingest(
@@ -388,6 +394,7 @@ struct TripMatcher {
                 streakID = nil
                 self.lastMatchAt = nil
                 lockedID = nil
+                lowConfidenceLockFixes = 0
             }
             return TripUpdate(
                 prompt: nil,
@@ -429,15 +436,26 @@ struct TripMatcher {
         }
         if let lockedID {
             if let held = scored.first(where: { $0.curve.id == lockedID }) {
-                if !keepsLock(held, track: tracks[lockedID]) {
+                lowConfidenceLockFixes = held.confidence < DriveRules.matchConfidenceMinimum
+                    ? lowConfidenceLockFixes + 1 : 0
+                let closerMatch = !ambiguous && hot.first.map {
+                    $0.curve.id != lockedID
+                        && $0.distance + DriveRules.junctionGapMeters < held.distance
+                } == true
+                let lostHeading = lowConfidenceLockFixes >= DriveRules.requiredFixes
+                let canSwitch = held.distance > DriveRules.lockHoldMeters && (lostHeading || closerMatch)
+                if !keepsLock(held, track: tracks[lockedID]) || canSwitch {
                     self.lockedID = nil
+                    lowConfidenceLockFixes = 0
                 }
             } else {
                 self.lockedID = nil
+                lowConfidenceLockFixes = 0
             }
         }
         if self.lockedID == nil, !ambiguous, let candidate = hot.first {
             self.lockedID = candidate.curve.id
+            lowConfidenceLockFixes = 0
         }
 
         var completed: [CompletedPass] = []
@@ -512,11 +530,13 @@ struct TripMatcher {
 
         if let lockedID, completed.contains(where: { $0.curveID == lockedID }) {
             self.lockedID = nil
+            lowConfidenceLockFixes = 0
         }
         if self.lockedID == nil, !ambiguous {
             let done = Set(completed.map(\.curveID))
             if let next = hot.first(where: { !done.contains($0.curve.id) }) {
                 self.lockedID = next.curve.id
+                lowConfidenceLockFixes = 0
             }
         }
         let focus = lockedID.flatMap { id in scored.first { $0.curve.id == id } }
@@ -525,8 +545,19 @@ struct TripMatcher {
         var prompt: DrivePrompt?
         var spokenLine: String?
         var advisoryNotice: String?
+        var advisoryWarning: Bool?
         if let focus {
-            let approaches = scored.filter(\.ahead).map {
+            // A nearby bend on a different road is not part of this stretch.
+            // Unknown road names remain single-curve warnings.
+            let road = focus.curve.roadName.trimmingCharacters(in: .whitespacesAndNewlines)
+            let approaches = scored.filter {
+                $0.curve.id == focus.curve.id || (
+                    !road.isEmpty
+                        && $0.confidence >= DriveRules.matchConfidenceMinimum
+                        && $0.curve.county == focus.curve.county
+                        && $0.curve.roadName == focus.curve.roadName
+                )
+            }.filter(\.ahead).map {
                 CurveApproach(
                     id: $0.curve.id,
                     distanceMeters: $0.distance,
@@ -543,6 +574,7 @@ struct TripMatcher {
             let tightestRange = scored.first { $0.curve.id == tightestID }?.range ?? focus.range
             let over = shouldSpeak(effectiveSpeed: focus.effective, range: tightestRange)
             advisoryNotice = CurveAlerts.displayNotice(stretch: stretch, overAdvisory: over)
+            advisoryWarning = over
             let quiet = suppressRepeatPrompt(
                 passesUnderRange: passesUnderRange(focus.curve.id),
                 effectiveSpeed: focus.effective,
@@ -588,7 +620,8 @@ struct TripMatcher {
             measuredSpeedMPH: measuredSpeedMPH(speedMps: fix.speedMps),
             promptSpeedMPH: focus?.effective,
             screeningRange: focus?.range,
-            advisoryNotice: advisoryNotice
+            advisoryNotice: advisoryNotice,
+            advisoryWarning: advisoryWarning
         )
     }
 

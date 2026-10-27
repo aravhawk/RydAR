@@ -247,7 +247,8 @@ final class LiveTripSession {
             prompt: update.promptSpeedMPH,
             paused: engine.snapshot.paused,
             range: showCurve ? update.screeningRange : nil,
-            advisoryNotice: showCurve ? update.advisoryNotice : nil
+            advisoryNotice: showCurve ? update.advisoryNotice : nil,
+            advisoryWarning: showCurve ? update.advisoryWarning : nil
         ))
     }
 
@@ -279,7 +280,8 @@ final class LiveTripSession {
         prompt: Double? = nil,
         paused: Bool,
         range: ScreeningRange?,
-        advisoryNotice: String? = nil
+        advisoryNotice: String? = nil,
+        advisoryWarning: Bool? = nil
     ) -> DriveScreenSnapshot {
         DriveScreenSnapshot(
             nextCurve: curve,
@@ -293,7 +295,8 @@ final class LiveTripSession {
             isPaused: paused,
             screeningRange: range,
             tripTitle: tripTitle,
-            advisoryNotice: advisoryNotice
+            advisoryNotice: advisoryNotice,
+            advisoryWarning: advisoryWarning
         )
     }
 

@@ -42,6 +42,8 @@ struct DriveScreenSnapshot {
     var tripTitle = "Co-pilot"
     /// Advisory sentence for this approach, including the mph to slow to.
     var advisoryNotice: String?
+    /// Whether the engine is warning about the current curve or a grouped stretch.
+    var advisoryWarning: Bool? = nil
 }
 
 struct TripCurvePass: Identifiable {
