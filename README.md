@@ -8,8 +8,6 @@ Teen driver mode speaks the same numeric curve advisories with no haptic, camera
 
 While the Dash camera is running, the drive screen shows a small live thumbnail of what the camera sees and a live Paved or Unpaved label for the road under the car, whether or not a curve is near. Frames are displayed, never saved.
 
-Before a trip, the Home screen can take a destination. Apple Maps plans the driving route (`ios/RydAR/DriveRoute.swift`), and while the car is within 75 m of that route only curves within 25 m of it warn. Leaving the route for three fixes in a row, or planning none, returns to warning for every curve ahead. The route is cleared when the trip ends.
-
 ## Layout
 
 | Path | What it is |

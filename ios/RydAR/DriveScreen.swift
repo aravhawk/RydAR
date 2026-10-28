@@ -90,14 +90,6 @@ struct DriveScreen: View {
                         .foregroundStyle(.secondary)
                         .symbolRenderingMode(.monochrome)
                 }
-                if let routeState = trip.drive.routeState {
-                    Label(routeState == .onRoute ? "On route · curves on your route" : "Off route · all curves ahead",
-                          systemImage: routeState == .onRoute ? "arrow.triangle.turn.up.right.diamond" : "arrow.triangle.branch")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .symbolRenderingMode(.monochrome)
-                        .accessibilityIdentifier("routeState")
-                }
                 if let measured = trip.drive.measuredSpeedMPH,
                    let prompt = trip.drive.promptSpeedMPH,
                    measured - prompt > 3 {

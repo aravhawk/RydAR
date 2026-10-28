@@ -4,7 +4,6 @@ import SwiftUI
 struct ContentView: View {
     private let store: any CurveStore
     @StateObject private var trip: TripScreenBridge
-    @StateObject private var planner = RoutePlanner()
     @AppStorage("rydar.onboardingComplete") private var onboarded = false
     @AppStorage("rydar.appearance") private var appearance = AppearancePreference.system.rawValue
     @AppStorage("rydar.promptStyle") private var promptStyle = PromptStyle.normal.rawValue
@@ -28,7 +27,7 @@ struct ContentView: View {
                 switch phase {
                 case .home:
                     HomeScreen(store: store,
-                               onStart: { showDriverGate = true }, trip: trip, planner: planner)
+                               onStart: { showDriverGate = true }, trip: trip)
                 case .drive:
                     DriveScreen(trip: trip) {
                         trip.finish()
@@ -40,10 +39,6 @@ struct ContentView: View {
             }
         }
         .tint(RydarTheme.accent)
-        .onChange(of: planner.route) { _, route in trip.route = route }
-        .onChange(of: phase) { _, phase in
-            if phase == .debrief { planner.clear() }
-        }
         .preferredColorScheme(AppearancePreference(rawValue: appearance)?.scheme)
         .sheet(isPresented: $showDriverGate) {
             DriverGateScreen { mode in

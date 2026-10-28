@@ -108,7 +108,6 @@ final class LiveTripSession {
             guard let self else { return }
             self.engine.promptStyle = style
             self.engine.uploadOptIn = upload
-            self.engine.route = MainActor.assumeIsolated { self.bridge.route }
             self.engine.dashEnabled = mode == .under18 ? false : DashPreference.isOn
             self.reading = DashReading(camera: nil, vision: .quiet, state: self.engine.dashEnabled ? .unconfirmed : .off, acceptedAt: nil)
             self.lastUpdate = nil
@@ -249,8 +248,7 @@ final class LiveTripSession {
             paused: engine.snapshot.paused,
             range: showCurve ? update.screeningRange : nil,
             advisoryNotice: showCurve ? update.advisoryNotice : nil,
-            advisoryWarning: showCurve ? update.advisoryWarning : nil,
-            routeState: update.gpsGood ? update.routeState : nil
+            advisoryWarning: showCurve ? update.advisoryWarning : nil
         ))
     }
 
@@ -283,8 +281,7 @@ final class LiveTripSession {
         paused: Bool,
         range: ScreeningRange?,
         advisoryNotice: String? = nil,
-        advisoryWarning: Bool? = nil,
-        routeState: RouteState? = nil
+        advisoryWarning: Bool? = nil
     ) -> DriveScreenSnapshot {
         DriveScreenSnapshot(
             nextCurve: curve,
@@ -300,8 +297,7 @@ final class LiveTripSession {
             tripTitle: tripTitle,
             advisoryNotice: advisoryNotice,
             advisoryWarning: advisoryWarning,
-            cameraRunning: engine.dashEnabled && reading.state == .running && !paused,
-            routeState: routeState
+            cameraRunning: engine.dashEnabled && reading.state == .running && !paused
         )
     }
 

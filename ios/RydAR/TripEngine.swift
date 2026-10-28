@@ -9,12 +9,6 @@ enum DriveRules {
     static let matchGapSeconds: TimeInterval = 5
     static let junctionGapMeters = 30.0
     static let onCurveMeters = 25.0
-    /// A curve is on a planned route when it lies this close to the route line.
-    static let routeCurveMeters = 25.0
-    /// Farther than this from the route line, for the required fixes, is off the route.
-    static let routeLeaveMeters = 75.0
-    /// Back within this of the route line counts as on it again.
-    static let routeRejoinMeters = 40.0
     /// Past the closest approach by this much, and no longer aimed at the curve, counts as passed.
     static let passClearMeters = 25.0
     /// A locked curve that heading has lost stays on screen while the car is still this close.
@@ -235,8 +229,6 @@ struct TripUpdate: Equatable {
     var advisoryNotice: String? = nil
     /// Uses the tightest bend in a grouped warning, rather than only the focused bend.
     var advisoryWarning: Bool? = nil
-    /// Nil when no route is planned.
-    var routeState: RouteState? = nil
 }
 
 func driveGate(mode: DriverMode?, speedMps: Double, dashEnabled: Bool, uploadOptIn: Bool) -> DriveGate {
@@ -339,15 +331,6 @@ struct TripMatcher {
     /// heading wobble drops the match below the speaking threshold.
     private var lockedID: String?
     private var lowConfidenceLockFixes = 0
-    /// Planned drive. While the car is on it, only curves on the route can warn.
-    var route: DriveRoute? {
-        didSet {
-            routeCurves = [:]
-            offRouteFixes = 0
-        }
-    }
-    private var routeCurves: [String: Bool] = [:]
-    private var offRouteFixes = 0
 
     mutating func begin(driverMode: DriverMode, tread: TreadChoice = .unsure) {
         self.driverMode = driverMode
@@ -359,7 +342,6 @@ struct TripMatcher {
         tracks = [:]
         lockedID = nil
         lowConfidenceLockFixes = 0
-        offRouteFixes = 0
     }
 
     /// Forgets the approach in progress but keeps the trip's mode and tread. A pause means the car
@@ -375,7 +357,6 @@ struct TripMatcher {
     }
 
     mutating func end() {
-        route = nil
         driverMode = nil
         streakID = nil
         streak = 0
@@ -433,8 +414,7 @@ struct TripMatcher {
             )
         }
 
-        let routeState = updateRouteState(for: fix)
-        let everyCurve = score(
+        let scored = score(
             fix: fix,
             nearby: nearby,
             moment: moment,
@@ -447,21 +427,6 @@ struct TripMatcher {
             curveOnset: curveOnset,
             onsetNet: onsetNet
         )
-        var scored: [ScoredCurve] = []
-        var offTheRoute = Set<String>()
-        for item in everyCurve {
-            if routeState == .onRoute, !isOnRoute(item.curve) {
-                offTheRoute.insert(item.curve.id)
-            } else {
-                scored.append(item)
-            }
-        }
-        // A curve the route filter hides is not a curve the driver passed. Forget its approach
-        // without writing a pass.
-        for identifier in offTheRoute {
-            tracks.removeValue(forKey: identifier)
-            spokenThisPass.remove(identifier)
-        }
         let hot = scored
             .filter { $0.confidence >= DriveRules.matchConfidenceMinimum }
             .sorted { $0.distance < $1.distance }
@@ -663,30 +628,8 @@ struct TripMatcher {
             promptSpeedMPH: focus?.effective,
             screeningRange: focus?.range,
             advisoryNotice: advisoryNotice,
-            advisoryWarning: advisoryWarning,
-            routeState: routeState
+            advisoryWarning: advisoryWarning
         )
-    }
-
-    /// With a route, the car is on it until it has been clearly away for the required fixes.
-    /// A fix between the rejoin and leave distances keeps the state it had.
-    private mutating func updateRouteState(for fix: LocationFix) -> RouteState? {
-        guard let route else { return nil }
-        let away = route.distanceMeters(latitude: fix.latitude, longitude: fix.longitude)
-        if away > DriveRules.routeLeaveMeters {
-            offRouteFixes += 1
-        } else if offRouteFixes < DriveRules.requiredFixes || away <= DriveRules.routeRejoinMeters {
-            // Leaving needs consecutive fixes; coming back needs to be clearly back.
-            offRouteFixes = 0
-        }
-        return offRouteFixes >= DriveRules.requiredFixes ? .offRoute : .onRoute
-    }
-
-    private mutating func isOnRoute(_ curve: Curve) -> Bool {
-        if let known = routeCurves[curve.id] { return known }
-        let on = route?.carries(curve) ?? true
-        routeCurves[curve.id] = on
-        return on
     }
 
     /// Hold a curve that was acquired at the speaking threshold until it is passed
@@ -861,8 +804,6 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
     var dashEnabled = false
     var uploadOptIn = false
     var tread: TreadChoice = .unsure
-    /// Planned drive for the next trip. Cleared when the trip ends.
-    var route: DriveRoute?
     /// Screen hook. The engine still matches, speaks, and logs. The screen does not.
     var onHandled: ((TripUpdate, Curve?) -> Void)?
     /// Fires when location permission changes during a trip, including a denial.
@@ -926,7 +867,6 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         let reported = TreadStore.choice ?? .unsure
         tread = reported
         matcher.begin(driverMode: driverMode, tread: reported)
-        matcher.route = route
         tripID = try passLog.startTrip(mode: driverMode, at: date, notes: nil)
         setScreenAwake(driverMode != .under18)
         previousLocation = nil
@@ -968,7 +908,6 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         }
         resetMotionTracking()
         matcher.end()
-        route = nil
         tripID = nil
         latestVision = VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false)
         latestCamera = nil

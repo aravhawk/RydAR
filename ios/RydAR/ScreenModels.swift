@@ -30,8 +30,6 @@ struct DriveScreenSnapshot {
     var advisoryWarning: Bool? = nil
     /// True while the phone camera is open and frames are being read. A paused trip is not live.
     var cameraRunning = false
-    /// Nil when the trip has no planned route.
-    var routeState: RouteState? = nil
 }
 
 struct TripCurvePass: Identifiable {
@@ -152,8 +150,6 @@ final class TripScreenBridge: ObservableObject {
     @Published var timingNote = ""
     /// The live camera for the drive screen thumbnail. Nil whenever the camera is not running.
     @Published var cameraPreview: AVCaptureSession?
-    /// Planned drive. The trip reads it when it starts; a planned route is optional.
-    @Published var route: DriveRoute?
     @Published private(set) var driverMode: DriverMode?
 
     var onStart: ((DriverMode, PromptStyle, Bool) -> Void)?
