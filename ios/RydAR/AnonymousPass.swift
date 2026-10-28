@@ -4,17 +4,17 @@ import Foundation
 struct AnonymousPassBody: Equatable, Encodable {
     var curve_id: String
     var direction: String
-    var speed_band_mph: Int
+    /// The approach speed in mph, as recorded. Not rounded to a band.
+    var speed_band_mph: Double
     var hour_bucket: Int
     var app_version: String
 }
 
 enum AnonymousPass {
-    /// Floor of the approach speed, in 5 mph steps, clamped to the server's range.
-    static func speedBand(_ mph: Double) -> Int {
+    /// Keeps the recorded speed. Only a non-number or a reading outside 0–150 mph is brought into range.
+    static func uploadSpeed(_ mph: Double) -> Double {
         guard mph.isFinite else { return 0 }
-        let steps = Int((mph / 5).rounded(.down))
-        return min(150, max(0, steps * 5))
+        return min(150, max(0, mph))
     }
 
     static func body(from pass: CompletedPass, appVersion: String) -> AnonymousPassBody? {
@@ -26,7 +26,7 @@ enum AnonymousPass {
         return AnonymousPassBody(
             curve_id: pass.curveID,
             direction: pass.direction,
-            speed_band_mph: speedBand(pass.effectiveSpeedMPH),
+            speed_band_mph: uploadSpeed(pass.effectiveSpeedMPH),
             hour_bucket: pass.hourBucket,
             app_version: version
         )

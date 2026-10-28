@@ -26,7 +26,7 @@ This is the only trained vision model, so it is the only split.
 
 The phone does not act on one patch. It crops the lower center of the frame and keeps a label when 4 of the last 6 frames agree. `ml/eval_phone_gate.py` replays that rule. `ml/phone-gate.json` is that record. Material accepts a vote at 0.7 (`DriveRules.materialConfidence`), because on these sequences that cutoff held the unpaved precision of 0.8 and caught more unpaved windows. Water, snow, and severe stay at 0.8 (`DriveRules.cameraConfidence`). Severe produced no phone action at any cutoff from 0.5 to 0.9, so the 4-of-6 rule stays as it is.
 
-The timing memory has no split. It starts from a prior of two late and two early passes and updates on the phone. The public export lists a curve once it has 20 or more anonymous passes from at least two different hours. It is a count, not a fitted model.
+The timing memory has no split. It starts from a prior of two late and two early passes and updates on the phone. The public export lists a curve as soon as one anonymous pass is stored. It is a count of passes on curves that already exist, not a fitted model and not a search for new roads.
 
 The trunk's ImageNet top-1 is a pretraining figure for the backbone. It is separate from road-surface accuracy. It is not a claim about road surfaces.
 

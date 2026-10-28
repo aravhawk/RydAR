@@ -28,8 +28,13 @@ final class TripEngineTests: XCTestCase {
             courseDegrees: 90, horizontalAccuracyMeters: 8, timestamp: now
         )
         XCTAssertEqual(gpsStatusText(for: still, now: now), "Standing still")
+        XCTAssertEqual(displayedSpeedMPH(for: still, now: now), 0)
+        XCTAssertEqual(readableCoordinate(still)?.latitude, baseLat)
+        XCTAssertEqual(readableCoordinate(still)?.longitude, baseLon)
         XCTAssertFalse(gpsIsGood(still, now: now))
         XCTAssertEqual(gpsStatusText(for: lost, now: now), "Waiting for location")
+        XCTAssertNil(displayedSpeedMPH(for: lost, now: now))
+        XCTAssertNil(readableCoordinate(lost))
         XCTAssertEqual(gpsStatusText(for: ready, now: now), "GPS ready")
         let coarse = LocationFix(
             latitude: baseLat, longitude: baseLon, speedMps: 12, speedAccuracyMps: 1,
@@ -42,10 +47,104 @@ final class TripEngineTests: XCTestCase {
             courseDegrees: -1, horizontalAccuracyMeters: 8, timestamp: now
         )
         XCTAssertEqual(gpsStatusText(for: noCourse, now: now), "Direction unknown")
+        XCTAssertEqual(displayedSpeedMPH(for: noCourse, now: now) ?? -1, 12 * 2.23694, accuracy: 0.01)
         XCTAssertEqual(locationBanner(authorization: .denied, accuracy: .fullAccuracy), "Location is off")
         XCTAssertEqual(locationBanner(authorization: .restricted, accuracy: .fullAccuracy), "Location is off")
         XCTAssertEqual(locationBanner(authorization: .authorizedWhenInUse, accuracy: .reducedAccuracy), "Precise location is off")
         XCTAssertEqual(locationBanner(authorization: .authorizedAlways, accuracy: .fullAccuracy), "Waiting for location")
+    }
+
+    func testAStopShowsThePlaceOnceAndZeroMph() {
+        let now = Date()
+        var matcher = TripMatcher()
+        matcher.begin(driverMode: .adult)
+        let still = LocationFix(
+            latitude: baseLat, longitude: baseLon, speedMps: -1, speedAccuracyMps: -1,
+            courseDegrees: -1, horizontalAccuracyMeters: 5, timestamp: now
+        )
+        let update = matcher.ingest(fix: still, nearby: [], now: now)
+        XCTAssertEqual(update.gpsStatus, "Standing still")
+        XCTAssertEqual(update.measuredSpeedMPH, 0)
+        XCTAssertEqual(update.latitude, baseLat)
+        XCTAssertEqual(update.longitude, baseLon)
+
+        let previousUnits = UserDefaults.standard.string(forKey: UnitSystem.key)
+        UserDefaults.standard.set(UnitSystem.imperial.rawValue, forKey: UnitSystem.key)
+        defer {
+            if let previousUnits {
+                UserDefaults.standard.set(previousUnits, forKey: UnitSystem.key)
+            } else {
+                UserDefaults.standard.removeObject(forKey: UnitSystem.key)
+            }
+        }
+        XCTAssertEqual(speedText(mph: 0), "0 mph")
+
+        let coordinate = coordinateText(latitude: baseLat, longitude: baseLon)
+        XCTAssertEqual(coordinate, "36.0000° N, 94.0000° W")
+        let parked = driveReadout(
+            hasCurve: false, roadName: nil, gpsStatus: update.gpsStatus,
+            measuredSpeedMPH: update.measuredSpeedMPH,
+            placeTitle: coordinate, placeDetail: coordinate
+        )
+        XCTAssertEqual(parked.headline, coordinate)
+        XCTAssertNil(parked.locationPin)
+        XCTAssertEqual(parked.speedMPH, 0)
+
+        let store = riderPlace(
+            from: PlaceParts(name: "Walmart Supercenter", thoroughfare: "N Walton Blvd", locality: "Bentonville", administrativeArea: "AR"),
+            latitude: baseLat, longitude: baseLon
+        )
+        XCTAssertEqual(store.title, "Walmart Supercenter")
+        XCTAssertEqual(store.detail, "N Walton Blvd, Bentonville, AR")
+        let atStore = driveReadout(
+            hasCurve: false, roadName: nil, gpsStatus: "Standing still",
+            measuredSpeedMPH: 0, placeTitle: store.title, placeDetail: store.detail
+        )
+        XCTAssertEqual(atStore.headline, "Walmart Supercenter")
+        XCTAssertEqual(atStore.locationPin, "N Walton Blvd, Bentonville, AR")
+        XCTAssertFalse(atStore.headline.contains("Standing still"))
+        XCTAssertFalse(atStore.locationPin?.contains("Standing still") ?? false)
+
+        let street = riderPlace(
+            from: PlaceParts(name: "SE 14th St", thoroughfare: "SE 14th St", locality: "Bentonville", administrativeArea: "AR"),
+            latitude: baseLat, longitude: baseLon
+        )
+        XCTAssertEqual(street.title, "SE 14th St")
+        XCTAssertEqual(street.detail, "Bentonville, AR")
+
+        let town = riderPlace(
+            from: PlaceParts(name: "Bentonville", locality: "Bentonville", administrativeArea: "AR"),
+            latitude: baseLat, longitude: baseLon
+        )
+        XCTAssertEqual(town.title, "Bentonville, AR")
+        XCTAssertEqual(town.detail, coordinate)
+
+        let moving = driveReadout(
+            hasCurve: false, roadName: nil, gpsStatus: "GPS ready",
+            measuredSpeedMPH: 30, placeTitle: street.title, placeDetail: street.detail
+        )
+        XCTAssertEqual(moving.headline, "No curve ahead")
+        XCTAssertEqual(moving.locationPin, "GPS ready")
+        XCTAssertEqual(moving.speedMPH, 30)
+
+        XCTAssertEqual(RydarShape.nestedRadius, RydarShape.glassRadius - RydarShape.glassInset)
+        XCTAssertGreaterThanOrEqual(RydarShape.nestedRadius, 20)
+        XCTAssertGreaterThanOrEqual(RydarShape.glassRadius, 26)
+    }
+
+    func testAFailedPlaceLookupWaitsUntilTheRiderMoves() {
+        let geocoder = ScriptedPlaceGeocoder()
+        let lookup = RiderPlaceLookup(geocoder: geocoder)
+        XCTAssertEqual(
+            lookup.immediate(latitude: baseLat, longitude: baseLon).title,
+            coordinateText(latitude: baseLat, longitude: baseLon)
+        )
+        lookup.resolve(latitude: baseLat, longitude: baseLon) {}
+        XCTAssertEqual(geocoder.requests, 1)
+        lookup.resolve(latitude: baseLat, longitude: baseLon) {}
+        XCTAssertEqual(geocoder.requests, 1)
+        lookup.resolve(latitude: baseLat + 0.01, longitude: baseLon) {}
+        XCTAssertEqual(geocoder.requests, 2)
     }
 
     func testSpeechSessionUsesTheVoicePrompt() {
@@ -53,35 +152,67 @@ final class TripEngineTests: XCTestCase {
         XCTAssertEqual(SpeechPrompt.mode, .voicePrompt)
         XCTAssertTrue(SpeechPrompt.options.contains(.duckOthers))
         XCTAssertTrue(SpeechPrompt.options.contains(.interruptSpokenAudioAndMixWithOthers))
-        XCTAssertEqual(SpeechPrompt.speechRate, AVSpeechUtteranceDefaultSpeechRate * 0.95, accuracy: 0.0001)
+        XCTAssertEqual(SpeechPrompt.speechRate, AVSpeechUtteranceDefaultSpeechRate, accuracy: 0.0001)
+        XCTAssertGreaterThan(CurveHapticTiming.speechAfterTaps, CurveHapticTiming.tapticGap)
+        XCTAssertGreaterThan(CurveHapticTiming.speechAfterVibration, CurveHapticTiming.vibrationGap)
+        XCTAssertEqual(
+            CurveHapticTiming.speechDelay(appIsActive: true, hardwareSupportsHaptics: true),
+            CurveHapticTiming.speechAfterTaps,
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(
+            CurveHapticTiming.speechDelay(appIsActive: false, hardwareSupportsHaptics: true),
+            CurveHapticTiming.speechAfterVibration,
+            accuracy: 0.0001
+        )
         XCTAssertEqual(SpeechVoicePicker.rank(.premium), 3)
         XCTAssertGreaterThan(SpeechVoicePicker.rank(.premium), SpeechVoicePicker.rank(.enhanced))
         XCTAssertGreaterThan(SpeechVoicePicker.rank(.enhanced), SpeechVoicePicker.rank(.default))
     }
 
-    func testVoicePickerPrefersPremiumForTheCurrentLanguage() {
+    func testVoicePickerPrefersANaturalEnglishVoiceOverTheCompactDefault() {
         struct Sample {
             var quality: AVSpeechSynthesisVoiceQuality
             var language: String
+            var identifier: String = ""
+            var novelty: Bool = false
         }
         let voices = [
-            Sample(quality: .default, language: "en-US"),
-            Sample(quality: .enhanced, language: "en-GB"),
-            Sample(quality: .premium, language: "fr-FR"),
+            Sample(quality: .default, language: "en-US", identifier: "com.apple.voice.compact.en-US.Samantha"),
+            Sample(quality: .enhanced, language: "en-GB", identifier: "com.apple.voice.enhanced.en-GB.Daniel"),
+            Sample(quality: .premium, language: "fr-FR", identifier: "com.apple.voice.premium.fr-FR.Thomas"),
+            Sample(quality: .premium, language: "en-US", identifier: "com.apple.eloquence.en-US.Flo", novelty: true),
         ]
-        let enhanced = SpeechVoicePicker.best(
-            from: voices, languageCode: "en-US", quality: \.quality, language: \.language
+        let natural = SpeechVoicePicker.best(
+            from: voices,
+            languageCode: "en-US",
+            quality: \.quality,
+            language: \.language,
+            identifier: \.identifier,
+            novelty: \.novelty
         )
-        XCTAssertEqual(enhanced?.language, "en-US")
-        XCTAssertEqual(SpeechVoicePicker.rank(enhanced?.quality ?? .default), SpeechVoicePicker.rank(.default))
-        let withPremium = voices + [Sample(quality: .premium, language: "en-US")]
-        let premium = SpeechVoicePicker.best(
-            from: withPremium, languageCode: "en-US", quality: \.quality, language: \.language
+        XCTAssertEqual(natural?.language, "en-GB")
+        XCTAssertEqual(SpeechVoicePicker.rank(natural?.quality ?? .default), SpeechVoicePicker.rank(.enhanced))
+        let withAva = voices + [
+            Sample(quality: .premium, language: "en-US", identifier: "com.apple.voice.premium.en-US.Ava"),
+            Sample(quality: .premium, language: "en-GB", identifier: "com.apple.voice.premium.en-GB.Serena"),
+        ]
+        let ava = SpeechVoicePicker.best(
+            from: withAva,
+            languageCode: "en-US",
+            quality: \.quality,
+            language: \.language,
+            identifier: \.identifier,
+            novelty: \.novelty
         )
-        XCTAssertEqual(premium?.language, "en-US")
-        XCTAssertEqual(SpeechVoicePicker.rank(premium?.quality ?? .default), SpeechVoicePicker.rank(.premium))
+        XCTAssertEqual(ava?.identifier, "com.apple.voice.premium.en-US.Ava")
         let french = SpeechVoicePicker.best(
-            from: voices, languageCode: "fr-FR", quality: \.quality, language: \.language
+            from: voices,
+            languageCode: "fr-FR",
+            quality: \.quality,
+            language: \.language,
+            identifier: \.identifier,
+            novelty: \.novelty
         )
         XCTAssertEqual(french?.language, "fr-FR")
         XCTAssertEqual(SpeechVoicePicker.rank(french?.quality ?? .default), SpeechVoicePicker.rank(.premium))
@@ -119,16 +250,14 @@ final class TripEngineTests: XCTestCase {
         }
         XCTAssertEqual(last.prompt, nil)
         XCTAssertEqual(harness.speech.spoken, [advisoryLine()])
-        XCTAssertEqual(harness.speech.chimes, 0)
         XCTAssertEqual(harness.speech.taps, 1)
         XCTAssertGreaterThanOrEqual(last.matchStreak, 3)
     }
 
-    func testTeenSpeaksAdvisoryWithoutHapticsCameraOrUploadEvenWithChimePreference() throws {
+    func testTeenSpeaksAndTapsWithoutACamera() throws {
         let harness = try makeHarness()
         harness.engine.dashEnabled = true
         harness.engine.uploadOptIn = true
-        harness.engine.promptStyle = .chimeOnly
         try harness.engine.beginTrip(driverMode: .under18, at: date(hour: 14), startSensors: false)
         let moment = date(hour: 14)
         var update = TripUpdate(prompt: nil, spokenLine: nil, gate: driveGate(mode: nil, speedMps: 0, dashEnabled: false, uploadOptIn: false), matchedCurveID: nil, matchConfidence: 0, matchStreak: 0, junctionAmbiguous: false, lookAheadMeters: nil, distanceMeters: nil, surface: nil, surfaceUI: nil, completed: [])
@@ -142,19 +271,17 @@ final class TripEngineTests: XCTestCase {
         }
         XCTAssertEqual(update.prompt, .speak)
         XCTAssertTrue(update.gate.allowsSound)
-        XCTAssertFalse(update.gate.allowsChime)
         XCTAssertFalse(update.gate.allowsCamera)
-        XCTAssertFalse(update.gate.allowsUpload)
+        XCTAssertTrue(update.gate.allowsUpload)
         XCTAssertEqual(harness.speech.spoken, [advisoryLine()])
-        XCTAssertEqual(harness.speech.chimes, 0)
-        XCTAssertEqual(harness.speech.taps, 0)
+        XCTAssertEqual(harness.speech.taps, 1)
         XCTAssertEqual(harness.speech.holds, 0)
 
         let parked = harness.engine.handle(fix: fix(speed: 0, at: moment), nearby: [], now: moment)
         XCTAssertTrue(parked.gate.allowsSound)
         XCTAssertNil(parked.prompt)
         XCTAssertFalse(parked.gate.allowsCamera)
-        XCTAssertFalse(parked.gate.allowsUpload)
+        XCTAssertTrue(parked.gate.allowsUpload)
     }
 
     func testBothDriverModesHoldAudioAndReleaseItOnPauseAndEnd() throws {
@@ -223,19 +350,6 @@ final class TripEngineTests: XCTestCase {
         XCTAssertFalse(session.shouldStop(ended))
         XCTAssertTrue(session.shouldStart(second))
         XCTAssertTrue(session.active)
-    }
-
-    func testChimeOnlyDoesNotSpeakASpeed() throws {
-        let harness = try makeHarness()
-        harness.engine.promptStyle = .chimeOnly
-        try harness.engine.beginTrip(driverMode: .adult, at: date(hour: 14), startSensors: false)
-        for index in 0..<3 {
-            let when = date(hour: 14).addingTimeInterval(Double(index))
-            _ = harness.engine.handle(fix: fix(speed: 20, at: when), nearby: [line(id: "c", north: 80)], now: when)
-        }
-        XCTAssertTrue(harness.speech.spoken.isEmpty)
-        XCTAssertEqual(harness.speech.chimes, 1)
-        XCTAssertEqual(harness.speech.taps, 1)
     }
 
     func testLookAheadFollowsMemoryAndNeverShrinks() {
@@ -868,14 +982,22 @@ private final class EmptyCurveStore: CurveStore {
     func curves(nearLatitude latitude: Double, longitude: Double, radiusMeters: Double) -> [Curve] { [] }
 }
 
+final class ScriptedPlaceGeocoder: PlaceGeocoding {
+    var parts: PlaceParts?
+    var requests = 0
+    func cancel() {}
+    func reverse(latitude: Double, longitude: Double, completion: @escaping (PlaceParts?) -> Void) {
+        requests += 1
+        completion(parts)
+    }
+}
+
 private final class SpyPrompt: PromptPlaying {
     var spoken: [String] = []
-    var chimes = 0
     var taps = 0
     var holds = 0
     var releases = 0
     func speakWarning(_ line: String) throws { spoken.append(line) }
-    func playChime() throws { chimes += 1 }
     func playCurveTap() { taps += 1 }
     func holdForTrip() { holds += 1 }
     func releaseAfterTrip() { releases += 1 }

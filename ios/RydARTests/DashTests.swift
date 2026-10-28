@@ -258,7 +258,7 @@ final class DashTests: XCTestCase {
         DashPreference.isOn = true
         let underage = SpyDash()
         let underHarness = try makeSession(camera: underage)
-        underHarness.bridge.start(mode: .under18, style: .normal, uploadOptIn: true)
+        underHarness.bridge.start(mode: .under18, uploadOptIn: true)
         XCTAssertEqual(underage.starts, 0)
         XCTAssertFalse(underHarness.engine.dashEnabled)
         XCTAssertEqual(underHarness.bridge.drive.cameraStatus, "Camera check is off")
@@ -267,7 +267,7 @@ final class DashTests: XCTestCase {
         DashPreference.isOn = true
         let adult = SpyDash()
         let adultHarness = try makeSession(camera: adult)
-        adultHarness.bridge.start(mode: .adult, style: .normal, uploadOptIn: false)
+        adultHarness.bridge.start(mode: .adult, uploadOptIn: false)
         XCTAssertEqual(adult.starts, 1)
         XCTAssertTrue(adultHarness.engine.dashEnabled)
         XCTAssertEqual(adultHarness.bridge.drive.tripTitle, "Camera on")
@@ -284,7 +284,7 @@ final class DashTests: XCTestCase {
         DashPreference.isOn = false
         let copilot = SpyDash()
         let copilotHarness = try makeSession(camera: copilot)
-        copilotHarness.bridge.start(mode: .adult, style: .normal, uploadOptIn: false)
+        copilotHarness.bridge.start(mode: .adult, uploadOptIn: false)
         XCTAssertEqual(copilot.starts, 0)
         XCTAssertEqual(copilotHarness.bridge.drive.cameraStatus, "Camera check is off")
         XCTAssertNil(copilotHarness.bridge.drive.cameraEvidence)
@@ -387,5 +387,4 @@ private final class IdleCurves: CurveStore {
 
 private final class IdleSpeech: PromptPlaying {
     func speakWarning(_ line: String) throws {}
-    func playChime() throws {}
 }

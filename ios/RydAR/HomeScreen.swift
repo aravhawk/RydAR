@@ -11,16 +11,15 @@ struct HomeScreen: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 28) {
+            VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Parked.")
                         .font(.largeTitle.bold())
-                    Text(dashEnabled ? "Camera check is on." : "Camera check is off.")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
-                    Text("Warnings play over Maps and music. Teen driver is audio only.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    if !dashEnabled {
+                        Text("Camera check is off.")
+                            .font(.title3)
+                            .foregroundStyle(.secondary)
+                    }
                     if !trip.timingNote.isEmpty {
                         Text(trip.timingNote)
                             .font(.subheadline)
@@ -59,13 +58,27 @@ struct HomeScreen: View {
                 }
 
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, 20)
             .padding(.top, 8)
             .padding(.bottom, 24)
         }
-        .navigationTitle("RydAR")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                HStack(spacing: 8) {
+                    Image("Logo")
+                        .resizable()
+                        .interpolation(.high)
+                        .frame(width: 30, height: 30)
+                        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                        .accessibilityHidden(true)
+                    Text("RydAR")
+                        .font(.title3.weight(.semibold))
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityLabel("RydAR")
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink { SettingsScreen(trip: trip) } label: {
                     Image(systemName: "gearshape")

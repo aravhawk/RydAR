@@ -46,12 +46,9 @@ struct OnboardingScreen: View {
 
             Section {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Keep RydAR open while you drive. It speaks over Maps and music.")
+                    Text("Keep RydAR open while you drive. It vibrates twice, then speaks over Maps and music.")
                         .font(.subheadline)
                     Text("For example: “\(spokenWarningExample)”")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Text("Teen driver mode is audio only: no screen, camera, or uploads.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -66,7 +63,7 @@ struct OnboardingScreen: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Camera check is on")
                         .font(.headline)
-                    Text("Uses the camera to spot gravel on roads listed as paved. Off for teen drivers.")
+                    Text("Spots gravel on roads listed as paved.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -77,14 +74,8 @@ struct OnboardingScreen: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Sharing anonymous curve data")
                         .font(.headline)
-                    Text("Sends the curve, direction, speed (to the nearest 5 mph) and hour. Never your name or route.")
+                    Text("Sends the curve, direction, speed, and hour. Never your name or route. Turn it off in Settings.")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Text("Counties use it to find curves that need fixing. Turn it off any time in Settings.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Text("A curve is only shown publicly after 20 passes. Off for teen drivers.")
-                        .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
                 .padding(.vertical, 4)
@@ -122,7 +113,8 @@ struct OnboardingScreen: View {
             }
             .rydarProminentAction()
             .disabled(tread == nil)
-            .padding(.horizontal, 24)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 4)
             .accessibilityIdentifier("finishOnboarding")
         }
     }
@@ -210,7 +202,8 @@ struct TreadCheckScreen: View {
             }
             .rydarProminentAction()
             .disabled(tread == nil)
-            .padding(.horizontal, 24)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 4)
         }
     }
 }
@@ -220,57 +213,24 @@ struct DriverGateScreen: View {
     @State private var selection: DriverMode?
     @Environment(\.dismiss) private var dismiss
 
+    private let choices: [DriverMode] = [.adult, .under18]
+
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    ForEach([DriverMode.adult, .under18], id: \.rawValue) { mode in
-                        Button {
-                            selection = mode
-                        } label: {
-                            HStack(alignment: .top, spacing: 12) {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text(mode.screenTitle)
-                                        .font(.headline)
-                                        .foregroundStyle(.primary)
-                                    Text(mode.screenDetail)
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer(minLength: 8)
-                                Image(systemName: selection == mode ? "checkmark.circle.fill" : "circle")
-                                    .font(.title3)
-                                    .foregroundStyle(selection == mode ? RydarTheme.accent : Color.secondary)
-                                    .accessibilityHidden(true)
-                            }
-                            .padding(.vertical, 6)
-                            .contentShape(Rectangle())
+            VStack(alignment: .leading, spacing: 20) {
+                VStack(spacing: 0) {
+                    ForEach(Array(choices.enumerated()), id: \.element.rawValue) { index, mode in
+                        choiceRow(mode)
+                        if index < choices.count - 1 {
+                            Divider().padding(.leading, 16)
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("driver-\(mode.rawValue)")
-                        .accessibilityAddTraits(selection == mode ? .isSelected : [])
-                    }
-                } header: {
-                    Text("Choose before you drive")
-                        .textCase(nil)
-                } footer: {
-                    if #unavailable(iOS 26) {
-                        Text("This trip only.")
                     }
                 }
-            }
-            .contentMargins(.top, 8, for: .scrollContent)
-            .contentMargins(.horizontal, 4, for: .scrollContent)
-            .contentMargins(.bottom, 12, for: .scrollContent)
-            .navigationTitle("Who's driving?")
-            .navigationBarTitleDisplayMode(.large)
-            .rydarNavigationSubtitle("This trip only.")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel", role: .cancel) { dismiss() }
-                }
-            }
-            .safeAreaInset(edge: .bottom, spacing: 12) {
+                .background(
+                    Color(uiColor: .secondarySystemGroupedBackground),
+                    in: RoundedRectangle(cornerRadius: 26, style: .continuous)
+                )
+
                 Button {
                     if let selection { onStart(selection) }
                 } label: {
@@ -279,10 +239,64 @@ struct DriverGateScreen: View {
                 }
                 .rydarProminentAction()
                 .disabled(selection == nil)
-                .padding(.horizontal, 28)
-                .padding(.bottom, 4)
                 .accessibilityIdentifier("confirmDriver")
             }
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
+            .padding(.bottom, 16)
+            .frame(maxWidth: .infinity, alignment: .top)
+            .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
+            .navigationTitle("Who's driving?")
+            .navigationBarTitleDisplayMode(.large)
+            .rydarNavigationSubtitle("This trip only.")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", role: .cancel) { dismiss() }
+                }
+            }
+        }
+        .modifier(FittedSheet())
+    }
+
+    private func choiceRow(_ mode: DriverMode) -> some View {
+        let chosen = selection == mode
+        return Button {
+            selection = mode
+        } label: {
+            HStack(alignment: .center, spacing: 16) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(mode.screenTitle)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Text(mode.screenDetail)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 12)
+                Image(systemName: chosen ? "checkmark.circle.fill" : "circle")
+                    .font(.title2)
+                    .foregroundStyle(chosen ? RydarTheme.accent : Color.secondary)
+                    .accessibilityHidden(true)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("driver-\(mode.rawValue)")
+        .accessibilityAddTraits(chosen ? .isSelected : [])
+    }
+}
+
+/// Hugs the two choices on iOS 18 and later. Earlier systems use a half sheet
+/// so the start button is not left at the bottom of an empty page.
+private struct FittedSheet: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 18, *) {
+            content.presentationSizing(.fitted)
+        } else {
+            content.presentationDetents([.medium, .large])
         }
     }
 }

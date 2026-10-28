@@ -32,13 +32,22 @@ enum AppearancePreference: String, CaseIterable, Identifiable {
     }
 }
 
+/// Shared glass radii. A nested thumbnail uses the plate radius minus the inset,
+/// so its corners sit on the same center as the plate instead of looking square inside it.
+enum RydarShape {
+    static let glassRadius: CGFloat = 34
+    static let glassInset: CGFloat = 12
+    static var nestedRadius: CGFloat { glassRadius - glassInset }
+}
+
 struct RydarCard<Content: View>: View {
     @ViewBuilder var content: Content
     var body: some View {
         VStack(alignment: .leading, spacing: 12) { content }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(16)
-            .rydarGroupedPlate()
+            .padding(RydarShape.glassInset)
+            .containerShape(RoundedRectangle(cornerRadius: RydarShape.glassRadius, style: .continuous))
+            .rydarGlassPlate()
     }
 }
 
@@ -107,8 +116,8 @@ extension DriverMode {
     }
     var screenDetail: String {
         switch self {
-        case .adult: return "Spoken warnings and the drive screen."
-        case .under18: return "Spoken warnings only. No screen, camera, or uploads."
+        case .adult: return "Drive screen, camera, and spoken warnings."
+        case .under18: return "Spoken warnings only. No screen or camera."
         }
     }
 }
@@ -148,6 +157,19 @@ extension View {
             self.glassEffect(.regular, in: Capsule())
         } else {
             self.background(.ultraThinMaterial, in: Capsule())
+        }
+    }
+
+    /// Liquid Glass plate. An explicit continuous radius, because a concentric
+    /// rectangle with no shaped ancestor collapses to a square.
+    @ViewBuilder
+    func rydarGlassPlate() -> some View {
+        let shape = RoundedRectangle(cornerRadius: RydarShape.glassRadius, style: .continuous)
+        if #available(iOS 26, *) {
+            self.glassEffect(.regular, in: shape)
+        } else {
+            self.background(.ultraThinMaterial, in: shape)
+                .clipShape(shape)
         }
     }
 
@@ -208,14 +230,19 @@ func liveRoadLabel(camera: CameraEvidence?) -> String {
     }
 }
 
-/// Square live view of the dash camera. It only displays frames; nothing is saved.
+/// Live view of the dash camera. The preview layer is the view's own layer, so the
+/// rounded corner has to be set on that layer or the video stays square. Nothing is saved.
 struct CameraPreviewView: UIViewRepresentable {
     var session: AVCaptureSession
+    var cornerRadius: CGFloat
 
     func makeUIView(context: Context) -> PreviewHost {
         let host = PreviewHost()
+        host.backgroundColor = .clear
+        host.isOpaque = false
         host.previewLayer.videoGravity = .resizeAspectFill
         host.previewLayer.session = session
+        host.cornerRadius = cornerRadius
         return host
     }
 
@@ -223,11 +250,27 @@ struct CameraPreviewView: UIViewRepresentable {
         if host.previewLayer.session !== session {
             host.previewLayer.session = session
         }
+        host.cornerRadius = cornerRadius
     }
 
     final class PreviewHost: UIView {
         override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
         var previewLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
+        var cornerRadius: CGFloat = 0 {
+            didSet { applyShape() }
+        }
+
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            applyShape()
+        }
+
+        private func applyShape() {
+            clipsToBounds = true
+            previewLayer.masksToBounds = true
+            previewLayer.cornerRadius = cornerRadius
+            previewLayer.cornerCurve = .continuous
+        }
     }
 }
 
@@ -240,9 +283,9 @@ struct DashCameraCard: View {
     var body: some View {
         HStack(spacing: 14) {
             if live, let session {
-                CameraPreviewView(session: session)
+                CameraPreviewView(session: session, cornerRadius: RydarShape.nestedRadius)
                     .frame(width: 84, height: 84)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: RydarShape.nestedRadius, style: .continuous))
                     .accessibilityHidden(true)
             }
             VStack(alignment: .leading, spacing: 4) {
@@ -257,5 +300,48 @@ struct DashCameraCard: View {
             }
             Spacer(minLength: 0)
         }
+    }
+}
+
+/// A small map of where the rider is. It does not pan, zoom, or take taps.
+struct DriveGlanceMap: View {
+    var latitude: Double
+    var longitude: Double
+    @State private var position: MapCameraPosition
+
+    init(latitude: Double, longitude: Double) {
+        self.latitude = latitude
+        self.longitude = longitude
+        _position = State(initialValue: Self.camera(latitude: latitude, longitude: longitude))
+    }
+
+    var body: some View {
+        let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+        Map(position: $position, interactionModes: []) {
+            Annotation("You", coordinate: coordinate, anchor: .center) {
+                Circle()
+                    .fill(RydarTheme.accent)
+                    .frame(width: 12, height: 12)
+                    .overlay(Circle().strokeBorder(.white, lineWidth: 2))
+            }
+        }
+        .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll, showsTraffic: false))
+        .mapControls({})
+        .allowsHitTesting(false)
+        .frame(maxWidth: .infinity)
+        .frame(height: 148)
+        .clipShape(RoundedRectangle(cornerRadius: RydarShape.glassRadius, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Your location")
+        .accessibilityIdentifier("driveMap")
+        .onChange(of: latitude) { _, _ in position = Self.camera(latitude: latitude, longitude: longitude) }
+        .onChange(of: longitude) { _, _ in position = Self.camera(latitude: latitude, longitude: longitude) }
+    }
+
+    private static func camera(latitude: Double, longitude: Double) -> MapCameraPosition {
+        .camera(MapCamera(
+            centerCoordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
+            distance: 520
+        ))
     }
 }

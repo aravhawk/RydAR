@@ -194,12 +194,10 @@ struct LocationFix: Equatable {
 
 enum DrivePrompt: Equatable {
     case speak
-    case chime
 }
 
 struct DriveGate: Equatable {
     var allowsSound: Bool
-    var allowsChime: Bool
     var allowsCamera: Bool
     var allowsUpload: Bool
 }
@@ -236,6 +234,9 @@ struct TripUpdate: Equatable {
     var gpsStatus = "Waiting for location"
     var measuredSpeedMPH: Double? = nil
     var promptSpeedMPH: Double? = nil
+    /// Present when this fix has a real coordinate. The drive screen geocodes it while stopped.
+    var latitude: Double? = nil
+    var longitude: Double? = nil
     var screeningRange: ScreeningRange? = nil
     /// What the drive screen shows for the advisory, including the mph to slow to.
     var advisoryNotice: String? = nil
@@ -245,21 +246,19 @@ struct TripUpdate: Equatable {
 
 func driveGate(mode: DriverMode?, speedMps: Double, dashEnabled: Bool, uploadOptIn: Bool) -> DriveGate {
     guard let mode else {
-        return DriveGate(allowsSound: false, allowsChime: false, allowsCamera: false, allowsUpload: false)
+        return DriveGate(allowsSound: false, allowsCamera: false, allowsUpload: false)
     }
     let sound = allowsInDriveSound(mode)
     switch mode {
     case .under18:
         return DriveGate(
             allowsSound: true,
-            allowsChime: false,
             allowsCamera: false,
-            allowsUpload: false
+            allowsUpload: uploadOptIn
         )
     case .adult:
         return DriveGate(
             allowsSound: sound,
-            allowsChime: sound,
             allowsCamera: dashEnabled,
             allowsUpload: uploadOptIn
         )
@@ -276,23 +275,59 @@ func gpsIsGood(_ fix: LocationFix, now: Date) -> Bool {
 }
 
 /// A parked phone often has a coordinate and still reports speed and course as unknown.
-/// That is not a missing location. A curve match needs both.
+/// That is not a missing location. A curve match needs both. The drive screen shows the
+/// place and 0 mph for this case; this phrase stays the engine's status.
 func gpsStatusText(for fix: LocationFix, now: Date) -> String {
     if gpsIsGood(fix, now: now) { return "GPS ready" }
-    let positioned = fix.horizontalAccuracyMeters >= 0
-        && fix.horizontalAccuracyMeters <= DriveRules.gpsAccuracyLimitMeters
-    let age = now.timeIntervalSince(fix.timestamp)
-    let fresh = age >= -1 && age <= DriveRules.gpsMaxAgeSeconds
-    let motionUnknown = fix.speedMps < 0 || fix.speedAccuracyMps < 0
-        || fix.courseDegrees < 0 || fix.courseDegrees > 360
-    if positioned && fresh && motionUnknown {
-        if fix.speedMps >= DriveRules.movingSpeedMps { return "Direction unknown" }
-        return "Standing still"
+    if isStationaryFix(fix, now: now) { return "Standing still" }
+    if isFresh(fix, now: now), hasPrecisePosition(fix), motionIsUnknown(fix),
+       fix.speedMps >= DriveRules.movingSpeedMps {
+        return "Direction unknown"
     }
-    if fresh, fix.horizontalAccuracyMeters > DriveRules.gpsAccuracyLimitMeters, fix.horizontalAccuracyMeters.isFinite {
+    if isFresh(fix, now: now),
+       fix.horizontalAccuracyMeters > DriveRules.gpsAccuracyLimitMeters,
+       fix.horizontalAccuracyMeters.isFinite {
         return "Location isn't precise enough"
     }
     return "Waiting for location"
+}
+
+func hasPrecisePosition(_ fix: LocationFix) -> Bool {
+    fix.horizontalAccuracyMeters >= 0
+        && fix.horizontalAccuracyMeters <= DriveRules.gpsAccuracyLimitMeters
+}
+
+func isFresh(_ fix: LocationFix, now: Date) -> Bool {
+    let age = now.timeIntervalSince(fix.timestamp)
+    return age >= -1 && age <= DriveRules.gpsMaxAgeSeconds
+}
+
+func motionIsUnknown(_ fix: LocationFix) -> Bool {
+    fix.speedMps < 0 || fix.speedAccuracyMps < 0
+        || fix.courseDegrees < 0 || fix.courseDegrees > 360
+}
+
+/// Positioned and fresh, but the phone has no usable speed or course and is not moving.
+func isStationaryFix(_ fix: LocationFix, now: Date) -> Bool {
+    hasPrecisePosition(fix) && isFresh(fix, now: now) && motionIsUnknown(fix)
+        && fix.speedMps < DriveRules.movingSpeedMps
+}
+
+/// A coordinate the screen can name. Invalid accuracy means there is no position yet.
+func readableCoordinate(_ fix: LocationFix) -> (latitude: Double, longitude: Double)? {
+    guard fix.horizontalAccuracyMeters >= 0, fix.horizontalAccuracyMeters.isFinite else { return nil }
+    guard fix.latitude >= -90, fix.latitude <= 90, fix.longitude >= -180, fix.longitude <= 180 else { return nil }
+    return (fix.latitude, fix.longitude)
+}
+
+/// Speed for the drive screen. A stopped phone reports speed as unknown, which is 0 mph,
+/// not a missing reading. A fix with no position still has no speed.
+func displayedSpeedMPH(for fix: LocationFix, now: Date) -> Double? {
+    if let measured = measuredSpeedMPH(speedMps: fix.speedMps) {
+        return measured
+    }
+    if isStationaryFix(fix, now: now) { return 0 }
+    return nil
 }
 
 /// What to show before a usable fix arrives. A denied or reduced-accuracy
@@ -329,7 +364,6 @@ func isRampDesign(_ design: String) -> Bool {
 
 struct TripMatcher {
     var driverMode: DriverMode?
-    var promptStyle: PromptStyle = .normal
     var dashEnabled = false
     var uploadOptIn = false
     var tread: TreadChoice = .unsure
@@ -398,6 +432,7 @@ struct TripMatcher {
         now: Date? = nil
     ) -> TripUpdate {
         let moment = now ?? fix.timestamp
+        let coordinate = readableCoordinate(fix)
         let gate = driveGate(
             mode: driverMode,
             speedMps: fix.speedMps,
@@ -426,7 +461,9 @@ struct TripMatcher {
                 surfaceUI: nil,
                 completed: [],
                 gpsStatus: gpsStatusText(for: fix, now: moment),
-                measuredSpeedMPH: measuredSpeedMPH(speedMps: fix.speedMps)
+                measuredSpeedMPH: displayedSpeedMPH(for: fix, now: moment),
+                latitude: coordinate?.latitude,
+                longitude: coordinate?.longitude
             )
         }
 
@@ -598,22 +635,14 @@ struct TripMatcher {
             chosen = (item, around)
             break
         }
-        if let chosen, streak >= DriveRules.requiredFixes, !ambiguous {
-            // Audio-only teen trips always speak the advisory, regardless of the adult prompt preference.
-            let style = driverMode == .under18 ? PromptStyle.normal : promptStyle
-            if gate.allowsSound && style == .chimeOnly && gate.allowsChime {
-                prompt = .chime
-            } else if gate.allowsSound && style != .chimeOnly {
-                prompt = .speak
-                spokenLine = CurveAlerts.spokenLine(stretch: chosen.stretch)
-            }
-            if prompt != nil {
-                for identifier in chosen.stretch.map(\.id) {
-                    spokenThisPass.insert(identifier)
-                    if var track = tracks[identifier] {
-                        track.spoke = true
-                        tracks[identifier] = track
-                    }
+        if let chosen, streak >= DriveRules.requiredFixes, !ambiguous, gate.allowsSound {
+            prompt = .speak
+            spokenLine = CurveAlerts.spokenLine(stretch: chosen.stretch)
+            for identifier in chosen.stretch.map(\.id) {
+                spokenThisPass.insert(identifier)
+                if var track = tracks[identifier] {
+                    track.spoke = true
+                    tracks[identifier] = track
                 }
             }
         }
@@ -633,8 +662,10 @@ struct TripMatcher {
             completed: completed,
             gpsGood: true,
             gpsStatus: "GPS ready",
-            measuredSpeedMPH: measuredSpeedMPH(speedMps: fix.speedMps),
+            measuredSpeedMPH: displayedSpeedMPH(for: fix, now: moment),
             promptSpeedMPH: focus?.effective,
+            latitude: coordinate?.latitude,
+            longitude: coordinate?.longitude,
             screeningRange: focus?.range,
             advisoryNotice: advisoryNotice,
             advisoryWarning: advisoryWarning
@@ -842,7 +873,6 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
     let locationManager = CLLocationManager()
     let motionManager = CMMotionManager()
 
-    var promptStyle: PromptStyle = .normal
     var dashEnabled = false
     var uploadOptIn = false
     var tread: TreadChoice = .unsure
@@ -925,7 +955,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         guard startSensors else { return }
         if allowsInDriveSound(driverMode) {
             speech.holdForTrip()
-            if matcher.driverMode == .adult { speech.prepareHaptics() }
+            speech.prepareHaptics()
             speechHeld = true
         }
         startSensorsIfNeeded()
@@ -983,7 +1013,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         guard sensorsWanted else { return }
         if matcher.driverMode.map(allowsInDriveSound) == true {
             speech.holdForTrip()
-            if matcher.driverMode == .adult { speech.prepareHaptics() }
+            speech.prepareHaptics()
             speechHeld = true
         }
         startSensorsIfNeeded()
@@ -1010,7 +1040,6 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         now: Date? = nil
     ) -> TripUpdate {
         let moment = now ?? Date()
-        matcher.promptStyle = promptStyle
         matcher.dashEnabled = dashEnabled
         matcher.uploadOptIn = uploadOptIn
         let nearby = explicit ?? nearbyCurves(for: fix)
@@ -1046,18 +1075,10 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
                 }
             }
         }
-        if !paused {
-            switch update.prompt {
-            case .speak:
-                if matcher.driverMode == .adult { speech.playCurveTap() }
-                if let line = update.spokenLine {
-                    try? speech.speakWarning(line)
-                }
-            case .chime:
-                if matcher.driverMode == .adult { speech.playCurveTap() }
-                try? speech.playChime()
-            case nil:
-                break
+        if !paused, update.prompt == .speak {
+            speech.playCurveTap()
+            if let line = update.spokenLine {
+                try? speech.speakWarning(line)
             }
         }
         publish(update)

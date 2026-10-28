@@ -8,10 +8,9 @@ final class LiveTripTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: DashPreference.key)
     }
 
-    func testStartStoresStyleAndUploadAndTurnsDashOn() throws {
+    func testStartStoresUploadAndTurnsDashOn() throws {
         let harness = try makeHarness()
-        harness.bridge.start(mode: .adult, style: .chimeOnly, uploadOptIn: true)
-        XCTAssertEqual(harness.engine.promptStyle, .chimeOnly)
+        harness.bridge.start(mode: .adult, uploadOptIn: true)
         XCTAssertTrue(harness.engine.uploadOptIn)
         XCTAssertTrue(harness.engine.dashEnabled)
         XCTAssertNotNil(harness.engine.snapshot.tripID)
@@ -24,15 +23,15 @@ final class LiveTripTests: XCTestCase {
         XCTAssertEqual(harness.engine.snapshot.tripID, kept)
     }
 
-    func testUnder18StartDoesNotEnableCameraOrUpload() throws {
+    func testUnder18StartSkipsTheCameraAndKeepsSharing() throws {
         let harness = try makeHarness()
-        harness.bridge.start(mode: .under18, style: .normal, uploadOptIn: true)
-        XCTAssertFalse(harness.engine.uploadOptIn)
+        harness.bridge.start(mode: .under18, uploadOptIn: true)
+        XCTAssertTrue(harness.engine.uploadOptIn)
         XCTAssertFalse(harness.engine.dashEnabled)
         let gate = driveGate(mode: .under18, speedMps: 15, dashEnabled: harness.engine.dashEnabled, uploadOptIn: harness.engine.uploadOptIn)
         XCTAssertFalse(gate.allowsCamera)
         XCTAssertTrue(gate.allowsSound)
-        XCTAssertFalse(gate.allowsUpload)
+        XCTAssertTrue(gate.allowsUpload)
         let start = date(hour: 14)
         for index in 0..<3 {
             let when = start.addingTimeInterval(Double(index))
@@ -47,7 +46,7 @@ final class LiveTripTests: XCTestCase {
     func testLocationUpdatePublishesTheMatchedCurveOnTheBridge() throws {
         let harness = try makeHarness()
         let start = date(hour: 14)
-        harness.bridge.start(mode: .adult, style: .normal, uploadOptIn: false)
+        harness.bridge.start(mode: .adult, uploadOptIn: false)
         let curve = line(id: "c", north: 80)
         for index in 0..<3 {
             let when = start.addingTimeInterval(Double(index))
@@ -56,6 +55,7 @@ final class LiveTripTests: XCTestCase {
         XCTAssertEqual(harness.bridge.drive.nextCurve?.id, "c")
         XCTAssertNotNil(harness.bridge.drive.distanceMeters)
         XCTAssertEqual(harness.bridge.drive.gpsStatus, "GPS ready")
+        XCTAssertNil(harness.bridge.drive.placeTitle)
         XCTAssertEqual(harness.bridge.drive.measuredSpeedMPH ?? -1, 20 * 2.23694, accuracy: 0.1)
         XCTAssertFalse(harness.bridge.drive.isPaused)
         XCTAssertEqual(harness.bridge.drive.cameraStatus, "Using road records")
@@ -69,24 +69,65 @@ final class LiveTripTests: XCTestCase {
         XCTAssertEqual(harness.speech.spoken, [spokenCurveWarning(advisoryMPH: advisorySpeedMPH(screeningRange(radiusFeet: 200, surface: .paved)))])
         XCTAssertEqual(harness.bridge.drive.advisoryNotice, harness.speech.spoken.first)
         XCTAssertEqual(harness.bridge.drive.advisoryWarning, true)
-        XCTAssertEqual(harness.speech.chimes, 0)
+        XCTAssertNotNil(harness.bridge.drive.latitude)
+        XCTAssertNotNil(harness.bridge.drive.longitude)
         harness.bridge.setPaused(true)
         XCTAssertTrue(harness.bridge.drive.isPaused)
         XCTAssertEqual(harness.bridge.drive.nextCurve?.id, "c")
         XCTAssertEqual(harness.bridge.drive.gpsStatus, "GPS ready")
     }
 
-    func testChimeOnlyDoesNotSpeak() throws {
+    func testStandingStillPublishesThePlaceAndZeroMph() throws {
+        let geocoder = ScriptedPlaceGeocoder()
+        geocoder.parts = PlaceParts(thoroughfare: "SE 14th St", locality: "Bentonville", administrativeArea: "AR")
+        let harness = try makeHarness(places: RiderPlaceLookup(geocoder: geocoder))
+        harness.bridge.start(mode: .adult, uploadOptIn: false)
+        let now = date(hour: 14)
+        let still = LocationFix(
+            latitude: baseLat, longitude: baseLon, speedMps: -1, speedAccuracyMps: -1,
+            courseDegrees: -1, horizontalAccuracyMeters: 5, timestamp: now
+        )
+        harness.engine.handle(fix: still, nearby: [], now: now)
+        XCTAssertEqual(geocoder.requests, 1)
+        XCTAssertEqual(harness.bridge.drive.gpsStatus, "Standing still")
+        XCTAssertEqual(harness.bridge.drive.measuredSpeedMPH, 0)
+        XCTAssertEqual(harness.bridge.drive.placeTitle, "SE 14th St")
+        XCTAssertEqual(harness.bridge.drive.placeDetail, "Bentonville, AR")
+        let readout = driveReadout(
+            hasCurve: harness.bridge.drive.nextCurve != nil,
+            roadName: harness.bridge.drive.nextCurve?.roadName,
+            gpsStatus: harness.bridge.drive.gpsStatus,
+            measuredSpeedMPH: harness.bridge.drive.measuredSpeedMPH,
+            placeTitle: harness.bridge.drive.placeTitle,
+            placeDetail: harness.bridge.drive.placeDetail
+        )
+        XCTAssertEqual(readout.headline, "SE 14th St")
+        XCTAssertEqual(readout.locationPin, "Bentonville, AR")
+        XCTAssertEqual(readout.speedMPH, 0)
+        XCTAssertFalse(readout.headline.contains("Standing still"))
+        XCTAssertFalse(readout.locationPin?.contains("Standing still") ?? false)
+        XCTAssertFalse(readout.headline.contains("Speed unknown"))
+
+        harness.engine.handle(fix: still, nearby: [], now: now.addingTimeInterval(1))
+        XCTAssertEqual(geocoder.requests, 1)
+
+        harness.engine.handle(fix: fix(speed: 20, at: now.addingTimeInterval(2)), nearby: [], now: now.addingTimeInterval(2))
+        XCTAssertEqual(harness.bridge.drive.gpsStatus, "GPS ready")
+        XCTAssertNil(harness.bridge.drive.placeTitle)
+        XCTAssertNil(harness.bridge.drive.placeDetail)
+        XCTAssertGreaterThan(harness.bridge.drive.measuredSpeedMPH ?? 0, 10)
+    }
+
+    func testALiveWarningSpeaks() throws {
         let harness = try makeHarness()
         let start = date(hour: 14)
-        harness.bridge.start(mode: .adult, style: .chimeOnly, uploadOptIn: false)
+        harness.bridge.start(mode: .adult, uploadOptIn: false)
         let curve = line(id: "c", north: 80)
         for index in 0..<3 {
             let when = start.addingTimeInterval(Double(index))
             harness.engine.handle(fix: fix(speed: 20, at: when), nearby: [curve], now: when)
         }
-        XCTAssertTrue(harness.speech.spoken.isEmpty)
-        XCTAssertEqual(harness.speech.chimes, 1)
+        XCTAssertEqual(harness.speech.spoken.count, 1)
     }
 
     func testPauseAndFinishPublishSavedRowsBeforeTheTripIdClears() throws {
@@ -97,7 +138,7 @@ final class LiveTripTests: XCTestCase {
             try harness.log.record(latePass(key: key), tripID: seed)
         }
         let start = date(hour: 14)
-        harness.bridge.start(mode: .adult, style: .normal, uploadOptIn: false)
+        harness.bridge.start(mode: .adult, uploadOptIn: false)
         harness.bridge.setPaused(true)
         XCTAssertTrue(harness.bridge.drive.isPaused)
         XCTAssertTrue(harness.engine.snapshot.paused)
@@ -140,7 +181,7 @@ final class LiveTripTests: XCTestCase {
         let spy = SpyUpload()
         let harness = try makeHarness(uploader: spy)
         let start = date(hour: 14)
-        harness.bridge.start(mode: .adult, style: .normal, uploadOptIn: true)
+        harness.bridge.start(mode: .adult, uploadOptIn: true)
         let curve = line(id: "007-2-3", north: 200, length: 40)
         try insertCurve(harness.writer, curve)
         var completed = 0
@@ -162,17 +203,16 @@ final class LiveTripTests: XCTestCase {
         XCTAssertEqual(spy.sent.count, 1)
         XCTAssertEqual(spy.sent[0].curve_id, "007-2-3")
         XCTAssertEqual(spy.sent[0].direction, "N")
-        XCTAssertEqual(spy.sent[0].speed_band_mph, 40)
-        XCTAssertEqual(spy.sent[0].speed_band_mph % 5, 0)
+        XCTAssertEqual(spy.sent[0].speed_band_mph, 20 * 2.23694, accuracy: 0.001)
         XCTAssertEqual(spy.sent[0].hour_bucket, 14)
         harness.bridge.onUploadPreference?(true)
         XCTAssertEqual(spy.sent.count, 1)
     }
 
-    func testUnder18CompletesAPassWithoutUploading() throws {
+    func testUnder18CompletesAPassAndSharesItWhenSharingIsOn() throws {
         let spy = SpyUpload()
         let harness = try makeHarness(uploader: spy)
-        harness.bridge.start(mode: .under18, style: .normal, uploadOptIn: true)
+        harness.bridge.start(mode: .under18, uploadOptIn: true)
         let curve = line(id: "007-2-3", north: 200, length: 40)
         var completed = 0
         var north = 0.0
@@ -189,12 +229,16 @@ final class LiveTripTests: XCTestCase {
             if completed > 0 { break }
         }
         XCTAssertEqual(completed, 1)
-        XCTAssertTrue(spy.sent.isEmpty)
+        XCTAssertTrue(spy.sent.isEmpty, "passes wait for the end of the trip")
+        harness.bridge.finish()
+        XCTAssertEqual(spy.sent.count, 1)
+        XCTAssertEqual(spy.sent[0].curve_id, "007-2-3")
+        XCTAssertNil(harness.bridge.drive.nextCurve)
     }
 
     func testDeleteClearsPassHistoryAndKeepsTheCurveTable() throws {
         let harness = try makeHarness()
-        harness.bridge.start(mode: .adult, style: .normal, uploadOptIn: true)
+        harness.bridge.start(mode: .adult, uploadOptIn: true)
         let curve = line(id: "kept", north: 10)
         try insertCurve(harness.writer, curve)
         try harness.log.record(latePass(key: "paved|150-300|day"), tripID: try XCTUnwrap(harness.engine.snapshot.tripID))
@@ -206,7 +250,10 @@ final class LiveTripTests: XCTestCase {
         XCTAssertEqual(harness.curves.curve(id: "kept")?.roadName, "Test Rd")
     }
 
-    private func makeHarness(uploader: PassSending = PassUpload(endpoint: nil)) throws -> Harness {
+    private func makeHarness(
+        uploader: PassSending = PassUpload(endpoint: nil),
+        places: RiderPlaceLookup = RiderPlaceLookup()
+    ) throws -> Harness {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("live-\(UUID().uuidString).sqlite")
         let writer = try SQLiteConnection(url: url, readonly: false)
         try writer.execute(
@@ -242,7 +289,8 @@ final class LiveTripTests: XCTestCase {
             bridge: bridge,
             curves: curves,
             startSensors: false,
-            uploader: uploader
+            uploader: uploader,
+            places: places
         )
         return Harness(url: url, writer: writer, log: log, curves: curves, engine: engine, bridge: bridge, speech: speech, session: session)
     }
@@ -371,7 +419,5 @@ private final class SpyUpload: PassSending {
 
 private final class SpySpeech: PromptPlaying {
     var spoken: [String] = []
-    var chimes = 0
     func speakWarning(_ line: String) throws { spoken.append(line) }
-    func playChime() throws { chimes += 1 }
 }

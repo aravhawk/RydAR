@@ -119,6 +119,23 @@ enum DriveLiveActivity {
                 alerting: above
             )
         }
+        if drive.gpsStatus == "Standing still" {
+            let readout = driveReadout(
+                hasCurve: false,
+                roadName: nil,
+                gpsStatus: drive.gpsStatus,
+                measuredSpeedMPH: drive.measuredSpeedMPH,
+                placeTitle: drive.placeTitle,
+                placeDetail: drive.placeDetail
+            )
+            let speed = drive.measuredSpeedMPH ?? 0
+            return DriveActivityAttributes.ContentState(
+                headline: readout.headline,
+                detail: readout.locationPin ?? speedText(mph: speed),
+                compact: speedText(mph: Double(bucketSpeed(speed))),
+                alerting: false
+            )
+        }
         if let speed = drive.measuredSpeedMPH {
             return DriveActivityAttributes.ContentState(
                 headline: "No curve ahead",

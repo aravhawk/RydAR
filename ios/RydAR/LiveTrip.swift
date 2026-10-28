@@ -85,6 +85,7 @@ final class LiveTripSession {
     private var pendingUploads: [AnonymousPassBody] = []
     private var lastHandledAt: Date?
     private var gpsWatchdog: Timer?
+    private let places: RiderPlaceLookup
     /// No fix for this long means location stopped, not that the road went quiet.
     static let gpsSilenceSeconds: TimeInterval = 4
 
@@ -94,7 +95,8 @@ final class LiveTripSession {
         curves: SQLiteCurveStore,
         startSensors: Bool = true,
         camera: DashRunning? = nil,
-        uploader: PassSending = PassUpload()
+        uploader: PassSending = PassUpload(),
+        places: RiderPlaceLookup = RiderPlaceLookup()
     ) {
         self.engine = engine
         self.bridge = bridge
@@ -102,6 +104,7 @@ final class LiveTripSession {
         self.startSensors = startSensors
         self.camera = camera ?? DashCamera()
         self.uploader = uploader
+        self.places = places
         connect()
     }
 
@@ -110,9 +113,8 @@ final class LiveTripSession {
         camera.onChange = { [weak self] reading in
             self?.apply(reading)
         }
-        let onStart: (DriverMode, PromptStyle, Bool) -> Void = { [weak self] mode, style, upload in
+        let onStart: (DriverMode, Bool) -> Void = { [weak self] mode, upload in
             guard let self else { return }
-            self.engine.promptStyle = style
             self.engine.uploadOptIn = upload
             self.engine.dashEnabled = mode == .under18 ? false : DashPreference.isOn
             self.reading = DashReading(camera: nil, vision: .quiet, state: self.engine.dashEnabled ? .unconfirmed : .off, acceptedAt: nil)
@@ -227,7 +229,7 @@ final class LiveTripSession {
     private func flushUploads() {
         let batch = pendingUploads.shuffled()
         pendingUploads = []
-        guard engine.uploadOptIn, engine.snapshot.driverMode != .under18 else { return }
+        guard engine.uploadOptIn else { return }
         for body in batch { uploader.send(body) }
     }
 
@@ -293,6 +295,7 @@ final class LiveTripSession {
         }
         camera.noteCurveApproach(update.gpsGood ? update.matchedCurveID : nil)
         let showCurve = update.gpsGood && curve != nil && engine.snapshot.driverMode != .under18
+        let place = standingPlace(for: update)
         assignDrive(snapshot(
             curve: showCurve ? curve : nil,
             distance: showCurve ? update.distanceMeters : nil,
@@ -302,8 +305,32 @@ final class LiveTripSession {
             paused: engine.snapshot.paused,
             range: showCurve ? update.screeningRange : nil,
             advisoryNotice: showCurve ? update.advisoryNotice : nil,
-            advisoryWarning: showCurve ? update.advisoryWarning : nil
+            advisoryWarning: showCurve ? update.advisoryWarning : nil,
+            placeTitle: place?.title,
+            placeDetail: place?.detail,
+            latitude: update.latitude,
+            longitude: update.longitude
         ))
+        refreshStandingPlace(for: update)
+    }
+
+    private func standingPlace(for update: TripUpdate) -> RiderPlace? {
+        guard update.gpsStatus == "Standing still",
+              let latitude = update.latitude,
+              let longitude = update.longitude else { return nil }
+        return places.immediate(latitude: latitude, longitude: longitude)
+    }
+
+    /// Replaces the coordinate with a street and town when the geocoder answers.
+    /// A second pass finds the saved name and does not ask again.
+    private func refreshStandingPlace(for update: TripUpdate) {
+        guard update.gpsStatus == "Standing still",
+              let latitude = update.latitude,
+              let longitude = update.longitude else { return }
+        places.resolve(latitude: latitude, longitude: longitude) { [weak self] in
+            guard let self, let last = self.lastUpdate, last.gpsStatus == "Standing still" else { return }
+            self.publishDrive(last, curve: self.lastCurve)
+        }
     }
 
     private func publishIdle() {
@@ -335,7 +362,11 @@ final class LiveTripSession {
         paused: Bool,
         range: ScreeningRange?,
         advisoryNotice: String? = nil,
-        advisoryWarning: Bool? = nil
+        advisoryWarning: Bool? = nil,
+        placeTitle: String? = nil,
+        placeDetail: String? = nil,
+        latitude: Double? = nil,
+        longitude: Double? = nil
     ) -> DriveScreenSnapshot {
         DriveScreenSnapshot(
             nextCurve: curve,
@@ -345,6 +376,10 @@ final class LiveTripSession {
             cameraStatus: cameraStatus,
             gpsStatus: gps,
             measuredSpeedMPH: measured,
+            placeTitle: placeTitle,
+            placeDetail: placeDetail,
+            latitude: latitude,
+            longitude: longitude,
             promptSpeedMPH: prompt,
             isPaused: paused,
             screeningRange: range,

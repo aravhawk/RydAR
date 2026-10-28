@@ -14,12 +14,39 @@ func hapticRoute(appIsActive: Bool, hardwareSupportsHaptics: Bool) -> HapticRout
     return .vibration
 }
 
-/// Two sharp taps at the same moment as a spoken or chimed prompt. Under-18 trips never play or prepare it.
+enum CurveHapticTiming {
+    /// Gap between the two taps while RydAR is on screen.
+    static let tapticGap = 0.16
+    /// Speech starts after both taps.
+    static let speechAfterTaps = 0.45
+    /// Gap between the two system vibrations while another app is in front.
+    static let vibrationGap = 0.45
+    /// Speech starts after both vibrations.
+    static let speechAfterVibration = 1.05
+
+    static func speechDelay(appIsActive: Bool, hardwareSupportsHaptics: Bool) -> TimeInterval {
+        switch hapticRoute(appIsActive: appIsActive, hardwareSupportsHaptics: hardwareSupportsHaptics) {
+        case .taptic: return speechAfterTaps
+        case .vibration: return speechAfterVibration
+        }
+    }
+
+    static func speechDelayForCurrentApp() -> TimeInterval {
+        let active = Thread.isMainThread && UIApplication.shared.applicationState == .active
+        return speechDelay(
+            appIsActive: active,
+            hardwareSupportsHaptics: CHHapticEngine.capabilitiesForHardware().supportsHaptics
+        )
+    }
+}
+
+/// Two vibrations, then the spoken warning. Plays for every trip that speaks, including teen trips.
 final class CurveHaptic {
     private var engine: CHHapticEngine?
     private var pattern: CHHapticPattern?
     /// Kept alive until the second tap has played. A local player is cancelled as soon as it is released.
     private var player: CHHapticPatternPlayer?
+    private var playback = 0
     private let heavy = UIImpactFeedbackGenerator(style: .heavy)
     private let rigid = UIImpactFeedbackGenerator(style: .rigid)
 
@@ -47,6 +74,7 @@ final class CurveHaptic {
     }
 
     func stop() {
+        playback += 1
         player = nil
         engine?.resetHandler = {}
         engine?.stoppedHandler = { _ in }
@@ -55,6 +83,8 @@ final class CurveHaptic {
     }
 
     func play() {
+        playback += 1
+        let token = playback
         let work = {
             if hapticRoute(
                 appIsActive: UIApplication.shared.applicationState == .active,
@@ -63,6 +93,10 @@ final class CurveHaptic {
                 self.playTaptic()
             } else {
                 AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
+                DispatchQueue.main.asyncAfter(deadline: .now() + CurveHapticTiming.vibrationGap) { [weak self] in
+                    guard let self, token == self.playback else { return }
+                    AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
+                }
             }
         }
         if Thread.isMainThread {
@@ -76,7 +110,7 @@ final class CurveHaptic {
         // UIKit taps use the Taptic Engine even while the trip's playback session is active.
         heavy.impactOccurred(intensity: 1)
         heavy.prepare()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + CurveHapticTiming.tapticGap) { [weak self] in
             self?.rigid.impactOccurred(intensity: 1)
         }
         guard let engine, let pattern else { return }
@@ -107,7 +141,7 @@ final class CurveHaptic {
                 CHHapticEventParameter(parameterID: .hapticIntensity, value: 1),
                 CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.6),
             ],
-            relativeTime: 0.16
+            relativeTime: CurveHapticTiming.tapticGap
         )
         return try CHHapticPattern(events: [first, second], parameters: [])
     }

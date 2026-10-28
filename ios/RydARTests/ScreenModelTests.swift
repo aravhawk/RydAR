@@ -82,27 +82,27 @@ final class ScreenModelTests: XCTestCase {
         XCTAssertEqual(cards.first { $0.surface == .unpaved }?.curveCount, 1)
     }
 
-    func testNewTripClearsPreviousRowsAndUnder18CannotOptInWhileMoving() async {
+    func testNewTripClearsPreviousRowsAndKeepsTheUploadChoice() async {
         await MainActor.run {
             let trip = TripScreenBridge()
             XCTAssertNil(trip.driverMode)
             var uploads: [Bool] = []
-            trip.onStart = { _, _, upload in uploads.append(upload) }
+            trip.onStart = { _, upload in uploads.append(upload) }
             trip.debrief = TripScreenDebrief(passes: [self.pass("old-trip", speed: 20)])
             trip.drive.distanceMeters = 100
-            trip.start(mode: .under18, style: .normal, uploadOptIn: true)
-            XCTAssertEqual(uploads, [false])
+            trip.start(mode: .under18, uploadOptIn: true)
+            XCTAssertEqual(uploads, [true])
             XCTAssertTrue(trip.debrief.passes.isEmpty)
             XCTAssertNil(trip.drive.distanceMeters)
-            trip.start(mode: .adult, style: .normal, uploadOptIn: true)
-            XCTAssertEqual(uploads, [false, true])
+            trip.start(mode: .adult, uploadOptIn: true)
+            XCTAssertEqual(uploads, [true, true])
         }
     }
 
     func testConnectedStoreCannotPretendDeletionWorkedWithoutAnAction() async throws {
         try await MainActor.run {
             let trip = TripScreenBridge()
-            trip.onStart = { _, _, _ in }
+            trip.onStart = { _, _ in }
             trip.onPause = { _ in }
             trip.onFinish = {}
             trip.debrief = TripScreenDebrief(passes: [self.pass("saved", speed: 20)])
@@ -115,17 +115,6 @@ final class ScreenModelTests: XCTestCase {
             XCTAssertTrue(deleted)
             XCTAssertTrue(trip.debrief.passes.isEmpty)
         }
-    }
-
-    func testExportIncludesOnlyThisTripsRowsAndEscapesCells() {
-        var sample = pass("own-pass", speed: 15)
-        sample.curve.roadName = "=SUM(1,2)\"Lane"
-        let csv = LocalTripExport.csv(TripScreenDebrief(tripID: "this-trip", passes: [sample]))
-        XCTAssertTrue(csv.contains("\"this-trip\",\"007-2-3\""))
-        XCTAssertTrue(csv.contains("\"'=SUM(1,2)\"\"Lane\""))
-        XCTAssertFalse(csv.contains("latitude"))
-        XCTAssertFalse(csv.contains("longitude"))
-        XCTAssertEqual(csv.split(separator: "\n").count, 2)
     }
 
     func testFiveCurveStoreHonorsAreaAndContainsReplayTarget() {

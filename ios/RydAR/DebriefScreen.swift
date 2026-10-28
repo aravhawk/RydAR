@@ -5,13 +5,9 @@ struct DebriefScreen: View {
     @AppStorage(UnitSystem.key) private var units = UnitSystem.imperial.rawValue
     var onDone: () -> Void
     @AppStorage("rydar.uploadOptIn") private var uploadOptIn = true
-    @State private var exportMessage: String?
 
     /// The Settings switch can stay on while this trip sent nothing.
     private var uploadSentence: String {
-        if trip.driverMode == .under18 {
-            return "Nothing uploaded (teen driver)."
-        }
         if !uploadOptIn {
             return "Uploads are off."
         }
@@ -27,8 +23,11 @@ struct DebriefScreen: View {
         return "Saved on this iPhone."
     }
 
-    private var overSummary: String {
+    private var headerDetail: String {
         let count = trip.debrief.overRangePasses.count
+        if count == 0 {
+            return trip.isConnected ? "No curves over the suggested speed" : "Nothing recorded"
+        }
         return count == 1 ? "1 curve over the suggested speed" : "\(count) curves over the suggested speed"
     }
 
@@ -57,7 +56,7 @@ struct DebriefScreen: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Parked.")
                         .font(.largeTitle.bold())
-                    Text(overSummary)
+                    Text(headerDetail)
                         .font(.headline)
                         .foregroundStyle(RydarTheme.accentText)
                 }
@@ -66,12 +65,6 @@ struct DebriefScreen: View {
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
 
-            if trip.debrief.overRangePasses.isEmpty {
-                Section {
-                    Label(trip.isConnected ? "None this trip" : "Nothing recorded", systemImage: "checkmark.circle")
-                        .font(.headline)
-                }
-            }
             ForEach(trip.debrief.overRangePasses) { pass in
                 Section {
                     HStack(alignment: .firstTextBaseline) {
@@ -113,19 +106,6 @@ struct DebriefScreen: View {
                 Text(uploadSentence)
                     .font(.subheadline)
                     .accessibilityIdentifier("debriefUpload")
-                if trip.driverMode != .under18 {
-                    Text("Shown publicly after 20 passes.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Button("Save a copy", systemImage: "square.and.arrow.down") {
-                    do {
-                        _ = try LocalTripExport.save(trip.debrief)
-                        exportMessage = "Saved on this iPhone."
-                    } catch { exportMessage = "Couldn't save a copy: \(error.localizedDescription)" }
-                }
-                .disabled(trip.debrief.passes.isEmpty)
-                .accessibilityIdentifier("exportTrip")
             }
         }
         .listStyle(.insetGrouped)
@@ -139,11 +119,9 @@ struct DebriefScreen: View {
                     .frame(maxWidth: .infinity)
             }
             .rydarProminentAction()
-            .padding(.horizontal, 24)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 4)
             .accessibilityIdentifier("debriefDone")
         }
-        .alert("Save a copy", isPresented: Binding(get: { exportMessage != nil }, set: { if !$0 { exportMessage = nil } })) {
-            Button("OK") { exportMessage = nil }
-        } message: { Text(exportMessage ?? "") }
     }
 }

@@ -2,19 +2,19 @@ import XCTest
 @testable import RydAR
 
 final class AnonymousPassTests: XCTestCase {
-    func testSpeedBandFloorsToFiveAndClamps() {
-        XCTAssertEqual(AnonymousPass.speedBand(22.9), 20)
-        XCTAssertEqual(AnonymousPass.speedBand(25), 25)
-        XCTAssertEqual(AnonymousPass.speedBand(-4), 0)
-        XCTAssertEqual(AnonymousPass.speedBand(180), 150)
-        XCTAssertEqual(AnonymousPass.speedBand(.nan), 0)
+    func testUploadKeepsTheRecordedSpeed() {
+        XCTAssertEqual(AnonymousPass.uploadSpeed(22.9), 22.9, accuracy: 0.001)
+        XCTAssertEqual(AnonymousPass.uploadSpeed(44.7), 44.7, accuracy: 0.001)
+        XCTAssertEqual(AnonymousPass.uploadSpeed(-4), 0, accuracy: 0.001)
+        XCTAssertEqual(AnonymousPass.uploadSpeed(180), 150, accuracy: 0.001)
+        XCTAssertEqual(AnonymousPass.uploadSpeed(.nan), 0, accuracy: 0.001)
     }
 
     func testBodyMatchesThePassContract() {
         let body = AnonymousPass.body(from: sample(id: "007-2-3", speed: 44.7, hour: 14), appVersion: "0.1.0")
         XCTAssertEqual(body?.curve_id, "007-2-3")
         XCTAssertEqual(body?.direction, "N")
-        XCTAssertEqual(body?.speed_band_mph, 40)
+        XCTAssertEqual(body?.speed_band_mph ?? -1, 44.7, accuracy: 0.001)
         XCTAssertEqual(body?.hour_bucket, 14)
         XCTAssertEqual(body?.app_version, "0.1.0")
         XCTAssertNil(AnonymousPass.body(from: sample(id: "preview-curve", speed: 20, hour: 14), appVersion: "0.1.0"))

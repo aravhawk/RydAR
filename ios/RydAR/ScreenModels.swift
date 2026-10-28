@@ -1,14 +1,6 @@
 import AVFoundation
 import SwiftUI
 
-/// Raw values are saved in settings. Older installs may still hold "Short", which reads as voice.
-enum PromptStyle: String, CaseIterable, Identifiable {
-    case chimeOnly = "Chime only"
-    case normal = "Normal"
-    var id: String { rawValue }
-    var label: String { self == .chimeOnly ? "Chime only" : "Voice" }
-}
-
 struct DriveScreenSnapshot {
     var nextCurve: Curve?
     var distanceMeters: Double?
@@ -18,6 +10,13 @@ struct DriveScreenSnapshot {
     var cameraStatus = "Camera check is off"
     var gpsStatus = "Waiting for location"
     var measuredSpeedMPH: Double? = nil
+    /// Street, place, or coordinate while the rider is stopped. Nil once the bike is moving.
+    var placeTitle: String? = nil
+    /// Town, street, or coordinate that is not already the headline.
+    var placeDetail: String? = nil
+    /// Rider coordinate for the small drive map. Nil until a fix arrives.
+    var latitude: Double? = nil
+    var longitude: Double? = nil
     /// Speed after the GPS uncertainty is removed. A prompt uses this, not the measured number.
     var promptSpeedMPH: Double? = nil
     var isPaused = false
@@ -152,18 +151,18 @@ final class TripScreenBridge: ObservableObject {
     @Published var cameraPreview: AVCaptureSession?
     @Published private(set) var driverMode: DriverMode?
 
-    var onStart: ((DriverMode, PromptStyle, Bool) -> Void)?
+    var onStart: ((DriverMode, Bool) -> Void)?
     var onPause: ((Bool) -> Void)?
     var onFinish: (() -> Void)?
     var onUploadPreference: ((Bool) -> Void)?
     var onDeleteAllData: (() throws -> Void)?
     var isConnected: Bool { onStart != nil && onPause != nil && onFinish != nil }
 
-    func start(mode: DriverMode, style: PromptStyle, uploadOptIn: Bool) {
+    func start(mode: DriverMode, uploadOptIn: Bool) {
         driverMode = mode
         drive = DriveScreenSnapshot()
         debrief = TripScreenDebrief()
-        onStart?(mode, style, mode != .under18 && uploadOptIn)
+        onStart?(mode, uploadOptIn)
     }
 
     func setPaused(_ paused: Bool) {

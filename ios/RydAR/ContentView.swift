@@ -6,7 +6,6 @@ struct ContentView: View {
     @StateObject private var trip: TripScreenBridge
     @AppStorage("rydar.onboardingComplete") private var onboarded = false
     @AppStorage("rydar.appearance") private var appearance = AppearancePreference.system.rawValue
-    @AppStorage("rydar.promptStyle") private var promptStyle = PromptStyle.normal.rawValue
     @AppStorage("rydar.uploadOptIn") private var uploadOptIn = true
     @AppStorage(TreadStore.choiceKey) private var treadRaw = ""
     @State private var phase = ScreenPhase.home
@@ -42,8 +41,7 @@ struct ContentView: View {
         .preferredColorScheme(AppearancePreference(rawValue: appearance)?.scheme)
         .sheet(isPresented: $showDriverGate) {
             DriverGateScreen { mode in
-                trip.start(mode: mode, style: PromptStyle(rawValue: promptStyle) ?? .normal,
-                           uploadOptIn: uploadOptIn)
+                trip.start(mode: mode, uploadOptIn: uploadOptIn)
                 showDriverGate = false
                 if trip.drive.gpsStatus != "Trip did not start" {
                     phase = .drive

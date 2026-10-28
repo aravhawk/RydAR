@@ -1,5 +1,6 @@
 import Foundation
 import CoreLocation
+@testable import RydAR
 
 /// Five rows copied from the bundled database, for tests that need a small known set of curves.
 struct PreviewCurves: CurveStore {

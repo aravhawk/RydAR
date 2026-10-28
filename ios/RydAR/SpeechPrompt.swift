@@ -3,10 +3,9 @@ import Foundation
 
 protocol PromptPlaying: AnyObject {
     func speakWarning(_ line: String) throws
-    func playChime() throws
     func playCurveTap()
     func holdForTrip()
-    /// Warms the haptic engine. Only trips that tap (Driver) call it.
+    /// Warms the haptic engine before the first warning.
     func prepareHaptics()
     func releaseAfterTrip()
 }
@@ -21,27 +20,25 @@ extension PromptPlaying {
 /// Playback session, voice-prompt mode. Other navigation speech is interrupted so this alert is not queued behind it.
 /// The session stays active for the whole trip but only mixes with other audio. It ducks and interrupts
 /// while an alert plays, then goes back to mixing so music returns to full volume.
-/// Speaks the advisory line for this curve. The audio session stays as configured below.
-final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegate {
+/// Speaks the advisory line for this curve after the two vibrations. The audio session stays as configured below.
+final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate {
     static let category: AVAudioSession.Category = .playback
     static let mode: AVAudioSession.Mode = .voicePrompt
     /// While an alert plays.
     static let options: AVAudioSession.CategoryOptions = [.duckOthers, .interruptSpokenAudioAndMixWithOthers]
     /// Between alerts: keep the session, leave other audio alone.
     static let idleOptions: AVAudioSession.CategoryOptions = [.mixWithOthers]
-    /// A little under the system default. Compact voices sound less rushed here.
-    static let speechRate = AVSpeechUtteranceDefaultSpeechRate * 0.95
+    /// The system rate. Premium and enhanced voices are written for it.
+    static let speechRate = AVSpeechUtteranceDefaultSpeechRate
 
     private static let voiceQueue = DispatchQueue(label: "com.rydar.voice", qos: .userInitiated)
     private let synthesizer = AVSpeechSynthesizer()
     private let haptic = CurveHaptic()
     /// Category changes and setActive block long enough for AVAudioSession to warn on the main thread.
     private let sessionQueue = DispatchQueue(label: "rydar.audio-session", qos: .userInitiated)
-    private var player: AVAudioPlayer?
-    private lazy var chime: Data = chimeWAV()
     private var holding = false
     private var voice: AVSpeechSynthesisVoice?
-    /// Incremented on release so an in-flight activation cannot speak or chime after the trip ends.
+    /// Incremented on release so an in-flight activation cannot speak after the trip ends.
     private var playbackGeneration = 0
 
     override init() {
@@ -75,7 +72,6 @@ final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, 
         playbackGeneration += 1
         holding = false
         haptic.stop()
-        player?.stop()
         if synthesizer.isSpeaking {
             synthesizer.stopSpeaking(at: .immediate)
         }
@@ -92,20 +88,31 @@ final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, 
     func speakWarning(_ line: String) throws {
         let generation = playbackGeneration
         let spoken = line
-        let voice = self.voice
-            ?? AVSpeechSynthesisVoice(language: SpeechVoicePicker.warningLanguage(
-                for: AVSpeechSynthesisVoice.currentLanguageCode()))
-        activateSession(alert: true) { [weak self] in
-            guard let self, generation == self.playbackGeneration else { return }
-            self.player?.stop()
-            // A line still being spoken finishes first. Cutting it off for the next curve's line
-            // would leave the driver with half a sentence; the new one queues right behind it.
-            let utterance = AVSpeechUtterance(string: spoken)
-            utterance.voice = voice
-            utterance.rate = Self.speechRate
-            utterance.preUtteranceDelay = 0
-            utterance.postUtteranceDelay = 0
-            self.synthesizer.speak(utterance)
+        let knownVoice = voice
+        let delay = CurveHapticTiming.speechDelayForCurrentApp()
+        sessionQueue.async { [weak self] in
+            guard let self else { return }
+            let voice = knownVoice ?? Self.resolvedVoice()
+            do {
+                try self.activateSession(alert: true)
+            } catch {
+                Thread.sleep(forTimeInterval: 0.4)
+                do {
+                    try self.activateSession(alert: true)
+                } catch {
+                    return
+                }
+            }
+            DispatchQueue.main.async { [weak self] in
+                guard let self, generation == self.playbackGeneration else { return }
+                self.voice = voice
+                let utterance = AVSpeechUtterance(string: spoken)
+                utterance.voice = voice
+                utterance.rate = Self.speechRate
+                utterance.preUtteranceDelay = delay
+                utterance.postUtteranceDelay = 0
+                self.synthesizer.speak(utterance)
+            }
         }
     }
 
@@ -120,37 +127,16 @@ final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, 
             from: voices,
             languageCode: languageCode,
             quality: { $0.quality },
-            language: { $0.language }
+            language: { $0.language },
+            identifier: { $0.identifier },
+            novelty: { $0.voiceTraits.contains(.isNoveltyVoice) }
         ) {
             return best
         }
         return AVSpeechSynthesisVoice(language: languageCode)
     }
 
-    func playChime() throws {
-        let generation = playbackGeneration
-        activateSession(alert: true) { [weak self] in
-            guard let self, generation == self.playbackGeneration else { return }
-            if self.synthesizer.isSpeaking {
-                self.synthesizer.stopSpeaking(at: .immediate)
-            }
-            let player: AVAudioPlayer
-            do {
-                player = try AVAudioPlayer(data: self.chime)
-            } catch {
-                return
-            }
-            player.delegate = self
-            self.player = player
-            player.play()
-        }
-    }
-
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        alertFinished()
-    }
-
-    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         alertFinished()
     }
 
@@ -191,45 +177,6 @@ final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, 
             try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
         }
     }
-
-    private func chimeWAV() -> Data {
-        let sampleRate = 22_050
-        let frames = 3_528
-        var pcm = Data(capacity: frames * 2)
-        for index in 0..<frames {
-            let time = Double(index) / Double(sampleRate)
-            let envelope = sin(.pi * Double(index) / Double(frames))
-            let value = sin(2 * .pi * 880 * time) * envelope * 0.3
-            var sample = Int16(max(-1, min(1, value)) * Double(Int16.max)).littleEndian
-            pcm.append(Data(bytes: &sample, count: MemoryLayout<Int16>.size))
-        }
-        var data = Data()
-        data.append(contentsOf: Array("RIFF".utf8))
-        append(UInt32(36 + pcm.count), to: &data)
-        data.append(contentsOf: Array("WAVE".utf8))
-        data.append(contentsOf: Array("fmt ".utf8))
-        append(UInt32(16), to: &data)
-        append(UInt16(1), to: &data)
-        append(UInt16(1), to: &data)
-        append(UInt32(sampleRate), to: &data)
-        append(UInt32(sampleRate * 2), to: &data)
-        append(UInt16(2), to: &data)
-        append(UInt16(16), to: &data)
-        data.append(contentsOf: Array("data".utf8))
-        append(UInt32(pcm.count), to: &data)
-        data.append(pcm)
-        return data
-    }
-
-    private func append(_ value: UInt32, to data: inout Data) {
-        var little = value.littleEndian
-        data.append(Data(bytes: &little, count: 4))
-    }
-
-    private func append(_ value: UInt16, to data: inout Data) {
-        var little = value.littleEndian
-        data.append(Data(bytes: &little, count: 2))
-    }
 }
 
 enum SpeechVoicePicker {
@@ -248,28 +195,66 @@ enum SpeechVoicePicker {
         }
     }
 
-    /// Best installed voice for `languageCode`: exact language first, then the
-    /// same language family. Within that set, premium beats enhanced beats default.
+    /// Best installed voice in the same language family. Premium and enhanced
+    /// beat the compact default, novelty voices are skipped, and a known
+    /// natural voice wins a tie. The rider's exact locale breaks a remaining tie.
     static func best<Voice>(
         from voices: [Voice],
         languageCode: String,
         quality: (Voice) -> AVSpeechSynthesisVoiceQuality,
-        language: (Voice) -> String
+        language: (Voice) -> String,
+        identifier: (Voice) -> String = { _ in "" },
+        novelty: (Voice) -> Bool = { _ in false }
     ) -> Voice? {
         let wanted = languageCode.replacingOccurrences(of: "_", with: "-")
         let family = wanted.split(separator: "-").first.map(String.init) ?? wanted
         func normalized(_ voice: Voice) -> String {
             language(voice).replacingOccurrences(of: "_", with: "-")
         }
-        let exact = voices.filter { normalized($0).caseInsensitiveCompare(wanted) == .orderedSame }
-        let relatives = voices.filter { voice in
+        let pool = voices.filter { voice in
             let code = normalized(voice)
-            return code.caseInsensitiveCompare(family) == .orderedSame
+            let sameFamily = code.caseInsensitiveCompare(family) == .orderedSame
                 || code.lowercased().hasPrefix(family.lowercased() + "-")
+            return sameFamily && naturalScore(
+                quality: quality(voice),
+                language: code,
+                wanted: wanted,
+                identifier: identifier(voice),
+                novelty: novelty(voice)
+            ) >= 0
         }
-        let pool = exact.isEmpty ? relatives : exact
         return pool.max { lhs, rhs in
-            rank(quality(lhs)) < rank(quality(rhs))
+            naturalScore(
+                quality: quality(lhs),
+                language: normalized(lhs),
+                wanted: wanted,
+                identifier: identifier(lhs),
+                novelty: novelty(lhs)
+            ) < naturalScore(
+                quality: quality(rhs),
+                language: normalized(rhs),
+                wanted: wanted,
+                identifier: identifier(rhs),
+                novelty: novelty(rhs)
+            )
         }
+    }
+
+    private static func naturalScore(
+        quality: AVSpeechSynthesisVoiceQuality,
+        language: String,
+        wanted: String,
+        identifier: String,
+        novelty: Bool
+    ) -> Int {
+        let id = identifier.lowercased()
+        if novelty || id.contains("eloquence") { return -1 }
+        var score = rank(quality) * 100
+        if id.contains("premium"), id.contains("ava") { score += 40 }
+        else if id.contains("premium"), id.contains("zoe") { score += 30 }
+        else if id.contains("premium"), id.contains("noelle") { score += 20 }
+        else if id.contains("siri"), id.contains("premium") { score += 10 }
+        if language.caseInsensitiveCompare(wanted) == .orderedSame { score += 1 }
+        return score
     }
 }
