@@ -228,8 +228,15 @@ func spokenCurveWarning(advisoryMPH: Int) -> String {
     "Slow to \(advisoryMPH) mph for the curve ahead."
 }
 
-/// Shown in settings and onboarding. A real prompt replaces N with the curve's advisory speed.
-let spokenWarningPattern = "Slow to N mph for the curve ahead."
+/// A sentence for settings and onboarding. A real warning uses the curve's own speed.
+let spokenWarningExample = spokenCurveWarning(advisoryMPH: 25)
+
+/// Distance for the drive screen: feet up close, tenths of a mile beyond 1,000 ft.
+func distanceText(meters: Double) -> String {
+    let feet = max(0, meters) * 3.28084
+    if feet < 1000 { return "\(Int((feet / 10).rounded()) * 10) ft" }
+    return String(format: "%.1f mi", max(0, meters) / 1609.344)
+}
 
 struct CurveApproach: Equatable {
     var id: String
@@ -271,7 +278,7 @@ enum CurveAlerts {
         if overAdvisory { return spokenLine(stretch: stretch) }
         let limit = stretch.map(\.advisoryMPH).min() ?? 0
         if stretch.count >= 2 { return "Keep it under \(limit) mph" }
-        return "Advisory \(limit) mph"
+        return "Suggested speed: \(limit) mph"
     }
 }
 

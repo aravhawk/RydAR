@@ -12,12 +12,11 @@ struct SettingsScreen: View {
     @State private var confirmDelete = false
     @State private var deleteError: String?
 
-    /// Chime never speaks. Short and Normal both speak the same sentence.
     private var promptFooter: String {
         if PromptStyle(rawValue: promptStyle) == .chimeOnly {
             return "A chime and a tap."
         }
-        return "“\(spokenWarningPattern)” Plus a tap."
+        return "For example: “\(spokenWarningExample)” Plus a tap."
     }
 
     /// Every switch back to its first-launch value. Trips and history are not touched.
@@ -46,32 +45,32 @@ struct SettingsScreen: View {
             }
 
             Section {
-                Picker("Prompt style", selection: $promptStyle) {
+                Picker("Warning style", selection: $promptStyle) {
                     ForEach(PromptStyle.allCases) { style in
-                        Text(style.rawValue).tag(style.rawValue)
+                        Text(style.label).tag(style.rawValue)
                     }
                 }
                 .pickerStyle(.inline)
                 .accessibilityIdentifier("promptStyle")
             } header: {
-                Text("Hands-free prompts")
+                Text("Warnings")
                     .textCase(nil)
             } footer: {
                 Text(promptFooter)
             }
 
             Section {
-                Toggle("Anonymous pass uploads", isOn: $uploadOptIn)
+                Toggle("Share anonymous curve data", isOn: $uploadOptIn)
                     .accessibilityIdentifier("settingsUpload")
             } header: {
                 Text("Privacy")
                     .textCase(nil)
             } footer: {
-                Text("Helps counties find the curves that need fixing. Curve, direction, 5 mph band, hour. No name or route. Published after 20. Off for a teen driver.")
+                Text("Helps counties find curves that need fixing. Sends the curve, direction, speed (to the nearest 5 mph) and hour, never your name or route. Shown publicly after 20 passes. Off for teen drivers.")
             }
 
             Section {
-                Picker("Tires", selection: Binding(
+                Picker("Tire tread", selection: Binding(
                     get: { treadRaw.isEmpty ? TreadChoice.unsure.rawValue : treadRaw },
                     set: { newValue in
                         treadRaw = newValue
@@ -83,13 +82,13 @@ struct SettingsScreen: View {
                     }
                 }
                 .accessibilityIdentifier("treadSetting")
-                Toggle("Dash mode", isOn: $dashEnabled)
+                Toggle("Camera check", isOn: $dashEnabled)
                     .accessibilityIdentifier("dashMode")
             } header: {
-                Text("Trip setup")
+                Text("Trips")
                     .textCase(nil)
             } footer: {
-                Text("Paved can only be read as unpaved. Off for a teen driver.")
+                Text("Uses the camera to spot gravel on roads listed as paved. Off for teen drivers.")
             }
 
             Section {
@@ -101,7 +100,7 @@ struct SettingsScreen: View {
                 Text("On this iPhone")
                     .textCase(nil)
             } footer: {
-                Text("Settings puts every switch back to its default and keeps your trips. Data also deletes trips, history, and saved copies, and starts RydAR over like a first launch. Roads stay.")
+                Text("Reset all settings keeps your trips. Reset all data deletes trips, history and saved copies and starts RydAR over. Road data stays.")
             }
 
             Section {
@@ -115,7 +114,7 @@ struct SettingsScreen: View {
         .onChange(of: uploadOptIn) { _, value in trip.onUploadPreference?(value) }
         .confirmationDialog("Reset all settings?", isPresented: $confirmResetSettings, titleVisibility: .visible) {
             Button("Reset all settings", role: .destructive) { resetSettings() }
-        } message: { Text("Appearance, prompts, uploads, Dash, and tires go back to their defaults. Your trips stay.") }
+        } message: { Text("Appearance, warnings, sharing, camera check and tires go back to their defaults. Your trips stay.") }
         .confirmationDialog("Reset all data?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Reset all data", role: .destructive) {
                 do {
@@ -128,7 +127,7 @@ struct SettingsScreen: View {
                     trip.onUploadPreference?(uploadOptIn)
                 }
             }
-        } message: { Text("Trips, history, and saved copies are deleted and cannot be recovered. RydAR starts over.") }
+        } message: { Text("Trips, history and saved copies are deleted for good. RydAR starts over.") }
         .alert("Could not finish resetting data", isPresented: Binding(get: { deleteError != nil }, set: { if !$0 { deleteError = nil } })) {
             Button("OK") { deleteError = nil }
         } message: { Text(deleteError ?? "") }

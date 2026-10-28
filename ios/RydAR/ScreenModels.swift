@@ -1,11 +1,12 @@
 import AVFoundation
 import SwiftUI
 
+/// Raw values are saved in settings. Older installs may still hold "Short", which reads as voice.
 enum PromptStyle: String, CaseIterable, Identifiable {
     case chimeOnly = "Chime only"
-    case short = "Short"
     case normal = "Normal"
     var id: String { rawValue }
+    var label: String { self == .chimeOnly ? "Chime only" : "Voice" }
 }
 
 struct DriveScreenSnapshot {
@@ -14,7 +15,7 @@ struct DriveScreenSnapshot {
     var cameraEvidence: CameraEvidence?
     /// Supplied by the vision engine; the UI never chooses a classifier threshold.
     var cameraThreshold: Double = 1
-    var cameraStatus = "Off · Co-pilot mode"
+    var cameraStatus = "Camera check is off"
     var gpsStatus = "Waiting for location"
     var measuredSpeedMPH: Double? = nil
     /// Speed after the GPS uncertainty is removed. A prompt uses this, not the measured number.
@@ -22,8 +23,8 @@ struct DriveScreenSnapshot {
     var isPaused = false
     /// The range the trip engine used for this match. Preview and debrief keep their own copies.
     var screeningRange: ScreeningRange?
-    /// Co-pilot unless this trip opened the camera.
-    var tripTitle = "Co-pilot"
+    /// Says whether this trip opened the camera.
+    var tripTitle = "Camera off"
     /// Advisory sentence for this approach, including the mph to slow to.
     var advisoryNotice: String?
     /// Whether the engine is warning about the current curve or a grouped stretch.
@@ -63,9 +64,9 @@ struct TimingContextSummary: Identifiable {
     }
     var message: String {
         if surface == .unpaved && radiusBand(feet: representativeRadiusFeet) == "under-150" {
-            return "Tight unpaved. Next prompt comes earlier."
+            return "You tend to brake late on tight gravel. Warnings will come earlier."
         }
-        return "Next prompt comes earlier."
+        return "You tend to brake late here. Warnings will come earlier."
     }
 
     /// What the Review screen actually prints. Radius band is not part of it,
@@ -88,8 +89,7 @@ struct EarlierPromptCard: Identifiable, Equatable {
     var curveCount: Int
     var id: String { reviewAdviceKey(message: message, surface: surface, night: night) }
     var caption: String {
-        let when = night ? "night" : "day"
-        let base = "\(surface.rawValue.capitalized) · \(when)"
+        let base = "\(surface.rawValue.capitalized) road, \(night ? "night" : "day")"
         guard curveCount > 1 else { return base }
         return "\(base) · \(curveCount) curves"
     }

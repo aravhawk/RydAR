@@ -8,7 +8,7 @@ struct DriveScreen: View {
     private var audioOnly: Bool { trip.driverMode == .under18 }
     /// GPS ready with no filed curve is the matched state. Every other banner is the location status.
     private var unmatchedCurveStatus: String {
-        trip.drive.gpsStatus == "GPS ready" ? "No filed curve ahead" : trip.drive.gpsStatus
+        trip.drive.gpsStatus == "GPS ready" ? "No curve ahead" : trip.drive.gpsStatus
     }
 
     var body: some View {
@@ -32,25 +32,25 @@ struct DriveScreen: View {
                     .font(.largeTitle.bold())
                 Text(trip.drive.isPaused ? "Audio warnings paused." : "Audio warnings on.")
                     .font(.title2.weight(.semibold))
-                Text("No screen use, camera, or upload.")
+                Text("No screen, camera, or uploads.")
                     .foregroundStyle(.secondary)
             } else if trip.drive.isPaused {
                 Text("Paused")
                     .font(.system(.largeTitle, design: .rounded).bold())
-                Text("Alerts paused.")
+                Text("Warnings paused.")
                     .foregroundStyle(.secondary)
             } else {
                 RydarEyebrow(text: "Next curve")
                 if let distance = trip.drive.distanceMeters, distance.isFinite, distance >= 0 {
-                    let meters = distance.formatted(.number.precision(.fractionLength(0)))
-                    Text(meters + " m")
+                    let shown = distanceText(meters: distance)
+                    Text(shown)
                         .font(.system(size: distanceSize, weight: .bold, design: .rounded))
                         .minimumScaleFactor(0.5)
                         .lineLimit(1)
-                        .accessibilityLabel("\(meters) meters")
+                        .accessibilityLabel(shown)
                         .accessibilityIdentifier("nextCurveDistance")
                 } else {
-                    Text("— m")
+                    Text("—")
                         .font(.system(size: distanceSize, weight: .bold, design: .rounded))
                         .accessibilityLabel("Distance unknown")
                 }
@@ -76,7 +76,7 @@ struct DriveScreen: View {
                         Text("\(mph, specifier: "%.0f") mph")
                             .font(.title3.monospacedDigit().bold())
                             .accessibilityIdentifier("measuredSpeed")
-                        Text("measured")
+                        Text("now")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else {
@@ -93,7 +93,7 @@ struct DriveScreen: View {
                 if let measured = trip.drive.measuredSpeedMPH,
                    let prompt = trip.drive.promptSpeedMPH,
                    measured - prompt > 3 {
-                    Text("GPS uncertain. Prompt uses \(prompt, specifier: "%.0f") mph.")
+                    Text("GPS speed is shaky. Using \(prompt, specifier: "%.0f") mph.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

@@ -42,7 +42,7 @@ private struct StartupFailureView: View {
                 .foregroundStyle(RydarTheme.warningText)
             Text("RydAR can't open its curve data.")
                 .font(.title.bold())
-            Text("Quit and reopen the app. If this keeps happening, delete and reinstall it. No trip is being recorded and no warnings will play.")
+            Text("Quit and reopen the app. If it keeps happening, reinstall it. Nothing is being recorded and no warnings will play.")
                 .foregroundStyle(.secondary)
             if !detail.isEmpty {
                 Text(detail)

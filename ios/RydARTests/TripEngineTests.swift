@@ -35,7 +35,7 @@ final class TripEngineTests: XCTestCase {
             latitude: baseLat, longitude: baseLon, speedMps: 12, speedAccuracyMps: 1,
             courseDegrees: 90, horizontalAccuracyMeters: 120, timestamp: now
         )
-        XCTAssertEqual(gpsStatusText(for: coarse, now: now), "Location is too coarse")
+        XCTAssertEqual(gpsStatusText(for: coarse, now: now), "Location isn't precise enough")
         XCTAssertFalse(gpsIsGood(coarse, now: now))
         let noCourse = LocationFix(
             latitude: baseLat, longitude: baseLon, speedMps: 12, speedAccuracyMps: 1,

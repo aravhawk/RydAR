@@ -290,7 +290,7 @@ func gpsStatusText(for fix: LocationFix, now: Date) -> String {
         return "Standing still"
     }
     if fresh, fix.horizontalAccuracyMeters > DriveRules.gpsAccuracyLimitMeters, fix.horizontalAccuracyMeters.isFinite {
-        return "Location is too coarse"
+        return "Location isn't precise enough"
     }
     return "Waiting for location"
 }
@@ -1118,7 +1118,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         let roads = (try? passLog.curvesWithEarlierPrompt()) ?? 0
         guard roads > 0 else { return "" }
         let noun = roads == 1 ? "road" : "roads"
-        return "Prompts come earlier on \(roads) \(noun) where you brake late."
+        return "Warnings come earlier on \(roads) \(noun) where you tend to brake late."
     }
 
     /// Reads this trip's rows before the caller clears the trip id.

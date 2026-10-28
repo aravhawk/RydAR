@@ -58,8 +58,8 @@ final class LiveTripTests: XCTestCase {
         XCTAssertEqual(harness.bridge.drive.gpsStatus, "GPS ready")
         XCTAssertEqual(harness.bridge.drive.measuredSpeedMPH ?? -1, 20 * 2.23694, accuracy: 0.1)
         XCTAssertFalse(harness.bridge.drive.isPaused)
-        XCTAssertEqual(harness.bridge.drive.cameraStatus, "Dash · county road file")
-        XCTAssertEqual(harness.bridge.drive.tripTitle, "Dash")
+        XCTAssertEqual(harness.bridge.drive.cameraStatus, "Using road records")
+        XCTAssertEqual(harness.bridge.drive.tripTitle, "Camera on")
         XCTAssertEqual(
             harness.bridge.drive.screeningRange,
             screeningRange(radiusFeet: 200, surface: .paved)
@@ -97,7 +97,7 @@ final class LiveTripTests: XCTestCase {
             try harness.log.record(latePass(key: key), tripID: seed)
         }
         let start = date(hour: 14)
-        harness.bridge.start(mode: .adult, style: .short, uploadOptIn: false)
+        harness.bridge.start(mode: .adult, style: .normal, uploadOptIn: false)
         harness.bridge.setPaused(true)
         XCTAssertTrue(harness.bridge.drive.isPaused)
         XCTAssertTrue(harness.engine.snapshot.paused)

@@ -84,14 +84,14 @@ enum DriveLiveActivity {
         if !speaks {
             return DriveActivityAttributes.ContentState(
                 headline: "Put the phone away.",
-                detail: "No voice on this trip.",
+                detail: "No spoken warnings on this trip.",
                 compact: "Quiet",
                 alerting: false
             )
         }
         return DriveActivityAttributes.ContentState(
             headline: "Listening",
-            detail: "Watching for a curve.",
+            detail: "Watching for curves.",
             compact: "On",
             alerting: false
         )
@@ -102,7 +102,7 @@ enum DriveLiveActivity {
         if drive.isPaused {
             return DriveActivityAttributes.ContentState(
                 headline: "Paused",
-                detail: "Alerts are quiet.",
+                detail: "Warnings paused.",
                 compact: "Paused",
                 alerting: false
             )
@@ -111,7 +111,7 @@ enum DriveLiveActivity {
             let road = curve.roadName.isEmpty ? "Curve ahead" : curve.roadName
             let above = aboveAdvisory(drive)
             let detail = drive.advisoryNotice ?? "Curve ahead"
-            let compact = drive.distanceMeters.map { "\(bucketDistance($0)) m" } ?? "Curve"
+            let compact = drive.distanceMeters.map { distanceText(meters: Double(bucketDistance($0))) } ?? "Curve"
             return DriveActivityAttributes.ContentState(
                 headline: road,
                 detail: detail,

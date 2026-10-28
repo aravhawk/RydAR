@@ -261,7 +261,7 @@ final class DashTests: XCTestCase {
         underHarness.bridge.start(mode: .under18, style: .normal, uploadOptIn: true)
         XCTAssertEqual(underage.starts, 0)
         XCTAssertFalse(underHarness.engine.dashEnabled)
-        XCTAssertEqual(underHarness.bridge.drive.cameraStatus, "Off · Co-pilot mode")
+        XCTAssertEqual(underHarness.bridge.drive.cameraStatus, "Camera check is off")
         XCTAssertFalse(driveGate(mode: .under18, speedMps: 12, dashEnabled: true, uploadOptIn: false).allowsCamera)
 
         DashPreference.isOn = true
@@ -270,23 +270,23 @@ final class DashTests: XCTestCase {
         adultHarness.bridge.start(mode: .adult, style: .normal, uploadOptIn: false)
         XCTAssertEqual(adult.starts, 1)
         XCTAssertTrue(adultHarness.engine.dashEnabled)
-        XCTAssertEqual(adultHarness.bridge.drive.tripTitle, "Dash")
+        XCTAssertEqual(adultHarness.bridge.drive.tripTitle, "Camera on")
         adult.onChange?(DashReading(
             camera: CameraEvidence(label: .unpaved, confidence: 0.9, age: 0, onMatchedRoadROI: true, persistent: true),
             vision: VisionCaution(standingWaterOrSnow: true, severeUnevenOnPaved: false),
             state: .running,
             acceptedAt: Date()
         ))
-        XCTAssertEqual(adultHarness.bridge.drive.cameraStatus, "Dash · camera on")
+        XCTAssertEqual(adultHarness.bridge.drive.cameraStatus, "Camera check is on")
         XCTAssertEqual(adultHarness.bridge.drive.cameraEvidence?.label, .unpaved)
         XCTAssertEqual(adultHarness.bridge.drive.cameraThreshold, DriveRules.materialConfidence)
 
         DashPreference.isOn = false
         let copilot = SpyDash()
         let copilotHarness = try makeSession(camera: copilot)
-        copilotHarness.bridge.start(mode: .adult, style: .short, uploadOptIn: false)
+        copilotHarness.bridge.start(mode: .adult, style: .normal, uploadOptIn: false)
         XCTAssertEqual(copilot.starts, 0)
-        XCTAssertEqual(copilotHarness.bridge.drive.cameraStatus, "Off · Co-pilot mode")
+        XCTAssertEqual(copilotHarness.bridge.drive.cameraStatus, "Camera check is off")
         XCTAssertNil(copilotHarness.bridge.drive.cameraEvidence)
     }
 

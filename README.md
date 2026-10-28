@@ -2,11 +2,11 @@
 
 RydAR is an iPhone co-pilot for tight bends in Arkansas, and a public map of those bends at [rydar.org](https://rydar.org). The source is [github.com/aravhawk/RydAR](https://github.com/aravhawk/RydAR).
 
-A drive warns from the curve database bundled in the app and from the formula in `ios/RydAR/Screening.swift`. The drive does not wait on the website. A single-curve prompt says "Slow to N mph for the curve ahead," using the low end of the computed range, rounded down. Confidently matched bends on the same named road can share a "Curves ahead" warning, with a separate warning for a notably sharper bend. The base warning lead is 12 seconds of travel, clamped to 100–450 m. The on-screen caption is "Advisory." That number is the formula. It is the range the app computed, and it is separate from a posted plaque.
+A drive warns from the curve database bundled in the app and from the formula in `ios/RydAR/Screening.swift`. The drive does not wait on the website. A single-curve prompt says, for example, "Slow to 25 mph for the curve ahead," using the low end of the computed range, rounded down. Confidently matched bends on the same named road can share a "Curves ahead" warning, with a separate warning for a notably sharper bend. The base warning lead is 12 seconds of travel, clamped to 100–450 m. The screen shows it as "Suggested speed." That number is the formula's range for the curve, and it is separate from a posted speed sign.
 
 Teen driver mode speaks the same numeric curve advisories with no haptic, camera, upload, curve display, or Live Activity. It always uses speech, including when the adult prompt preference is Chime only, and lets the screen sleep. Pause and end controls remain available for use while parked. The trip choices are Driver and Teen driver. For a road test, an adult drives and a student holds the phone; choose Driver for the adult. Saved passenger trips read as Driver.
 
-While the Dash camera is running, the drive screen shows a small live thumbnail of what the camera sees and a live Paved or Unpaved label for the road under the car, whether or not a curve is near. Frames are displayed, never saved.
+While the camera check is running, the drive screen shows a small live thumbnail of what the camera sees and a live Paved or Unpaved label for the road under the car, whether or not a curve is near. Frames are displayed, never saved.
 
 A warning only plays when there is road left for it: closer than three seconds of travel (and at least 30 m), or once the car is already moving away from the bend, it stays silent. Any confident bend ahead can warn once it is inside its own warning distance, so a sharp bend behind a gentle one is not left until the gentle one is passed. A bend far to the side of the line of travel is treated as another road: it does not warn and its pass is not logged. If GPS fixes stop for more than four seconds the drive screen says so instead of freezing on the last curve.
 
@@ -29,7 +29,7 @@ Anonymous passes are held until the trip ends, then sent together in random orde
 open ios/RydAR.xcodeproj
 ```
 
-Builds need `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`. The team is `XLR6H6DKHH`. Install onto an unlocked phone. The curve database and the model ship inside the app. Launch reads neither the full curve table nor the model. Dash loads the model. A drive queries a bounding box and the road ahead.
+Builds need `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`. The team is `XLR6H6DKHH`. Install onto an unlocked phone. The curve database and the model ship inside the app. Launch reads neither the full curve table nor the model. The camera check loads the model. A drive queries a bounding box and the road ahead.
 
 ```bash
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \

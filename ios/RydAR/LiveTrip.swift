@@ -257,7 +257,7 @@ final class LiveTripSession {
         assignDrive(snapshot(
             curve: nil,
             distance: nil,
-            gps: "No GPS signal · warnings paused",
+            gps: "No GPS signal. Warnings paused.",
             paused: false,
             range: nil
         ))
@@ -323,7 +323,7 @@ final class LiveTripSession {
             dashEnabled: engine.dashEnabled,
             uploadOptIn: engine.uploadOptIn
         ).allowsCamera
-        return allowsCamera ? "Dash" : "Co-pilot"
+        return allowsCamera ? "Camera on" : "Camera off"
     }
 
     private func snapshot(
@@ -356,12 +356,12 @@ final class LiveTripSession {
     }
 
     private var cameraStatus: String {
-        guard engine.dashEnabled else { return "Off · Co-pilot mode" }
+        guard engine.dashEnabled else { return "Camera check is off" }
         switch reading.state {
         case .running:
-            return "Dash · camera on"
+            return "Camera check is on"
         case .off, .unconfirmed:
-            return "Dash · county road file"
+            return "Using road records"
         }
     }
 

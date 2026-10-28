@@ -72,6 +72,14 @@ final class ScreeningTests: XCTestCase {
         XCTAssertEqual(effectiveSpeedMPH(speedMps: 0.2, accuracyMps: 4), 0, accuracy: 0.001)
     }
 
+    func testDistanceReadsInFeetThenMiles() {
+        XCTAssertEqual(distanceText(meters: 0), "0 ft")
+        XCTAssertEqual(distanceText(meters: 76.2), "250 ft")
+        XCTAssertEqual(distanceText(meters: 300), "980 ft")
+        XCTAssertEqual(distanceText(meters: 805), "0.5 mi")
+        XCTAssertEqual(distanceText(meters: -5), "0 ft")
+    }
+
     func testBothDriverModesAllowAudio() {
         XCTAssertTrue(allowsInDriveSound(.under18))
         XCTAssertTrue(allowsInDriveSound(.adult))
@@ -412,10 +420,7 @@ final class ScreeningTests: XCTestCase {
         XCTAssertEqual(after.high, before.high, accuracy: 0.0001)
         XCTAssertEqual(before.low, 19.7, accuracy: 0.05)
         XCTAssertEqual(before.high, 22.6, accuracy: 0.05)
-        XCTAssertEqual(
-            spokenCurveWarning(advisoryMPH: 25),
-            spokenWarningPattern.replacingOccurrences(of: "N", with: "25")
-        )
+        XCTAssertEqual(spokenWarningExample, "Slow to 25 mph for the curve ahead.")
     }
 
     func testSpokenLineMatchesTheContract() throws {

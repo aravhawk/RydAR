@@ -15,10 +15,10 @@ struct HomeScreen: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Parked.")
                         .font(.largeTitle.bold())
-                    Text(dashEnabled ? "Dash is on." : "Co-pilot. Camera off.")
+                    Text(dashEnabled ? "Camera check is on." : "Camera check is off.")
                         .font(.title3)
                         .foregroundStyle(.secondary)
-                    Text("Alerts speak with Maps in front. Teen driver uses audio only.")
+                    Text("Warnings play over Maps and music. Teen driver is audio only.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     if !trip.timingNote.isEmpty {
@@ -28,10 +28,10 @@ struct HomeScreen: View {
                             .accessibilityIdentifier("timingNote")
                     }
                     if tread?.replaceBeforeDriving == true {
-                        Text("Replace the tires before this trip.")
+                        Text("Replace your tires before driving.")
                             .font(.headline)
                     } else if tread == .low {
-                        Text("Low tread. Ranges sit lower.")
+                        Text("Low tread. Speed advice is lower.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }

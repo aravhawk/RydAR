@@ -57,9 +57,9 @@ struct ScreeningRangeLabel: View {
     var range: ScreeningRange
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("\(range.low, specifier: "%.1f")–\(range.high, specifier: "%.1f") mph")
+            Text("\(Int(range.low.rounded(.down)))–\(Int(range.high.rounded(.down))) mph")
                 .font(.title2.bold().monospacedDigit())
-            Text("Advisory")
+            Text("Suggested speed")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
@@ -89,10 +89,10 @@ struct SurfaceBadge: View {
     }
     private var source: String {
         switch fused.1 {
-        case .unconfirmed: return "County file"
-        case .cameraLowered: return "Camera: unpaved"
-        case .conflictKeptUnpaved: return "Kept unpaved"
-        case .confirmed: return "County file and camera"
+        case .unconfirmed: return "From road records"
+        case .cameraLowered: return "Camera sees gravel"
+        case .conflictKeptUnpaved: return "Records say gravel; kept cautious"
+        case .confirmed: return "Records and camera agree"
         }
     }
 }
@@ -106,8 +106,8 @@ extension DriverMode {
     }
     var screenDetail: String {
         switch self {
-        case .adult: return "Full warnings and speech."
-        case .under18: return "Audio warnings only. No screen use, camera, or upload."
+        case .adult: return "Spoken warnings and the drive screen."
+        case .under18: return "Spoken warnings only. No screen, camera, or uploads."
         }
     }
 }

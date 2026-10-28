@@ -44,7 +44,7 @@ final class ScreenModelTests: XCTestCase {
                                         hour: 21, memory: ApproachMemory(latePasses: 3, earlyPasses: 0))
         XCTAssertFalse(one.movesPromptEarlier)
         XCTAssertTrue(late.movesPromptEarlier)
-        XCTAssertEqual(late.message, "Tight unpaved. Next prompt comes earlier.")
+        XCTAssertEqual(late.message, "You tend to brake late on tight gravel. Warnings will come earlier.")
         XCTAssertEqual(TripScreenDebrief(contexts: [one, late]).lateContexts.count, 1)
         XCTAssertEqual(TripScreenDebrief(contexts: [one, late]).earlierPromptCards.count, 1)
     }
@@ -71,13 +71,13 @@ final class ScreenModelTests: XCTestCase {
         XCTAssertEqual(debrief.lateContexts.count, 4)
         let cards = debrief.earlierPromptCards
         XCTAssertEqual(cards.count, 3)
-        let pavedDay = cards.first { $0.id.hasPrefix("Next prompt comes earlier.|paved|day") }
+        let pavedDay = cards.first { $0.id.hasPrefix("You tend to brake late here. Warnings will come earlier.|paved|day") }
         XCTAssertEqual(pavedDay?.curveCount, 2)
-        XCTAssertEqual(pavedDay?.caption, "Paved · day · 2 curves")
-        XCTAssertEqual(cards.first { $0.night }?.caption, "Paved · night")
+        XCTAssertEqual(pavedDay?.caption, "Paved road, day · 2 curves")
+        XCTAssertEqual(cards.first { $0.night }?.caption, "Paved road, night")
         XCTAssertEqual(
             cards.first { $0.surface == .unpaved }?.message,
-            "Tight unpaved. Next prompt comes earlier."
+            "You tend to brake late on tight gravel. Warnings will come earlier."
         )
         XCTAssertEqual(cards.first { $0.surface == .unpaved }?.curveCount, 1)
     }
@@ -94,7 +94,7 @@ final class ScreenModelTests: XCTestCase {
             XCTAssertEqual(uploads, [false])
             XCTAssertTrue(trip.debrief.passes.isEmpty)
             XCTAssertNil(trip.drive.distanceMeters)
-            trip.start(mode: .adult, style: .short, uploadOptIn: true)
+            trip.start(mode: .adult, style: .normal, uploadOptIn: true)
             XCTAssertEqual(uploads, [false, true])
         }
     }
