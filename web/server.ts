@@ -33,7 +33,6 @@ interface PassBody {
   speed_band_mph: number;
   hour_bucket: number;
   app_version: string;
-  lat_accel_band?: number | null;
 }
 
 function countyPrefix(county: string): string | null {
@@ -49,7 +48,6 @@ function isArkansasCurveID(id: string): boolean {
 function isPass(value: unknown): value is PassBody {
   if (typeof value !== "object" || value === null) return false;
   const row = value as Record<string, unknown>;
-  const latAccel = row.lat_accel_band;
   return (
     typeof row.curve_id === "string" &&
     CURVE_ID.test(row.curve_id) &&
@@ -66,8 +64,7 @@ function isPass(value: unknown): value is PassBody {
     (row.hour_bucket as number) <= 23 &&
     typeof row.app_version === "string" &&
     row.app_version.length >= 1 &&
-    row.app_version.length <= 32 &&
-    (latAccel === undefined || latAccel === null || Number.isInteger(latAccel))
+    row.app_version.length <= 32
   );
 }
 
@@ -90,7 +87,6 @@ function ensureSchema(sql: Sql): Promise<void> {
           speed_band_mph INTEGER NOT NULL,
           hour_bucket INTEGER NOT NULL,
           app_version TEXT NOT NULL,
-          lat_accel_band INTEGER,
           created_at TIMESTAMPTZ NOT NULL DEFAULT now()
         )
       `);
@@ -117,24 +113,17 @@ app.post("/api/pass", async (c) => {
   if (!isPass(body)) return c.json({ error: "missing fields" }, 400);
   await ensureSchema(client);
   await client.query(
-    `INSERT INTO passes (curve_id, direction, speed_band_mph, hour_bucket, app_version, lat_accel_band)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
+    `INSERT INTO passes (curve_id, direction, speed_band_mph, hour_bucket, app_version)
+     VALUES ($1, $2, $3, $4, $5)`,
     [
       body.curve_id,
       body.direction,
       body.speed_band_mph,
       body.hour_bucket,
       body.app_version,
-      body.lat_accel_band ?? null,
     ],
   );
   return c.json({ stored: true });
-});
-
-app.get("/api/curves/:file", (c) => {
-  const county = decodeURIComponent(c.req.param("file")).replace(/\.geojson$/, "");
-  if (countyPrefix(county) === null) return c.json({ error: "unknown county" }, 404);
-  return c.redirect(`/data/curves-${county.toLowerCase()}.geojson`);
 });
 
 app.get("/api/export/:file", async (c) => {
