@@ -326,17 +326,8 @@
 				COREML_CODEGEN_LANGUAGE = None;
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = XLR6H6DKHH;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = RydAR/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = RydAR;
-				INFOPLIST_KEY_NSCameraUsageDescription = "RydAR uses the camera to check the road surface ahead. Nothing is saved.";
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "RydAR needs your precise location during a trip, even while Maps is open.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "RydAR uses your precise location to know which curve is coming up.";
-				INFOPLIST_KEY_NSMotionUsageDescription = "RydAR uses motion to notice when you brake before a curve.";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -358,17 +349,8 @@
 				COREML_CODEGEN_LANGUAGE = None;
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = XLR6H6DKHH;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = RydAR/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = RydAR;
-				INFOPLIST_KEY_NSCameraUsageDescription = "RydAR uses the camera to check the road surface ahead. Nothing is saved.";
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "RydAR needs your precise location during a trip, even while Maps is open.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "RydAR uses your precise location to know which curve is coming up.";
-				INFOPLIST_KEY_NSMotionUsageDescription = "RydAR uses motion to notice when you brake before a curve.";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
