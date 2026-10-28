@@ -75,8 +75,6 @@ final class PassLogTests: XCTestCase {
         let memory = try log.memory(for: nightKey)
         XCTAssertEqual(memory.latePasses, 1)
         XCTAssertEqual(memory.earlyPasses, 1)
-        XCTAssertEqual(try log.passesUnderRange(curveID: "b"), 1)
-        XCTAssertEqual(try log.passesUnderRange(curveID: "a"), 0)
 
         let stored = try log.passes(forTrip: tripID)
         XCTAssertEqual(stored.map(\.pass.curveID), ["a", "b"])

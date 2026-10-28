@@ -6,12 +6,15 @@ protocol PromptPlaying: AnyObject {
     func playChime() throws
     func playCurveTap()
     func holdForTrip()
+    /// Warms the haptic engine. Only trips that tap (Driver) call it.
+    func prepareHaptics()
     func releaseAfterTrip()
 }
 
 extension PromptPlaying {
     func playCurveTap() {}
     func holdForTrip() {}
+    func prepareHaptics() {}
     func releaseAfterTrip() {}
 }
 
@@ -57,10 +60,11 @@ final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, 
                 self.voice = best
             }
         }
-        activateSession(alert: false) { [weak self] in
-            guard let self, generation == self.playbackGeneration else { return }
-            self.haptic.prepare()
-        }
+        activateSession(alert: false, then: {})
+    }
+
+    func prepareHaptics() {
+        haptic.prepare()
     }
 
     func playCurveTap() {
@@ -170,7 +174,13 @@ final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, 
             do {
                 try self.activateSession(alert: alert)
             } catch {
-                return
+                // A call or another app can hold the session for a moment. Try once more.
+                Thread.sleep(forTimeInterval: 0.4)
+                do {
+                    try self.activateSession(alert: alert)
+                } catch {
+                    return
+                }
             }
             DispatchQueue.main.async(execute: completion)
         }

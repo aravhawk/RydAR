@@ -65,9 +65,11 @@ final class ScreeningTests: XCTestCase {
         XCTAssertTrue(shouldSpeak(effectiveSpeed: range.high + 1, range: range))
     }
 
-    func testEffectiveSpeedSubtractsAccuracyInMetersPerSecond() {
-        let mph = effectiveSpeedMPH(speedMps: 10, accuracyMps: 1)
-        XCTAssertEqual(mph, 9 * 2.23694, accuracy: 0.001)
+    func testEffectiveSpeedSubtractsAtMostHalfAMeterPerSecondOfAccuracy() {
+        XCTAssertEqual(effectiveSpeedMPH(speedMps: 10, accuracyMps: 0.3), 9.7 * 2.23694, accuracy: 0.001)
+        XCTAssertEqual(effectiveSpeedMPH(speedMps: 10, accuracyMps: 1), 9.5 * 2.23694, accuracy: 0.001)
+        XCTAssertEqual(effectiveSpeedMPH(speedMps: 10, accuracyMps: 4), 9.5 * 2.23694, accuracy: 0.001)
+        XCTAssertEqual(effectiveSpeedMPH(speedMps: 0.2, accuracyMps: 4), 0, accuracy: 0.001)
     }
 
     func testBothDriverModesAllowAudio() {
@@ -176,13 +178,6 @@ final class ScreeningTests: XCTestCase {
         let water = VisionCaution(standingWaterOrSnow: true, severeUnevenOnPaved: false)
         let base = baseLookAheadMeters(speedMps: 15)
         XCTAssertEqual(lookAheadMeters(speedMps: 15, memory: calm, vision: water), base * 1.3, accuracy: 0.001)
-    }
-
-    func testRepeatPromptStaysOffUntilThisPassIsOverRange() {
-        let range = screeningRange(radiusFeet: 200, surface: .paved)
-        XCTAssertTrue(suppressRepeatPrompt(passesUnderRange: 3, effectiveSpeed: range.low, range: range))
-        XCTAssertFalse(suppressRepeatPrompt(passesUnderRange: 3, effectiveSpeed: range.low + 0.1, range: range))
-        XCTAssertFalse(suppressRepeatPrompt(passesUnderRange: 2, effectiveSpeed: range.low, range: range))
     }
 
     func testBrakingOnsetMovesTheWarningByHowLateItWas() {

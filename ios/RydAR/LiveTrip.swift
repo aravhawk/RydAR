@@ -81,6 +81,12 @@ final class LiveTripSession {
     private var reading = DashReading(camera: nil, vision: .quiet, state: .off, acceptedAt: nil)
     private var lastUpdate: TripUpdate?
     private var lastCurve: Curve?
+    /// Passes wait here until the trip ends, so uploads carry no timing that traces the drive.
+    private var pendingUploads: [AnonymousPassBody] = []
+    private var lastHandledAt: Date?
+    private var gpsWatchdog: Timer?
+    /// No fix for this long means location stopped, not that the road went quiet.
+    static let gpsSilenceSeconds: TimeInterval = 4
 
     init(
         engine: TripEngine,
@@ -112,6 +118,7 @@ final class LiveTripSession {
             self.reading = DashReading(camera: nil, vision: .quiet, state: self.engine.dashEnabled ? .unconfirmed : .off, acceptedAt: nil)
             self.lastUpdate = nil
             self.lastCurve = nil
+            self.pendingUploads = []
             do {
                 try self.engine.beginTrip(driverMode: mode, startSensors: self.startSensors)
             } catch {
@@ -126,6 +133,7 @@ final class LiveTripSession {
             }
             self.syncCamera(mode: mode, paused: false)
             self.publishIdle()
+            self.startGPSWatchdog()
         }
         let onPause: (Bool) -> Void = { [weak self] paused in
             guard let self else { return }
@@ -134,6 +142,7 @@ final class LiveTripSession {
             } else {
                 self.engine.resume()
             }
+            self.lastHandledAt = nil
             self.syncCamera(mode: self.engine.snapshot.driverMode, paused: paused)
             self.publishPause()
         }
@@ -142,21 +151,24 @@ final class LiveTripSession {
         }
         let onUpload: (Bool) -> Void = { [weak self] upload in
             self?.engine.uploadOptIn = upload
+            if !upload { self?.pendingUploads = [] }
         }
         let onDelete: () throws -> Void = { [weak self] in
             guard let self else { return }
             self.camera.stop()
             self.reading = DashReading(camera: nil, vision: .quiet, state: .off, acceptedAt: nil)
+            self.pendingUploads = []
             try self.engine.deletePassHistory()
             self.publishTiming()
         }
         engine.onHandled = { [weak self] update, curve in
             guard let self else { return }
+            self.lastHandledAt = Date()
             if update.gate.allowsUpload {
                 let version = PassUpload.appVersion
                 for pass in update.completed {
                     if let body = AnonymousPass.body(from: pass, appVersion: version) {
-                        self.uploader.send(body)
+                        self.pendingUploads.append(body)
                     }
                 }
             }
@@ -201,12 +213,54 @@ final class LiveTripSession {
     }
 
     private func finish() {
+        stopGPSWatchdog()
+        flushUploads()
         camera.stop()
         let debrief = (try? engine.debrief(curves: curves)) ?? TripScreenDebrief()
         engine.endTrip()
         reading = DashReading(camera: nil, vision: .quiet, state: .off, acceptedAt: nil)
         publishDebrief(debrief)
         publishTiming()
+    }
+
+    /// Sends the trip's passes once, in random order, if uploads are still on.
+    private func flushUploads() {
+        let batch = pendingUploads.shuffled()
+        pendingUploads = []
+        guard engine.uploadOptIn, engine.snapshot.driverMode != .under18 else { return }
+        for body in batch { uploader.send(body) }
+    }
+
+    private func startGPSWatchdog() {
+        gpsWatchdog?.invalidate()
+        lastHandledAt = nil
+        gpsWatchdog = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            self?.checkGPSSilence()
+        }
+    }
+
+    private func stopGPSWatchdog() {
+        gpsWatchdog?.invalidate()
+        gpsWatchdog = nil
+        lastHandledAt = nil
+    }
+
+    /// If fixes stop arriving, the last curve and distance are stale. Say so instead of freezing on them.
+    private func checkGPSSilence() {
+        guard let last = lastHandledAt, engine.snapshot.tripID != nil, !engine.snapshot.paused,
+              Date().timeIntervalSince(last) > Self.gpsSilenceSeconds else { return }
+        lastHandledAt = nil
+        lastUpdate = nil
+        lastCurve = nil
+        camera.noteMatchedSurface(nil)
+        camera.noteCurveApproach(nil)
+        assignDrive(snapshot(
+            curve: nil,
+            distance: nil,
+            gps: "No GPS signal · warnings paused",
+            paused: false,
+            range: nil
+        ))
     }
 
     private func apply(_ reading: DashReading) {

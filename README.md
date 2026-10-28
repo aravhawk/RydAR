@@ -8,6 +8,10 @@ Teen driver mode speaks the same numeric curve advisories with no haptic, camera
 
 While the Dash camera is running, the drive screen shows a small live thumbnail of what the camera sees and a live Paved or Unpaved label for the road under the car, whether or not a curve is near. Frames are displayed, never saved.
 
+A warning only plays when there is road left for it: closer than three seconds of travel (and at least 30 m), or once the car is already moving away from the bend, it stays silent. Any confident bend ahead can warn once it is inside its own warning distance, so a sharp bend behind a gentle one is not left until the gentle one is passed. A bend far to the side of the line of travel is treated as another road: it does not warn and its pass is not logged. If GPS fixes stop for more than four seconds the drive screen says so instead of freezing on the last curve.
+
+Anonymous passes are held until the trip ends, then sent together in random order, and only if uploads are still on. The simulator build never uploads. The server keeps the day, not the time.
+
 ## Layout
 
 | Path | What it is |

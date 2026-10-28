@@ -9,5 +9,5 @@
   "waypoints": 66,
   "duration_seconds": 50.0,
   "approach": "Synthetic 350 m tangent extension; target curve vertices are exact database coordinates.",
-  "engine_expectation": "When connected: one prompt for this curve/pass, debrief pass; no prompt in under18 mode. Replay must not upload."
+  "engine_expectation": "When connected: one prompt for this curve/pass, debrief pass; a Teen driver hears the same line. The simulator build never uploads."
 }

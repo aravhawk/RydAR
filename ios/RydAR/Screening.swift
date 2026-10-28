@@ -54,8 +54,12 @@ func screeningRange(radiusFeet: Double, surface: RoadSurface, tread: TreadChoice
     )
 }
 
+/// Reported speed minus a little of its uncertainty, never more than half a meter per second.
+/// Taking all of a large accuracy figure off would hide a real overspeed.
+let speedUncertaintyCapMps = 0.5
+
 func effectiveSpeedMPH(speedMps: Double, accuracyMps: Double) -> Double {
-    max(0, speedMps - accuracyMps) * 2.23694
+    max(0, speedMps - min(max(0, accuracyMps), speedUncertaintyCapMps)) * 2.23694
 }
 
 /// The phone's reported speed. A prompt still uses effectiveSpeedMPH, which drops the uncertain part.
@@ -211,12 +215,6 @@ func lookAheadMeters(
         ? min(450, base * 1.3)
         : base
     return min(450, max(base, placed, fromCamera))
-}
-
-/// Stay quiet on a curve this driver has already taken under the range three
-/// times, unless this pass is over the range now.
-func suppressRepeatPrompt(passesUnderRange: Int, effectiveSpeed: Double, range: ScreeningRange) -> Bool {
-    passesUnderRange >= 3 && effectiveSpeed <= range.low
 }
 
 /// The number a prompt says to slow to. The low end of the screening range, rounded down,

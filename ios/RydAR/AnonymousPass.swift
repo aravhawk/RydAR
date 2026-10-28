@@ -57,6 +57,15 @@ final class PassUpload: PassSending {
     }
 
     static var bundledEndpoint: URL? {
+        #if targetEnvironment(simulator)
+        // Simulator replays and test runs must never post synthetic passes to the live site.
+        return nil
+        #else
+        return configuredEndpoint
+        #endif
+    }
+
+    private static var configuredEndpoint: URL? {
         guard let raw = Bundle.main.object(forInfoDictionaryKey: "RydARPassEndpoint") as? String else {
             return nil
         }

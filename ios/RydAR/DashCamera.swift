@@ -112,6 +112,8 @@ final class DashCamera: NSObject, DashRunning, AVCaptureVideoDataOutputSampleBuf
             guard let self else { return }
             self.running = false
             self.session?.stopRunning()
+            // A reading from before the stop says nothing about the road after it.
+            self.windows = DashWindows()
         }
     }
 
@@ -214,9 +216,6 @@ final class DashCamera: NSObject, DashRunning, AVCaptureVideoDataOutputSampleBuf
             return
         }
         capture.addOutput(output)
-        if let connection = output.connection(with: .video), connection.isVideoRotationAngleSupported(90) {
-            connection.videoRotationAngle = 90
-        }
         capture.commitConfiguration()
         session = capture
         setPreview(capture)
@@ -235,6 +234,8 @@ final class DashCamera: NSObject, DashRunning, AVCaptureVideoDataOutputSampleBuf
     }
 
     private func roadBuffer(from pixelBuffer: CVPixelBuffer) -> CVPixelBuffer? {
+        // Buffers arrive in the sensor's landscape orientation. `.right` makes them upright portrait,
+        // so the lower-center crop is the road under the car. Do not also rotate the capture connection.
         let oriented = CIImage(cvPixelBuffer: pixelBuffer).oriented(.right)
         let crop = DashCrop.road(in: oriented.extent)
         let image = oriented.cropped(to: crop).transformed(by: CGAffineTransform(translationX: -crop.minX, y: -crop.minY))

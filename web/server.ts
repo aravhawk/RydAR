@@ -25,6 +25,8 @@ const COUNTY_FIPS: Record<string, string> = {
   "van buren": "141", washington: "143", white: "145", woodruff: "147", yell: "149",
 };
 
+const DIRECTIONS = new Set(["N", "NE", "E", "SE", "S", "SW", "W", "NW"]);
+
 const CURVE_ID = /^(\d{3})-\d{1,7}-\d{1,7}$/;
 
 interface PassBody {
@@ -36,8 +38,9 @@ interface PassBody {
 }
 
 function countyPrefix(county: string): string | null {
-  const fips = COUNTY_FIPS[county.toLowerCase().replace(/-/g, " ")];
-  return fips ? `${fips}-` : null;
+  const name = county.toLowerCase().replace(/-/g, " ");
+  // Own keys only: "constructor" and "__proto__" are not counties.
+  return Object.hasOwn(COUNTY_FIPS, name) ? `${COUNTY_FIPS[name]}-` : null;
 }
 
 function isArkansasCurveID(id: string): boolean {
@@ -53,8 +56,7 @@ function isPass(value: unknown): value is PassBody {
     CURVE_ID.test(row.curve_id) &&
     isArkansasCurveID(row.curve_id) &&
     typeof row.direction === "string" &&
-    row.direction.length >= 1 &&
-    row.direction.length <= 8 &&
+    DIRECTIONS.has(row.direction) &&
     Number.isInteger(row.speed_band_mph) &&
     (row.speed_band_mph as number) >= 0 &&
     (row.speed_band_mph as number) <= 150 &&
@@ -113,8 +115,10 @@ app.post("/api/pass", async (c) => {
   if (!isPass(body)) return c.json({ error: "missing fields" }, 400);
   await ensureSchema(client);
   await client.query(
-    `INSERT INTO passes (curve_id, direction, speed_band_mph, hour_bucket, app_version)
-     VALUES ($1, $2, $3, $4, $5)`,
+    // The day is enough for the rolling export. A full timestamp plus the order of arrival
+    // could be used to follow one phone along a drive.
+    `INSERT INTO passes (curve_id, direction, speed_band_mph, hour_bucket, app_version, created_at)
+     VALUES ($1, $2, $3, $4, $5, date_trunc('day', now()))`,
     [
       body.curve_id,
       body.direction,
@@ -127,7 +131,12 @@ app.post("/api/pass", async (c) => {
 });
 
 app.get("/api/export/:file", async (c) => {
-  const county = decodeURIComponent(c.req.param("file")).replace(/\.csv$/, "");
+  let county: string;
+  try {
+    county = decodeURIComponent(c.req.param("file")).replace(/\.csv$/, "");
+  } catch {
+    return c.json({ error: "unknown county" }, 404);
+  }
   const prefix = countyPrefix(county);
   if (prefix === null) return c.json({ error: "unknown county" }, 404);
   const client = database();

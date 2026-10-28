@@ -812,12 +812,15 @@
       const done = workerWait.get(`${message.kind}:${message.index}`);
       if (!done) return;
       workerWait.delete(`${message.kind}:${message.index}`);
-      done(message);
+      done.resolve(message);
+    };
+    curveWorker.onerror = () => {
+      for (const waiting of workerWait.values()) waiting.reject(new Error("Curve worker failed"));
+      workerWait.clear();
     };
     function askWorker(kind, index, buffer) {
       return new Promise((resolve, reject) => {
-        workerWait.set(`${kind}:${index}`, resolve);
-        curveWorker.onerror = () => reject(new Error("Curve worker failed"));
+        workerWait.set(`${kind}:${index}`, { resolve, reject });
         if (buffer) curveWorker.postMessage({ kind, index, buffer }, [buffer]);
         else curveWorker.postMessage({ kind, index });
       });

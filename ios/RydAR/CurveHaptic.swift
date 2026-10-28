@@ -14,7 +14,7 @@ func hapticRoute(appIsActive: Bool, hardwareSupportsHaptics: Bool) -> HapticRout
     return .vibration
 }
 
-/// Two sharp taps at the same moment as a spoken or chimed prompt. Under-18 trips never reach this.
+/// Two sharp taps at the same moment as a spoken or chimed prompt. Under-18 trips never play or prepare it.
 final class CurveHaptic {
     private var engine: CHHapticEngine?
     private var pattern: CHHapticPattern?

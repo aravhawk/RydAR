@@ -157,13 +157,14 @@ final class LiveTripTests: XCTestCase {
             if completed > 0 { break }
         }
         XCTAssertEqual(completed, 1)
+        XCTAssertEqual(spy.sent.count, 0, "passes wait for the end of the trip")
+        harness.bridge.finish()
         XCTAssertEqual(spy.sent.count, 1)
         XCTAssertEqual(spy.sent[0].curve_id, "007-2-3")
         XCTAssertEqual(spy.sent[0].direction, "N")
         XCTAssertEqual(spy.sent[0].speed_band_mph, 40)
         XCTAssertEqual(spy.sent[0].speed_band_mph % 5, 0)
         XCTAssertEqual(spy.sent[0].hour_bucket, 14)
-        harness.bridge.finish()
         harness.bridge.onUploadPreference?(true)
         XCTAssertEqual(spy.sent.count, 1)
     }
