@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Fine-tune one MobileNetV4-Conv-Small with three heads on RSCD.
 
-Run this from Google Colab on an NVIDIA GPU. Mac A opens the notebook.
-Create ML cannot run there, and it cannot train three heads. Convert the
-checkpoint on Mac A with convert_coreml.py.
+Run this on an NVIDIA GPU, for example a Colab runtime (see ml/README.md).
+Create ML cannot train three heads. Convert the checkpoint on a Mac with
+convert_coreml.py.
 
 Heads, read from the RSCD folder name:
   material: paved, unpaved, cant_tell
