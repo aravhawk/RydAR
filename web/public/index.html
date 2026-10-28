@@ -3,20 +3,82 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>RydAR</title>
-  <meta name="description" content="Suggested speeds for the tight curves on Arkansas roads, and a free iPhone app that warns you before them.">
+  <title>RydAR: Safe Driving</title>
+  <meta name="description" content="Free map of suggested speeds for tight curves on Arkansas roads, plus the RydAR iPhone app that warns you before each bend. Safe driving, one curve at a time.">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+  <meta name="keywords" content="Arkansas curves, curve speed, safe driving, curve warning app, suggested speed, Arkansas roads, iPhone driving app, RydAR">
+  <meta name="application-name" content="RydAR">
+  <meta name="apple-mobile-web-app-title" content="RydAR">
+  <meta name="theme-color" content="#062e38">
+  <meta name="geo.region" content="US-AR">
+  <meta name="geo.placename" content="Arkansas">
+  <link rel="canonical" href="https://rydar.org/">
+  <link rel="manifest" href="/manifest.webmanifest">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="RydAR">
-  <meta property="og:title" content="RydAR">
-  <meta property="og:description" content="Suggested speeds for the tight curves on Arkansas roads, and a free iPhone app that warns you before them.">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:title" content="RydAR: Safe Driving">
+  <meta property="og:description" content="Free map of suggested speeds for tight curves on Arkansas roads, plus the RydAR iPhone app that warns you before each bend. Safe driving, one curve at a time.">
   <meta property="og:url" content="https://rydar.org/">
   <meta property="og:image" content="https://rydar.org/og-image.png">
+  <meta property="og:image:secure_url" content="https://rydar.org/og-image.png">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="RydAR logo beside a bending road, with the line Suggested speeds for Arkansas road bends.">
+  <meta property="og:image:alt" content="RydAR logo and the words Safe Driving beside a bending road.">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="RydAR: Safe Driving">
+  <meta name="twitter:description" content="Free map of suggested speeds for tight curves on Arkansas roads, plus the RydAR iPhone app that warns you before each bend. Safe driving, one curve at a time.">
   <meta name="twitter:image" content="https://rydar.org/og-image.png">
+  <meta name="twitter:image:alt" content="RydAR logo and the words Safe Driving beside a bending road.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://rydar.org/#website",
+        "url": "https://rydar.org/",
+        "name": "RydAR: Safe Driving",
+        "alternateName": "RydAR",
+        "description": "Free map of suggested speeds for tight curves on Arkansas roads, plus the RydAR iPhone app that warns you before each bend. Safe driving, one curve at a time.",
+        "inLanguage": "en-US"
+      },
+      {
+        "@type": "WebApplication",
+        "@id": "https://rydar.org/#map",
+        "name": "RydAR Arkansas Curve Map",
+        "url": "https://rydar.org/",
+        "applicationCategory": "NavigationApplication",
+        "operatingSystem": "Any",
+        "browserRequirements": "Requires JavaScript",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "image": "https://rydar.org/og-image.png",
+        "isPartOf": { "@id": "https://rydar.org/#website" }
+      },
+      {
+        "@type": "MobileApplication",
+        "@id": "https://rydar.org/#app",
+        "name": "RydAR",
+        "description": "A free iPhone app that warns you before tight curves on Arkansas roads.",
+        "applicationCategory": "NavigationApplication",
+        "operatingSystem": "iOS",
+        "downloadUrl": "https://testflight.apple.com/join/WRKVeXwc",
+        "image": "https://rydar.org/og-image.png",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://rydar.org/#org",
+        "name": "RydAR",
+        "url": "https://rydar.org/",
+        "logo": "https://rydar.org/apple-touch-icon.png",
+        "sameAs": ["https://github.com/aravhawk/RydAR"]
+      }
+    ]
+  }
+  </script>
   <script>
     (() => {
       localStorage.removeItem("rydar.theme");
@@ -88,6 +150,7 @@
     }
     :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
+    .seo { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
     aside {
       position: absolute;
       z-index: 2;
@@ -339,6 +402,13 @@
     </section>
 
   </aside>
+
+  <section class="seo" aria-label="About RydAR">
+    <h2>RydAR: Safe Driving on Arkansas roads</h2>
+    <p>RydAR is a free map of suggested speeds for the tight curves on Arkansas roads, across all 75 counties, paved and unpaved. Pick a county, tap a curve, and see the suggested speed for that bend.</p>
+    <p>The RydAR iPhone app warns you before each curve while you drive. Join the free beta on TestFlight.</p>
+    <noscript><p>The interactive map needs JavaScript. Turn it on to browse curves by county and road name.</p></noscript>
+  </section>
 
   <main id="map" aria-label="Map of Arkansas curves">
     <p class="map-hint" id="hint">Click a county, then click a curve.</p>
