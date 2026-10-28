@@ -123,7 +123,7 @@ enum DriveLiveActivity {
             return DriveActivityAttributes.ContentState(
                 headline: "No curve ahead",
                 detail: drive.gpsStatus,
-                compact: "\(bucketSpeed(speed)) mph",
+                compact: speedText(mph: Double(bucketSpeed(speed))),
                 alerting: false
             )
         }

@@ -73,7 +73,7 @@ struct DriveScreen: View {
                 }
                 HStack(alignment: .firstTextBaseline) {
                     if let mph = trip.drive.measuredSpeedMPH {
-                        Text("\(mph, specifier: "%.0f") mph")
+                        Text(speedText(mph: mph))
                             .font(.title3.monospacedDigit().bold())
                             .accessibilityIdentifier("measuredSpeed")
                         Text("now")
@@ -93,7 +93,7 @@ struct DriveScreen: View {
                 if let measured = trip.drive.measuredSpeedMPH,
                    let prompt = trip.drive.promptSpeedMPH,
                    measured - prompt > 3 {
-                    Text("GPS speed is shaky. Using \(prompt, specifier: "%.0f") mph.")
+                    Text("GPS speed is shaky. Using \(speedText(mph: prompt)).")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

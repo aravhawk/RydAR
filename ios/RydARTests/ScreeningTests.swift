@@ -72,6 +72,17 @@ final class ScreeningTests: XCTestCase {
         XCTAssertEqual(effectiveSpeedMPH(speedMps: 0.2, accuracyMps: 4), 0, accuracy: 0.001)
     }
 
+    func testMetricUnitsConvertOnlyTheDisplay() {
+        UserDefaults.standard.set(UnitSystem.metric.rawValue, forKey: UnitSystem.key)
+        defer { UserDefaults.standard.removeObject(forKey: UnitSystem.key) }
+        XCTAssertEqual(distanceText(meters: 76.2), "80 m")
+        XCTAssertEqual(distanceText(meters: 1500), "1.5 km")
+        XCTAssertEqual(speedText(mph: 25, down: true), "40 km/h")
+        XCTAssertEqual(spokenCurveWarning(advisoryMPH: 25), "Slow to 40 km/h for the curve ahead.")
+        XCTAssertEqual(stretchDistancePhrase(meters: 500), "500 meters")
+        XCTAssertEqual(radiusText(feet: 328.084), "100 m")
+    }
+
     func testDistanceReadsInFeetThenMiles() {
         XCTAssertEqual(distanceText(meters: 0), "0 ft")
         XCTAssertEqual(distanceText(meters: 76.2), "250 ft")

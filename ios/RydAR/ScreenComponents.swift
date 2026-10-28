@@ -55,9 +55,10 @@ struct RydarEyebrow: View {
 
 struct ScreeningRangeLabel: View {
     var range: ScreeningRange
+    @AppStorage(UnitSystem.key) private var units = UnitSystem.imperial.rawValue
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("\(Int(range.low.rounded(.down)))–\(Int(range.high.rounded(.down))) mph")
+            Text("\(displaySpeed(mph: range.low, down: true))–\(displaySpeed(mph: range.high, down: true)) \(UnitSystem.current.speedUnit)")
                 .font(.title2.bold().monospacedDigit())
             Text("Suggested speed")
                 .font(.subheadline)

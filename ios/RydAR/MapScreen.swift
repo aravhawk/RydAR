@@ -637,6 +637,7 @@ private struct PreviewMapControls: View {
 private struct CurveDetailSheet: View {
     var curve: Curve
     var tread: TreadChoice
+    @AppStorage(UnitSystem.key) private var units = UnitSystem.imperial.rawValue
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -647,7 +648,7 @@ private struct CurveDetailSheet: View {
                 Label(curve.surface == .paved ? "Paved road" : "Unpaved road", systemImage: "road.lanes")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                Text("\(curve.radiusFeet, specifier: "%.0f") ft radius · \(curve.deflectionDegrees, specifier: "%.0f")° turn")
+                Text("\(radiusText(feet: curve.radiusFeet)) radius · \(curve.deflectionDegrees, specifier: "%.0f")° turn")
                     .font(.subheadline)
                 ScreeningRangeLabel(range: screeningRange(
                     radiusFeet: curve.radiusFeet,

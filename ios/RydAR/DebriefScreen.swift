@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DebriefScreen: View {
     @ObservedObject var trip: TripScreenBridge
+    @AppStorage(UnitSystem.key) private var units = UnitSystem.imperial.rawValue
     var onDone: () -> Void
     @AppStorage("rydar.uploadOptIn") private var uploadOptIn = true
     @State private var exportMessage: String?
@@ -77,11 +78,11 @@ struct DebriefScreen: View {
                         Text(pass.curve.roadName)
                             .font(.headline)
                         Spacer()
-                        Text("+\(pass.gapAboveLowEnd, specifier: "%.1f") mph")
+                        Text("+\(pass.gapAboveLowEnd * (UnitSystem.current == .imperial ? 1 : kilometersPerMile), specifier: "%.1f") \(UnitSystem.current.speedUnit)")
                             .font(.headline.monospacedDigit())
                             .foregroundStyle(RydarTheme.warningText)
                     }
-                    Text("You went \(pass.effectiveMPH, specifier: "%.0f") mph")
+                    Text("You went \(speedText(mph: pass.effectiveMPH))")
                         .font(.subheadline)
                     ScreeningRangeLabel(range: pass.range)
                     Text(pass.surfaceUsed.rawValue.capitalized)

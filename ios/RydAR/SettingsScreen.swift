@@ -5,6 +5,7 @@ struct SettingsScreen: View {
     @AppStorage("rydar.appearance") private var appearance = AppearancePreference.system.rawValue
     @AppStorage("rydar.promptStyle") private var promptStyle = PromptStyle.normal.rawValue
     @AppStorage("rydar.uploadOptIn") private var uploadOptIn = true
+    @AppStorage(UnitSystem.key) private var units = UnitSystem.imperial.rawValue
     @AppStorage("rydar.dashEnabled") private var dashEnabled = true
     @AppStorage("rydar.onboardingComplete") private var onboarded = false
     @AppStorage(TreadStore.choiceKey) private var treadRaw = ""
@@ -23,6 +24,7 @@ struct SettingsScreen: View {
     private func resetSettings() {
         appearance = AppearancePreference.system.rawValue
         promptStyle = PromptStyle.normal.rawValue
+        units = UnitSystem.imperial.rawValue
         uploadOptIn = true
         dashEnabled = true
         TreadStore.clear()
@@ -42,6 +44,19 @@ struct SettingsScreen: View {
             } header: {
                 Text("Appearance")
                     .textCase(nil)
+            }
+
+            Section {
+                Toggle("Use metric", isOn: Binding(
+                    get: { units == UnitSystem.metric.rawValue },
+                    set: { units = ($0 ? UnitSystem.metric : UnitSystem.imperial).rawValue }
+                ))
+                .accessibilityIdentifier("metricUnits")
+            } header: {
+                Text("Units")
+                    .textCase(nil)
+            } footer: {
+                Text(units == UnitSystem.metric.rawValue ? "Kilometers per hour and meters." : "Miles per hour and feet.")
             }
 
             Section {
@@ -114,7 +129,7 @@ struct SettingsScreen: View {
         .onChange(of: uploadOptIn) { _, value in trip.onUploadPreference?(value) }
         .confirmationDialog("Reset all settings?", isPresented: $confirmResetSettings, titleVisibility: .visible) {
             Button("Reset all settings", role: .destructive) { resetSettings() }
-        } message: { Text("Appearance, warnings, sharing, camera check and tires go back to their defaults. Your trips stay.") }
+        } message: { Text("Appearance, units, warnings, sharing, camera check and tires go back to their defaults. Your trips stay.") }
         .confirmationDialog("Reset all data?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Reset all data", role: .destructive) {
                 do {

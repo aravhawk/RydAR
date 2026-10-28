@@ -224,15 +224,54 @@ func advisorySpeedMPH(_ range: ScreeningRange) -> Int {
     max(0, Int(range.low.rounded(.down)))
 }
 
+/// Display units. Everything is computed in mph and meters; only what the driver sees
+/// or hears is converted. Imperial unless the driver turns on metric in Settings.
+enum UnitSystem: String, CaseIterable {
+    case imperial, metric
+
+    static let key = "rydar.units"
+
+    static var current: UnitSystem {
+        UserDefaults.standard.string(forKey: key).flatMap(UnitSystem.init(rawValue:)) ?? .imperial
+    }
+
+    var speedUnit: String { self == .imperial ? "mph" : "km/h" }
+}
+
+let kilometersPerMile = 1.609344
+let feetPerMeter = 3.28084
+
+/// A speed in the display unit. `down` floors instead of rounding, for advisories.
+func displaySpeed(mph: Double, down: Bool = false) -> Int {
+    let value = UnitSystem.current == .imperial ? mph : mph * kilometersPerMile
+    return Int(down ? value.rounded(.down) : value.rounded())
+}
+
+func speedText(mph: Double, down: Bool = false) -> String {
+    "\(displaySpeed(mph: mph, down: down)) \(UnitSystem.current.speedUnit)"
+}
+
+/// A curve radius for the map, from feet.
+func radiusText(feet: Double) -> String {
+    if UnitSystem.current == .imperial { return String(format: "%.0f ft", feet) }
+    return String(format: "%.0f m", feet / feetPerMeter)
+}
+
 func spokenCurveWarning(advisoryMPH: Int) -> String {
-    "Slow to \(advisoryMPH) mph for the curve ahead."
+    "Slow to \(speedText(mph: Double(advisoryMPH), down: true)) for the curve ahead."
 }
 
 /// A sentence for settings and onboarding. A real warning uses the curve's own speed.
 let spokenWarningExample = spokenCurveWarning(advisoryMPH: 25)
 
 /// Distance for the drive screen: feet up close, tenths of a mile beyond 1,000 ft.
+/// Metric shows meters up close and tenths of a kilometer beyond 1,000 m.
 func distanceText(meters: Double) -> String {
+    if UnitSystem.current == .metric {
+        let m = max(0, meters)
+        if m < 1000 { return "\(Int((m / 10).rounded()) * 10) m" }
+        return String(format: "%.1f km", m / 1000)
+    }
     let feet = max(0, meters) * 3.28084
     if feet < 1000 { return "\(Int((feet / 10).rounded()) * 10) ft" }
     return String(format: "%.1f mi", max(0, meters) / 1609.344)
@@ -271,18 +310,26 @@ enum CurveAlerts {
             return spokenCurveWarning(advisoryMPH: limit)
         }
         let distance = stretchDistancePhrase(meters: end.distanceMeters)
-        return "Curves ahead for the next \(distance), keep it under \(limit) mph."
+        return "Curves ahead for the next \(distance), keep it under \(speedText(mph: Double(limit), down: true))."
     }
 
     static func displayNotice(stretch: [CurveApproach], overAdvisory: Bool) -> String {
         if overAdvisory { return spokenLine(stretch: stretch) }
         let limit = stretch.map(\.advisoryMPH).min() ?? 0
-        if stretch.count >= 2 { return "Keep it under \(limit) mph" }
-        return "Suggested speed: \(limit) mph"
+        if stretch.count >= 2 { return "Keep it under \(speedText(mph: Double(limit), down: true))" }
+        return "Suggested speed: \(speedText(mph: Double(limit), down: true))"
     }
 }
 
 func stretchDistancePhrase(meters: Double) -> String {
+    if UnitSystem.current == .metric {
+        let m = max(0, meters)
+        if m < 900 { return "\(max(100, Int((m / 50).rounded()) * 50)) meters" }
+        let km = (m / 100).rounded() / 10
+        if abs(km - 1) < 0.05 { return "kilometer" }
+        if abs(km - km.rounded()) < 0.001 { return "\(Int(km.rounded())) kilometers" }
+        return String(format: "%.1f kilometers", km)
+    }
     let miles = max(0, meters) / 1609.344
     if miles >= 0.4 && miles < 0.65 { return "half mile" }
     if miles >= 0.18 && miles < 0.4 { return "quarter mile" }
