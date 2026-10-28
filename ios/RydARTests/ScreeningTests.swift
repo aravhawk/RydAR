@@ -105,7 +105,8 @@ final class ScreeningTests: XCTestCase {
         XCTAssertEqual(stretchDistancePhrase(meters: 400), "quarter mile")
         let alone = CurveAlerts.stretch(focus: hairpin, ahead: [hairpin])
         XCTAssertEqual(CurveAlerts.spokenLine(stretch: alone), "Slow to 15 mph for the curve ahead.")
-        XCTAssertEqual(advisorySpeedMPH(ScreeningRange(low: 19.7, high: 22.6)), 20)
+        XCTAssertEqual(advisorySpeedMPH(ScreeningRange(low: 19.7, high: 22.6)), 19)
+        XCTAssertEqual(advisorySpeedMPH(ScreeningRange(low: 24.6, high: 27)), 24)
     }
 
     func testCameraCanOnlyLower() {
@@ -416,7 +417,10 @@ final class ScreeningTests: XCTestCase {
         XCTAssertEqual(after.high, before.high, accuracy: 0.0001)
         XCTAssertEqual(before.low, 19.7, accuracy: 0.05)
         XCTAssertEqual(before.high, 22.6, accuracy: 0.05)
-        XCTAssertEqual(spokenWarning, "Slow to 25 mph for the curve ahead.")
+        XCTAssertEqual(
+            spokenCurveWarning(advisoryMPH: 25),
+            spokenWarningPattern.replacingOccurrences(of: "N", with: "25")
+        )
     }
 
     func testSpokenLineMatchesTheContract() throws {
@@ -430,6 +434,12 @@ final class ScreeningTests: XCTestCase {
         try XCTSkipUnless(FileManager.default.isReadableFile(atPath: url.path), "fixtures/ is outside the test sandbox")
         let data = try Data(contentsOf: url)
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        XCTAssertEqual(json?["spoken_line"] as? String, spokenWarning)
+        // Both fixtures describe the same curve, so they must agree. SimulatorFixtureTests checks
+        // the line itself against the bundled database.
+        let route = url.deletingLastPathComponent().appendingPathComponent("old-wire-approach.expect.json")
+        let routeJSON = try JSONSerialization.jsonObject(with: Data(contentsOf: route)) as? [String: Any]
+        XCTAssertNotNil(json?["spoken_line"] as? String)
+        XCTAssertEqual(json?["spoken_line"] as? String, routeJSON?["spoken_line"] as? String)
+        XCTAssertEqual(json?["curve_id"] as? String, routeJSON?["curve_id"] as? String)
     }
 }

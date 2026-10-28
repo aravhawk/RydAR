@@ -17,7 +17,6 @@ final class AnonymousPassTests: XCTestCase {
         XCTAssertEqual(body?.speed_band_mph, 40)
         XCTAssertEqual(body?.hour_bucket, 14)
         XCTAssertEqual(body?.app_version, "0.1.0")
-        XCTAssertNil(body?.lat_accel_band)
         XCTAssertNil(AnonymousPass.body(from: sample(id: "preview-curve", speed: 20, hour: 14), appVersion: "0.1.0"))
         XCTAssertNil(AnonymousPass.body(from: sample(id: "143-9-1", speed: 20, hour: 14), appVersion: " "))
         XCTAssertNil(AnonymousPass.body(from: sample(id: "143-9-1", speed: 20, hour: 24), appVersion: "0.1.0"))

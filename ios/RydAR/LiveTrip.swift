@@ -108,6 +108,7 @@ final class LiveTripSession {
             guard let self else { return }
             self.engine.promptStyle = style
             self.engine.uploadOptIn = upload
+            self.engine.route = MainActor.assumeIsolated { self.bridge.route }
             self.engine.dashEnabled = mode == .under18 ? false : DashPreference.isOn
             self.reading = DashReading(camera: nil, vision: .quiet, state: self.engine.dashEnabled ? .unconfirmed : .off, acceptedAt: nil)
             self.lastUpdate = nil
@@ -248,7 +249,8 @@ final class LiveTripSession {
             paused: engine.snapshot.paused,
             range: showCurve ? update.screeningRange : nil,
             advisoryNotice: showCurve ? update.advisoryNotice : nil,
-            advisoryWarning: showCurve ? update.advisoryWarning : nil
+            advisoryWarning: showCurve ? update.advisoryWarning : nil,
+            routeState: update.gpsGood ? update.routeState : nil
         ))
     }
 
@@ -281,7 +283,8 @@ final class LiveTripSession {
         paused: Bool,
         range: ScreeningRange?,
         advisoryNotice: String? = nil,
-        advisoryWarning: Bool? = nil
+        advisoryWarning: Bool? = nil,
+        routeState: RouteState? = nil
     ) -> DriveScreenSnapshot {
         DriveScreenSnapshot(
             nextCurve: curve,
@@ -296,7 +299,9 @@ final class LiveTripSession {
             screeningRange: range,
             tripTitle: tripTitle,
             advisoryNotice: advisoryNotice,
-            advisoryWarning: advisoryWarning
+            advisoryWarning: advisoryWarning,
+            cameraRunning: engine.dashEnabled && reading.state == .running && !paused,
+            routeState: routeState
         )
     }
 
@@ -331,6 +336,7 @@ final class LiveTripSession {
         let showsDetails = engine.snapshot.driverMode == .adult
         hop {
             self.bridge.drive = snapshot
+            self.bridge.cameraPreview = snapshot.cameraRunning ? self.camera.previewSession : nil
             if showsDetails { DriveLiveActivity.render(snapshot, speaks: true) }
         }
     }

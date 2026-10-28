@@ -2,9 +2,10 @@ import SwiftUI
 
 struct HomeScreen: View {
     let store: any CurveStore
-    var isSampleStore: Bool
     var onStart: () -> Void
     @ObservedObject var trip: TripScreenBridge
+    @ObservedObject var planner: RoutePlanner
+    @State private var showDestination = false
     @AppStorage("rydar.dashEnabled") private var dashEnabled = true
     @AppStorage(TreadStore.choiceKey) private var treadRaw = ""
 
@@ -38,6 +39,8 @@ struct HomeScreen: View {
                     }
                 }
 
+                routeCard
+
                 RydarGlassGroup(spacing: 12) {
                     VStack(spacing: 12) {
                         Button(action: onStart) {
@@ -48,26 +51,25 @@ struct HomeScreen: View {
                         .accessibilityIdentifier("startTrip")
 
                         NavigationLink {
-                            PreviewScreen(store: store, isSampleStore: isSampleStore)
+                            MapScreen(store: store)
                         } label: {
                             Label("Map", systemImage: "map")
                                 .frame(maxWidth: .infinity)
                         }
                         .rydarGlassAction()
                         .navigationLinkIndicatorVisibility(.hidden)
-                        .accessibilityIdentifier("previewRoute")
+                        .accessibilityIdentifier("openMap")
                     }
                 }
 
-                if isSampleStore {
-                    Text("Sample roads only.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
             }
             .padding(.horizontal, 24)
             .padding(.top, 8)
             .padding(.bottom, 24)
+        }
+        .sheet(isPresented: $showDestination) {
+            DestinationScreen(planner: planner)
+                .tint(RydarTheme.accent)
         }
         .navigationTitle("RydAR")
         .navigationBarTitleDisplayMode(.large)
@@ -79,6 +81,40 @@ struct HomeScreen: View {
                         .accessibilityLabel("Settings")
                 }
                 .accessibilityIdentifier("settings")
+            }
+        }
+    }
+
+    private var routeCard: some View {
+        RydarCard {
+            if let route = planner.route {
+                Label(route.name, systemImage: "location.north.line")
+                    .font(.headline)
+                Text("\(route.summary) · warns only for curves on this route")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("routeSummary")
+                HStack {
+                    Button("Change") { showDestination = true }
+                    Spacer()
+                    Button("Clear", role: .destructive) { planner.clear() }
+                        .accessibilityIdentifier("clearRoute")
+                }
+                .font(.subheadline.weight(.semibold))
+            } else {
+                Button {
+                    planner.prepare()
+                    showDestination = true
+                } label: {
+                    Label("Where to? (optional)", systemImage: "magnifyingglass")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("chooseDestination")
+                Text("Pick a destination to hear only the curves on your route. Without one, RydAR warns about every curve ahead.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
         }
     }

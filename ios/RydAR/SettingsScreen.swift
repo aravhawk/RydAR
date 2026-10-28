@@ -12,12 +12,12 @@ struct SettingsScreen: View {
     @State private var confirmDelete = false
     @State private var deleteError: String?
 
-    /// Chime never speaks. Short and Normal both use the one contract sentence.
+    /// Chime never speaks. Short and Normal both speak the same sentence.
     private var promptFooter: String {
         if PromptStyle(rawValue: promptStyle) == .chimeOnly {
             return "A chime and a tap."
         }
-        return "“\(spokenWarning)” Plus a tap."
+        return "“\(spokenWarningPattern)” Plus a tap."
     }
 
     /// Every switch back to its first-launch value. Trips and history are not touched.

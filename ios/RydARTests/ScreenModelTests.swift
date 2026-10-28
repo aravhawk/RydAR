@@ -135,4 +135,14 @@ final class ScreenModelTests: XCTestCase {
         XCTAssertTrue(nearby.contains { $0.id == "007-2-3" })
         XCTAssertTrue(store.curves(nearLatitude: 0, longitude: 0, radiusMeters: 50).isEmpty)
     }
+
+    func testLiveRoadLabelFollowsTheCameraWithoutAMatchedCurve() {
+        func evidence(_ label: CameraLabel) -> CameraEvidence {
+            CameraEvidence(label: label, confidence: 0.9, age: 0, onMatchedRoadROI: false, persistent: true)
+        }
+        XCTAssertEqual(liveRoadLabel(camera: evidence(.paved)), "Paved")
+        XCTAssertEqual(liveRoadLabel(camera: evidence(.unpaved)), "Unpaved")
+        XCTAssertEqual(liveRoadLabel(camera: evidence(.cantTell)), "Reading road…")
+        XCTAssertEqual(liveRoadLabel(camera: nil), "Reading road…")
+    }
 }

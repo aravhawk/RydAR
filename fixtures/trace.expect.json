@@ -1,5 +1,5 @@
 {
-  "spoken_line": "Slow to 25 mph for the curve ahead.",
+  "spoken_line": "Slow to 11 mph for the curve ahead.",
   "curve_id": "007-2-3",
   "note": "Replay is a contract for the gate function. The app and the unit test must both read this file's spoken_line. Do not upload replay files."
 }

@@ -26,10 +26,10 @@ final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, 
     static let options: AVAudioSession.CategoryOptions = [.duckOthers, .interruptSpokenAudioAndMixWithOthers]
     /// Between alerts: keep the session, leave other audio alone.
     static let idleOptions: AVAudioSession.CategoryOptions = [.mixWithOthers]
-    static var line: String { spokenWarning }
     /// A little under the system default. Compact voices sound less rushed here.
     static let speechRate = AVSpeechUtteranceDefaultSpeechRate * 0.95
 
+    private static let voiceQueue = DispatchQueue(label: "com.rydar.voice", qos: .userInitiated)
     private let synthesizer = AVSpeechSynthesizer()
     private let haptic = CurveHaptic()
     /// Category changes and setActive block long enough for AVAudioSession to warn on the main thread.
@@ -48,8 +48,15 @@ final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, 
 
     func holdForTrip() {
         holding = true
-        voice = Self.resolvedVoice()
         let generation = playbackGeneration
+        // Listing every installed voice is slow on a phone with many downloads. Do it off the main thread.
+        Self.voiceQueue.async { [weak self] in
+            let best = Self.resolvedVoice()
+            DispatchQueue.main.async {
+                guard let self, generation == self.playbackGeneration else { return }
+                self.voice = best
+            }
+        }
         activateSession(alert: false) { [weak self] in
             guard let self, generation == self.playbackGeneration else { return }
             self.haptic.prepare()
@@ -81,14 +88,14 @@ final class SpeechPrompt: NSObject, PromptPlaying, AVSpeechSynthesizerDelegate, 
     func speakWarning(_ line: String) throws {
         let generation = playbackGeneration
         let spoken = line
-        let voice = self.voice ?? Self.resolvedVoice()
-        self.voice = voice
+        let voice = self.voice
+            ?? AVSpeechSynthesisVoice(language: SpeechVoicePicker.warningLanguage(
+                for: AVSpeechSynthesisVoice.currentLanguageCode()))
         activateSession(alert: true) { [weak self] in
             guard let self, generation == self.playbackGeneration else { return }
             self.player?.stop()
-            if self.synthesizer.isSpeaking {
-                self.synthesizer.stopSpeaking(at: .immediate)
-            }
+            // A line still being spoken finishes first. Cutting it off for the next curve's line
+            // would leave the driver with half a sentence; the new one queues right behind it.
             let utterance = AVSpeechUtterance(string: spoken)
             utterance.voice = voice
             utterance.rate = Self.speechRate

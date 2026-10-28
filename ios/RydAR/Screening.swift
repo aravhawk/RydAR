@@ -219,18 +219,19 @@ func suppressRepeatPrompt(passesUnderRange: Int, effectiveSpeed: Double, range: 
     passesUnderRange >= 3 && effectiveSpeed <= range.low
 }
 
-/// The number a prompt says to slow to. The low end of the screening range,
-/// rounded to the nearest mph.
+/// The number a prompt says to slow to. The low end of the screening range, rounded down,
+/// so a driver who is told to slow to N was above N when the warning fired
+/// (`shouldSpeak` compares against the unrounded low end).
 func advisorySpeedMPH(_ range: ScreeningRange) -> Int {
-    max(0, Int(range.low.rounded()))
+    max(0, Int(range.low.rounded(.down)))
 }
 
 func spokenCurveWarning(advisoryMPH: Int) -> String {
     "Slow to \(advisoryMPH) mph for the curve ahead."
 }
 
-/// Example sentence for settings and onboarding. A real prompt fills in the curve's advisory.
-let spokenWarning = spokenCurveWarning(advisoryMPH: 25)
+/// Shown in settings and onboarding. A real prompt replaces N with the curve's advisory speed.
+let spokenWarningPattern = "Slow to N mph for the curve ahead."
 
 struct CurveApproach: Equatable {
     var id: String

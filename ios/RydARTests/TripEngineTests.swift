@@ -53,8 +53,6 @@ final class TripEngineTests: XCTestCase {
         XCTAssertEqual(SpeechPrompt.mode, .voicePrompt)
         XCTAssertTrue(SpeechPrompt.options.contains(.duckOthers))
         XCTAssertTrue(SpeechPrompt.options.contains(.interruptSpokenAudioAndMixWithOthers))
-        XCTAssertEqual(SpeechPrompt.line, "Slow to 25 mph for the curve ahead.")
-        XCTAssertEqual(SpeechPrompt.line, spokenWarning)
         XCTAssertEqual(SpeechPrompt.speechRate, AVSpeechUtteranceDefaultSpeechRate * 0.95, accuracy: 0.0001)
         XCTAssertEqual(SpeechVoicePicker.rank(.premium), 3)
         XCTAssertGreaterThan(SpeechVoicePicker.rank(.premium), SpeechVoicePicker.rank(.enhanced))
@@ -511,13 +509,14 @@ final class TripEngineTests: XCTestCase {
 
     private func fix(
         north: Double = 0,
+        east: Double = 0,
         speed: Double = 20,
         course: Double = 0,
         accuracy: Double = 5,
         speedAccuracy: Double = 0.5,
         at moment: Date
     ) -> LocationFix {
-        let point = mapPoint(north: north, east: 0)
+        let point = mapPoint(north: north, east: east)
         return LocationFix(
             latitude: point.latitude,
             longitude: point.longitude,
@@ -766,6 +765,162 @@ final class TripEngineTests: XCTestCase {
         XCTAssertEqual(second.matchedCurveID, "sharp")
         XCTAssertEqual(second.prompt, .speak)
         XCTAssertEqual(second.spokenLine, sharpLine)
+    }
+
+    private func route(east: Double, from south: Double = -100, to north: Double = 600) -> DriveRoute {
+        var points: [MapPoint] = []
+        var cursor = south
+        while cursor <= north {
+            points.append(mapPoint(north: cursor, east: east))
+            cursor += 25
+        }
+        return DriveRoute(name: "Test route", points: points)
+    }
+
+    func testPolylineDistanceMeasuresToTheSegmentNotJustThePoints() {
+        let points = [mapPoint(north: 0, east: 0), mapPoint(north: 1000, east: 0)]
+        let there = mapPoint(north: 500, east: 40)
+        XCTAssertEqual(
+            Geo.distanceToPolyline(latitude: there.latitude, longitude: there.longitude, points: points),
+            40, accuracy: 0.5
+        )
+        XCTAssertEqual(
+            Geo.distanceToPolyline(latitude: there.latitude, longitude: there.longitude, points: []),
+            .greatestFiniteMagnitude
+        )
+    }
+
+    func testRouteCarriesACurveOnItAndNotOneOnlyTouchingIt() {
+        let planned = route(east: 0)
+        XCTAssertTrue(planned.carries(line(id: "on", north: 80)))
+        XCTAssertFalse(planned.carries(line(id: "beside", north: 80, east: 30)))
+        let across = DriveRoute(name: "Cross", points: [
+            mapPoint(north: 100, east: -300), mapPoint(north: 100, east: 300),
+        ])
+        XCTAssertFalse(across.carries(line(id: "stub", north: 100, length: 80)))
+    }
+
+    func testOnlyCurvesOnThePlannedRouteWarn() {
+        let start = date(hour: 14)
+        let beside = line(id: "beside", north: 150, east: 30)
+        var withRoute = TripMatcher()
+        withRoute.begin(driverMode: .adult)
+        withRoute.route = route(east: 0)
+        var update = TripUpdate(prompt: nil, spokenLine: nil, gate: driveGate(mode: .adult, speedMps: 20, dashEnabled: false, uploadOptIn: false), matchedCurveID: nil, matchConfidence: 0, matchStreak: 0, junctionAmbiguous: false, lookAheadMeters: nil, distanceMeters: nil, surface: nil, surfaceUI: nil, completed: [])
+        for index in 0..<4 {
+            update = withRoute.ingest(
+                fix: fix(speed: 20, at: start.addingTimeInterval(Double(index))),
+                nearby: [beside]
+            )
+        }
+        XCTAssertNil(update.matchedCurveID)
+        XCTAssertNil(update.prompt)
+        XCTAssertEqual(update.routeState, .onRoute)
+
+        var without = TripMatcher()
+        without.begin(driverMode: .adult)
+        for index in 0..<4 {
+            update = without.ingest(
+                fix: fix(speed: 20, at: start.addingTimeInterval(Double(index))),
+                nearby: [beside]
+            )
+        }
+        XCTAssertEqual(update.matchedCurveID, "beside")
+        XCTAssertNil(update.routeState)
+    }
+
+    func testLeavingTheRouteBringsBackEveryCurveAhead() {
+        let start = date(hour: 14)
+        let ahead = line(id: "ahead", north: 80)
+        var matcher = TripMatcher()
+        matcher.begin(driverMode: .adult)
+        matcher.route = route(east: 200)
+        var states: [RouteState?] = []
+        var last = TripUpdate(prompt: nil, spokenLine: nil, gate: driveGate(mode: .adult, speedMps: 20, dashEnabled: false, uploadOptIn: false), matchedCurveID: nil, matchConfidence: 0, matchStreak: 0, junctionAmbiguous: false, lookAheadMeters: nil, distanceMeters: nil, surface: nil, surfaceUI: nil, completed: [])
+        for index in 0..<4 {
+            last = matcher.ingest(
+                fix: fix(speed: 20, at: start.addingTimeInterval(Double(index))),
+                nearby: [ahead]
+            )
+            states.append(last.routeState)
+        }
+        XCTAssertEqual(states, [.onRoute, .onRoute, .offRoute, .offRoute])
+        XCTAssertEqual(last.matchedCurveID, "ahead")
+    }
+
+    func testGridIndexMatchesTheFullScanNearTheRouteAndCapsFarAway() {
+        let planned = route(east: 0, from: -3000, to: 3000)
+        for (north, east) in [(500.0, 12.0), (-2200.0, 60.0), (2990.0, 0.0)] {
+            let spot = mapPoint(north: north, east: east)
+            XCTAssertEqual(
+                planned.distanceMeters(latitude: spot.latitude, longitude: spot.longitude),
+                Geo.distanceToPolyline(latitude: spot.latitude, longitude: spot.longitude, points: planned.points),
+                accuracy: 0.01
+            )
+        }
+        let far = mapPoint(north: 500, east: 4000)
+        XCTAssertEqual(
+            planned.distanceMeters(latitude: far.latitude, longitude: far.longitude),
+            DriveRoute.cellGuaranteeMeters
+        )
+        XCTAssertEqual(planned, planned)
+        XCTAssertNotEqual(planned, route(east: 0, from: -3000, to: 3000))
+    }
+
+    func testOffRouteNeedsConsecutiveFixesAndAMiddleDistanceBreaksTheRun() {
+        let start = date(hour: 14)
+        var matcher = TripMatcher()
+        matcher.begin(driverMode: .adult)
+        matcher.route = route(east: 0)
+        var states: [RouteState?] = []
+        for (index, east) in [80.0, 60.0, 80.0, 60.0, 80.0].enumerated() {
+            let update = matcher.ingest(
+                fix: fix(east: east, speed: 20, at: start.addingTimeInterval(Double(index))),
+                nearby: []
+            )
+            states.append(update.routeState)
+        }
+        XCTAssertEqual(states, [.onRoute, .onRoute, .onRoute, .onRoute, .onRoute])
+    }
+
+    func testRejoiningTheRouteDoesNotLogAPassForACurveItHides() {
+        let start = date(hour: 14)
+        let side = line(id: "side", north: 80)
+        var matcher = TripMatcher()
+        matcher.begin(driverMode: .adult)
+        matcher.route = route(east: 200)
+        var completed: [CompletedPass] = []
+        var states: [RouteState?] = []
+        for index in 0..<5 {
+            let onTheRoute = index == 4
+            let update = matcher.ingest(
+                fix: fix(east: onTheRoute ? 200 : 0, speed: 20, at: start.addingTimeInterval(Double(index))),
+                nearby: [side]
+            )
+            states.append(update.routeState)
+            completed += update.completed
+        }
+        XCTAssertEqual(states.last ?? nil, .onRoute)
+        XCTAssertTrue(completed.isEmpty)
+    }
+
+    func testAGroupedWarningSpeaksForTheTighterBendWhenOnlyTheFirstIsRepeatQuiet() {
+        let start = date(hour: 14)
+        let first = line(id: "a", north: 80, radius: 200)
+        let tighter = line(id: "b", north: 200, radius: 150)
+        let speed = 18.5 / 2.23694
+        var matcher = TripMatcher()
+        matcher.begin(driverMode: .adult)
+        var last: TripUpdate?
+        for index in 0..<3 {
+            last = matcher.ingest(
+                fix: fix(speed: speed, speedAccuracy: 0, at: start.addingTimeInterval(Double(index))),
+                nearby: [first, tighter],
+                passesUnderRange: { $0 == "a" ? 3 : 0 }
+            )
+        }
+        XCTAssertEqual(last?.prompt, .speak)
+        XCTAssertTrue(last?.spokenLine?.hasPrefix("Curves ahead") ?? false)
     }
 }
 

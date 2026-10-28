@@ -18,14 +18,6 @@ final class ScreenPermissions: NSObject, ObservableObject, CLLocationManagerDele
         let status = manager.authorizationStatus
         Task { @MainActor in locationStatus = status }
     }
-    var locationDescription: String {
-        switch locationStatus {
-        case .authorizedAlways: return "Location allowed · Always"
-        case .authorizedWhenInUse: return "Location allowed · While Using"
-        case .denied, .restricted: return "Location unavailable · preview still works"
-        default: return "Location While Using · for approaching curves"
-        }
-    }
 }
 
 struct OnboardingScreen: View {
@@ -40,7 +32,7 @@ struct OnboardingScreen: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
                         .font(.system(size: 48))
-                        .foregroundStyle(AuditTheme.accent)
+                        .foregroundStyle(RydarTheme.accent)
                         .accessibilityHidden(true)
                     Text("A heads-up before a tight curve.")
                         .font(.title3)
@@ -56,7 +48,7 @@ struct OnboardingScreen: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Leave it open. Alerts speak with Maps in front.")
                         .font(.subheadline)
-                    Text("“\(spokenWarning)”")
+                    Text("“\(spokenWarningPattern)”")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     Text("Teen driver: audio warnings only. No screen use, camera, or upload.")
@@ -175,7 +167,7 @@ struct TreadChoiceButton: View {
                 if selection == choice {
                     Image(systemName: "checkmark")
                         .font(.body.weight(.semibold))
-                        .foregroundStyle(AuditTheme.accent)
+                        .foregroundStyle(RydarTheme.accent)
                 }
             }
             .contentShape(Rectangle())
@@ -248,7 +240,7 @@ struct DriverGateScreen: View {
                                 Spacer(minLength: 8)
                                 Image(systemName: selection == mode ? "checkmark.circle.fill" : "circle")
                                     .font(.title3)
-                                    .foregroundStyle(selection == mode ? AuditTheme.accent : Color.secondary)
+                                    .foregroundStyle(selection == mode ? RydarTheme.accent : Color.secondary)
                                     .accessibilityHidden(true)
                             }
                             .padding(.vertical, 6)

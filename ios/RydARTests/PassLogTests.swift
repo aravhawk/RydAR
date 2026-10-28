@@ -203,16 +203,6 @@ final class PassLogTests: XCTestCase {
         XCTAssertEqual(try reopened.trip(id: "old-trip")?.driverMode, .adult)
     }
 
-    func testASavedPassengerSettingBecomesDriver() throws {
-        let name = "rydar-passenger-\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
-        defaults.removePersistentDomain(forName: name)
-        defaults.set("passenger", forKey: "rydar.driverMode")
-        DriverMode.migrateStoredSelection(defaults: defaults)
-        XCTAssertEqual(defaults.string(forKey: "rydar.driverMode"), DriverMode.adult.rawValue)
-        defaults.removePersistentDomain(forName: name)
-    }
-
     private func sample(
         curveID: String,
         speed: Double,

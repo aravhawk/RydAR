@@ -26,6 +26,21 @@ final class DashCamera: NSObject, DashRunning, AVCaptureVideoDataOutputSampleBuf
     private var running = false
     private var surface: RoadSurface?
     private let surfaceLock = NSLock()
+    private let previewLock = NSLock()
+    private var previewStorage: AVCaptureSession?
+
+    /// Read from the main thread. The session itself is only started and stopped on the camera queue.
+    var previewSession: AVCaptureSession? {
+        previewLock.lock()
+        defer { previewLock.unlock() }
+        return previewStorage
+    }
+
+    private func setPreview(_ capture: AVCaptureSession?) {
+        previewLock.lock()
+        previewStorage = capture
+        previewLock.unlock()
+    }
 
     init(
         loader: @escaping () throws -> VNCoreMLModel = DashCamera.loadBundled,
@@ -84,6 +99,7 @@ final class DashCamera: NSObject, DashRunning, AVCaptureVideoDataOutputSampleBuf
             self.running = false
             self.session?.stopRunning()
             self.session = nil
+            self.setPreview(nil)
             self.request = nil
             self.windows = DashWindows()
             self.clock = DashClock()
@@ -203,6 +219,7 @@ final class DashCamera: NSObject, DashRunning, AVCaptureVideoDataOutputSampleBuf
         }
         capture.commitConfiguration()
         session = capture
+        setPreview(capture)
         capture.startRunning()
         running = true
         publishCurrent(.running)

@@ -14,7 +14,7 @@ struct DriveScreen: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             HStack {
-                AuditEyebrow(text: trip.drive.isPaused ? "Trip paused" : trip.drive.tripTitle)
+                RydarEyebrow(text: trip.drive.isPaused ? "Trip paused" : trip.drive.tripTitle)
                 Spacer()
                 Image(systemName: soundAllowed ? "speaker.wave.2" : "speaker.slash")
                     .symbolRenderingMode(.monochrome)
@@ -27,7 +27,7 @@ struct DriveScreen: View {
             if audioOnly || !soundAllowed {
                 Image(systemName: "moon.zzz.fill")
                     .font(.system(size: 52))
-                    .foregroundStyle(AuditTheme.accent)
+                    .foregroundStyle(RydarTheme.accent)
                 Text("Put the phone away.")
                     .font(.largeTitle.bold())
                 Text(trip.drive.isPaused ? "Audio warnings paused." : "Audio warnings on.")
@@ -40,7 +40,7 @@ struct DriveScreen: View {
                 Text("Alerts paused.")
                     .foregroundStyle(.secondary)
             } else {
-                AuditEyebrow(text: "Next curve")
+                RydarEyebrow(text: "Next curve")
                 if let distance = trip.drive.distanceMeters, distance.isFinite, distance >= 0 {
                     let meters = distance.formatted(.number.precision(.fractionLength(0)))
                     Text(meters + " m")
@@ -60,7 +60,7 @@ struct DriveScreen: View {
                     let warning = trip.drive.advisoryWarning ?? false
                     Text(notice)
                         .font(.title3.weight(.semibold))
-                        .foregroundStyle(warning ? AuditTheme.warningText : .primary)
+                        .foregroundStyle(warning ? RydarTheme.warningText : .primary)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("advisorySpeed")
                 }
@@ -90,6 +90,14 @@ struct DriveScreen: View {
                         .foregroundStyle(.secondary)
                         .symbolRenderingMode(.monochrome)
                 }
+                if let routeState = trip.drive.routeState {
+                    Label(routeState == .onRoute ? "On route · curves on your route" : "Off route · all curves ahead",
+                          systemImage: routeState == .onRoute ? "arrow.triangle.turn.up.right.diamond" : "arrow.triangle.branch")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .symbolRenderingMode(.monochrome)
+                        .accessibilityIdentifier("routeState")
+                }
                 if let measured = trip.drive.measuredSpeedMPH,
                    let prompt = trip.drive.promptSpeedMPH,
                    measured - prompt > 3 {
@@ -99,16 +107,13 @@ struct DriveScreen: View {
                 }
             }
             Spacer(minLength: 0)
-            AuditCard {
-                Label(soundAllowed && !trip.drive.isPaused ? trip.drive.cameraStatus : "Camera off",
-                      systemImage: "camera")
-                    .font(.subheadline.weight(.semibold))
-                    .symbolRenderingMode(.monochrome)
-            }
-            if !trip.isConnected {
-                Text("Not recording.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+            RydarCard {
+                DashCameraCard(
+                    status: soundAllowed && !trip.drive.isPaused ? trip.drive.cameraStatus : "Camera off",
+                    session: trip.cameraPreview,
+                    camera: trip.drive.cameraEvidence,
+                    live: trip.drive.cameraRunning && !audioOnly
+                )
             }
             RydarGlassGroup(spacing: 12) {
                 VStack(spacing: 12) {

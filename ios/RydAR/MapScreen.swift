@@ -117,9 +117,8 @@ enum MapFraming {
     }
 }
 
-struct PreviewScreen: View {
+struct MapScreen: View {
     let store: any CurveStore
-    var isSampleStore: Bool
     @StateObject private var locator = NearbyLocator()
     @State private var curves: [Curve] = []
     @State private var counties: [CurveCounty] = []
@@ -230,7 +229,6 @@ struct PreviewScreen: View {
     }
 
     private var statusLine: String {
-        if isSampleStore && counties.isEmpty { return "Sample roads." }
         if !showPaved && !showUnpaved { return "Turn a surface back on." }
         if wide { return "Zoom in, or search." }
         if curves.isEmpty { return "No curves here." }

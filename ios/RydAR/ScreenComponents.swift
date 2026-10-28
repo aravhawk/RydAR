@@ -1,7 +1,8 @@
+import AVFoundation
 import SwiftUI
 import MapKit
 
-enum AuditTheme {
+enum RydarTheme {
     static let accent = Color.teal
     /// Text on a light background. System teal and orange are under 3:1 there.
     static let accentText = Color(uiColor: UIColor { traits in
@@ -31,7 +32,7 @@ enum AppearancePreference: String, CaseIterable, Identifiable {
     }
 }
 
-struct AuditCard<Content: View>: View {
+struct RydarCard<Content: View>: View {
     @ViewBuilder var content: Content
     var body: some View {
         VStack(alignment: .leading, spacing: 12) { content }
@@ -42,7 +43,7 @@ struct AuditCard<Content: View>: View {
 }
 
 /// Sentence-case status label. Replaces the tracked all-caps eyebrow.
-struct AuditEyebrow: View {
+struct RydarEyebrow: View {
     var text: String
     var body: some View {
         Text(text)
@@ -93,32 +94,6 @@ struct SurfaceBadge: View {
         case .conflictKeptUnpaved: return "Kept unpaved"
         case .confirmed: return "County file and camera"
         }
-    }
-}
-
-struct CurveMap: View {
-    var curves: [Curve]
-    var center: MapPoint
-    var body: some View {
-        Map(initialPosition: .region(MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: center.latitude, longitude: center.longitude),
-            span: MKCoordinateSpan(latitudeDelta: 0.012, longitudeDelta: 0.012)))) {
-            ForEach(curves) { curve in
-                MapPolyline(coordinates: curve.coordinates.map {
-                    CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
-                }).stroke(AuditTheme.accent, lineWidth: 6)
-                Annotation(curve.roadName, coordinate: CLLocationCoordinate2D(
-                    latitude: curve.latitude, longitude: curve.longitude)) {
-                    Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
-                        .font(.title2).foregroundStyle(.white, AuditTheme.accent)
-                        .accessibilityLabel("Curve on \(curve.roadName)")
-                }
-            }
-        }
-        .mapStyle(.standard(elevation: .flat))
-        .frame(height: 230)
-        .rydarClipPlate()
-        .accessibilityLabel("Curve map. Details follow below.")
     }
 }
 
@@ -219,6 +194,67 @@ struct RydarGlassGroup<Content: View>: View {
             }
         } else {
             content()
+        }
+    }
+}
+
+/// What the live road label says. It follows the camera whether or not a curve is near.
+func liveRoadLabel(camera: CameraEvidence?) -> String {
+    switch camera?.label {
+    case .paved: return "Paved"
+    case .unpaved: return "Unpaved"
+    case .cantTell, nil: return "Reading road…"
+    }
+}
+
+/// Square live view of the dash camera. It only displays frames; nothing is saved.
+struct CameraPreviewView: UIViewRepresentable {
+    var session: AVCaptureSession
+
+    func makeUIView(context: Context) -> PreviewHost {
+        let host = PreviewHost()
+        host.previewLayer.videoGravity = .resizeAspectFill
+        host.previewLayer.session = session
+        return host
+    }
+
+    func updateUIView(_ host: PreviewHost, context: Context) {
+        if host.previewLayer.session !== session {
+            host.previewLayer.session = session
+        }
+    }
+
+    final class PreviewHost: UIView {
+        override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
+        var previewLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
+    }
+}
+
+/// Camera indicator with a small live thumbnail and the current road surface.
+struct DashCameraCard: View {
+    var status: String
+    var session: AVCaptureSession?
+    var camera: CameraEvidence?
+    var live: Bool
+    var body: some View {
+        HStack(spacing: 14) {
+            if live, let session {
+                CameraPreviewView(session: session)
+                    .frame(width: 84, height: 84)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .accessibilityHidden(true)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Label(status, systemImage: "camera")
+                    .font(.subheadline.weight(.semibold))
+                    .symbolRenderingMode(.monochrome)
+                if live {
+                    Label(liveRoadLabel(camera: camera), systemImage: "road.lanes")
+                        .font(.title3.weight(.bold))
+                        .accessibilityIdentifier("liveRoadSurface")
+                }
+            }
+            Spacer(minLength: 0)
         }
     }
 }

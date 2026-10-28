@@ -53,7 +53,7 @@ struct DebriefScreen: View {
                         .font(.largeTitle.bold())
                     Text("\(trip.debrief.overRangePasses.count) curves above the range")
                         .font(.headline)
-                        .foregroundStyle(AuditTheme.accentText)
+                        .foregroundStyle(RydarTheme.accentText)
                 }
                 .padding(.vertical, 4)
             }
@@ -74,7 +74,7 @@ struct DebriefScreen: View {
                         Spacer()
                         Text("+\(pass.gapAboveLowEnd, specifier: "%.1f") mph")
                             .font(.headline.monospacedDigit())
-                            .foregroundStyle(AuditTheme.warningText)
+                            .foregroundStyle(RydarTheme.warningText)
                     }
                     Text("Approach \(pass.effectiveMPH, specifier: "%.0f") mph")
                         .font(.subheadline)

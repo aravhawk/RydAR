@@ -7,7 +7,6 @@ struct AnonymousPassBody: Equatable, Encodable {
     var speed_band_mph: Int
     var hour_bucket: Int
     var app_version: String
-    var lat_accel_band: Int? = nil
 }
 
 enum AnonymousPass {
@@ -66,10 +65,10 @@ final class PassUpload: PassSending {
         return URL(string: trimmed)
     }
 
+    /// Empty when the bundle has no version. `AnonymousPass.body` then returns nil and nothing is sent.
     static var appVersion: String {
         let raw = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-        let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return trimmed.isEmpty ? "0.1.0" : trimmed
+        return raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
 
     var isConfigured: Bool { endpoint != nil }

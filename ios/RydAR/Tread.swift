@@ -22,7 +22,6 @@ enum TreadChoice: String, CaseIterable, Identifiable {
 
     /// Wear bars are the replacement point. 4/32 is the wet-grip caution.
     var replaceBeforeDriving: Bool { self == .bars }
-    var lowersRange: Bool { self == .low || self == .bars }
 }
 
 enum TreadStore {

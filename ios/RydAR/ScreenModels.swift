@@ -1,3 +1,4 @@
+import AVFoundation
 import SwiftUI
 
 enum PromptStyle: String, CaseIterable, Identifiable {
@@ -5,23 +6,6 @@ enum PromptStyle: String, CaseIterable, Identifiable {
     case short = "Short"
     case normal = "Normal"
     var id: String { rawValue }
-}
-
-enum PreviewRoad: String, CaseIterable, Identifiable {
-    case oldWire = "N Old Wire Rd"
-    case brightwater = "Brightwater Xing"
-    case canyon = "Canyon Village Rd"
-    case grove = "Grove Dr"
-    var id: String { rawValue }
-    var county: String { self == .grove ? "Washington" : "Benton" }
-    var center: MapPoint {
-        switch self {
-        case .oldWire: return MapPoint(longitude: -94.117058, latitude: 36.275376)
-        case .brightwater: return MapPoint(longitude: -94.034242, latitude: 36.369652)
-        case .canyon: return MapPoint(longitude: -93.984527, latitude: 36.320428)
-        case .grove: return MapPoint(longitude: -94.019884, latitude: 36.223624)
-        }
-    }
 }
 
 struct DriveScreenSnapshot {
@@ -44,6 +28,10 @@ struct DriveScreenSnapshot {
     var advisoryNotice: String?
     /// Whether the engine is warning about the current curve or a grouped stretch.
     var advisoryWarning: Bool? = nil
+    /// True while the phone camera is open and frames are being read. A paused trip is not live.
+    var cameraRunning = false
+    /// Nil when the trip has no planned route.
+    var routeState: RouteState? = nil
 }
 
 struct TripCurvePass: Identifiable {
@@ -85,9 +73,13 @@ struct TimingContextSummary: Identifiable {
     /// What the Review screen actually prints. Radius band is not part of it,
     /// so two paved daytime bands would otherwise be two identical cards.
     var reviewAdviceID: String {
-        let when = isNightHour(hour) ? "night" : "day"
-        return "\(message)|\(surface.rawValue)|\(when)"
+        reviewAdviceKey(message: message, surface: surface, night: isNightHour(hour))
     }
+}
+
+/// The one place the Review dedup key is built, so a card and the contexts it merges always agree.
+func reviewAdviceKey(message: String, surface: RoadSurface, night: Bool) -> String {
+    "\(message)|\(surface.rawValue)|\(night ? "night" : "day")"
 }
 
 /// One Review card. Contexts that would print the same sentence are combined.
@@ -96,10 +88,7 @@ struct EarlierPromptCard: Identifiable, Equatable {
     var surface: RoadSurface
     var night: Bool
     var curveCount: Int
-    var id: String {
-        let when = night ? "night" : "day"
-        return "\(message)|\(surface.rawValue)|\(when)"
-    }
+    var id: String { reviewAdviceKey(message: message, surface: surface, night: night) }
     var caption: String {
         let when = night ? "night" : "day"
         let base = "\(surface.rawValue.capitalized) · \(when)"
@@ -130,17 +119,18 @@ struct TripScreenDebrief {
         for context in late {
             groups[context.reviewAdviceID, default: []].append(context)
         }
+        var curvesByContext: [String: Set<String>] = [:]
+        for pass in passes {
+            let passKey = approachContextKey(
+                surface: pass.surfaceUsed,
+                radiusFeet: pass.curve.radiusFeet,
+                hour: pass.hourBucket
+            )
+            curvesByContext[passKey, default: []].insert(pass.curve.id)
+        }
         return groups.keys.sorted().compactMap { key in
             guard let group = groups[key], let sample = group.first else { return nil }
-            let contextIDs = Set(group.map(\.id))
-            let curveIDs = Set(passes.compactMap { pass -> String? in
-                let passKey = approachContextKey(
-                    surface: pass.surfaceUsed,
-                    radiusFeet: pass.curve.radiusFeet,
-                    hour: pass.hourBucket
-                )
-                return contextIDs.contains(passKey) ? pass.curve.id : nil
-            })
+            let curveIDs = group.reduce(into: Set<String>()) { $0.formUnion(curvesByContext[$1.id] ?? []) }
             return EarlierPromptCard(
                 message: sample.message,
                 surface: sample.surface,
@@ -151,15 +141,19 @@ struct TripScreenDebrief {
     }
 }
 
-/// UI boundary for Mac A. The engine publishes snapshots and this trip's saved rows;
+/// UI boundary. The engine publishes snapshots and this trip's saved rows;
 /// actions forward to it. No matching, location loop, recording, speech, or upload lives here.
-/// Connect all actions before presenting a production session. Default is an explicit UI demo.
+/// `LiveTripSession` connects every action before the first screen appears.
 @MainActor
 final class TripScreenBridge: ObservableObject {
     @Published var drive = DriveScreenSnapshot()
     @Published var debrief = TripScreenDebrief()
     @Published var uploadConfigured = false
     @Published var timingNote = ""
+    /// The live camera for the drive screen thumbnail. Nil whenever the camera is not running.
+    @Published var cameraPreview: AVCaptureSession?
+    /// Planned drive. The trip reads it when it starts; a planned route is optional.
+    @Published var route: DriveRoute?
     @Published private(set) var driverMode: DriverMode?
 
     var onStart: ((DriverMode, PromptStyle, Bool) -> Void)?

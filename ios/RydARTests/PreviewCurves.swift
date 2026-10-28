@@ -1,8 +1,7 @@
 import Foundation
 import CoreLocation
 
-/// Five copied database rows for UI development. Never records passes or emits prompts.
-/// Replace by injecting Mac A's SQLiteCurveStore into ContentView(store:trip:).
+/// Five rows copied from the bundled database, for tests that need a small known set of curves.
 struct PreviewCurves: CurveStore {
     func curves(nearLatitude latitude: Double, longitude: Double, radiusMeters: Double) -> [Curve] {
         let center = CLLocation(latitude: latitude, longitude: longitude)

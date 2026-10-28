@@ -1,9 +1,0 @@
-comparison,A,A_n,A_pct,A_wilson95,B,B_n,B_pct,B_wilson95,chi2_p_value
-"AR-3 vs US, all crashes",AR-3,243/689,35.3,31.8-38.9,US,82979/358460,23.1,23.0-23.3,4.97e-14
-"AR-3 vs Arkansas statewide, all crashes",AR-3,243/689,35.3,31.8-38.9,AR,1760/5324,33.1,31.8-34.3,0.247
-AR-3 RURAL vs US RURAL,AR-3 rural,164/339,48.4,43.1-53.7,US rural,47693/152547,31.3,31.0-31.5,1.14e-11
-AR-3 URBAN vs US URBAN,AR-3 urban,79/350,22.6,18.5-27.2,US urban,34979/204387,17.1,17.0-17.3,0.00677
-AR-3 RURAL vs Arkansas RURAL,AR-3 rural,164/339,48.4,43.1-53.7,AR rural,1310/3359,39.0,37.4-40.7,0.000776
-Carroll+Madison vs Benton+Washington+Crawford,Carroll+Madison,69/126,54.8,46.1-63.2,Other 3 AR-3,174/563,30.9,27.2-34.8,4.06e-07
-Carroll vs US,Carroll,42/74,56.8,45.4-67.4,US,82979/358460,23.1,23.0-23.3,7.23e-12
-Madison vs US,Madison,27/52,51.9,38.7-64.9,US,82979/358460,23.1,23.0-23.3,8.71e-07
