@@ -75,8 +75,6 @@ final class PassLogTests: XCTestCase {
         let memory = try log.memory(for: nightKey)
         XCTAssertEqual(memory.latePasses, 1)
         XCTAssertEqual(memory.earlyPasses, 1)
-        XCTAssertEqual(try log.passesUnderRange(curveID: "b"), 1)
-        XCTAssertEqual(try log.passesUnderRange(curveID: "a"), 0)
 
         let stored = try log.passes(forTrip: tripID)
         XCTAssertEqual(stored.map(\.pass.curveID), ["a", "b"])
@@ -201,16 +199,6 @@ final class PassLogTests: XCTestCase {
         )
         let reopened = try PassLog(databaseURL: url)
         XCTAssertEqual(try reopened.trip(id: "old-trip")?.driverMode, .adult)
-    }
-
-    func testASavedPassengerSettingBecomesDriver() throws {
-        let name = "rydar-passenger-\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
-        defaults.removePersistentDomain(forName: name)
-        defaults.set("passenger", forKey: "rydar.driverMode")
-        DriverMode.migrateStoredSelection(defaults: defaults)
-        XCTAssertEqual(defaults.string(forKey: "rydar.driverMode"), DriverMode.adult.rawValue)
-        defaults.removePersistentDomain(forName: name)
     }
 
     private func sample(

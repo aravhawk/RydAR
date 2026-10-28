@@ -1,4 +1,4 @@
--- CurveAudit curve table. The app recomputes warning speeds.
+-- RydAR curve table, as shipped in ios/RydAR/curves.sqlite. The app recomputes warning speeds.
 -- Do not add screening_mph columns. e and f live in the app, not in this file.
 
 CREATE TABLE curves (
@@ -27,11 +27,11 @@ CREATE TABLE curves (
 CREATE INDEX curves_bbox ON curves (min_lat, max_lat, min_lon, max_lon);
 CREATE INDEX curves_county_class ON curves (county, rd_class);
 
--- Trips stay on the phone. This table is created by the app, not by the importer.
+-- Everything below stays on the phone. The app creates these tables (PassLog.swift), not the importer.
 CREATE TABLE trips (
   id TEXT PRIMARY KEY,
   started_at TEXT NOT NULL,
-  driver_mode TEXT NOT NULL,      -- adult | passenger | under18
+  driver_mode TEXT NOT NULL,      -- adult | under18 (older rows may say passenger; the app reads them as adult)
   notes TEXT
 );
 
@@ -53,10 +53,28 @@ CREATE TABLE trip_passes (
   FOREIGN KEY (trip_id) REFERENCES trips (id)
 );
 
--- On-device timing memory. Counts only. The prior of two late and two early
--- is applied in code, not stored as rows.
+-- On-device timing memory. Counts and summed braking distances only.
+-- The prior of two late and two early passes is applied in code, not stored as rows.
 CREATE TABLE approach_memory (
   context_key TEXT PRIMARY KEY,
   late_passes INTEGER NOT NULL DEFAULT 0,
-  early_passes INTEGER NOT NULL DEFAULT 0
+  early_passes INTEGER NOT NULL DEFAULT 0,
+  onset_count INTEGER NOT NULL DEFAULT 0,
+  onset_sum_m REAL NOT NULL DEFAULT 0
+);
+
+CREATE TABLE curve_memory (
+  curve_id TEXT PRIMARY KEY,
+  late_passes INTEGER NOT NULL DEFAULT 0,
+  early_passes INTEGER NOT NULL DEFAULT 0,
+  onset_count INTEGER NOT NULL DEFAULT 0,
+  onset_sum_m REAL NOT NULL DEFAULT 0
+);
+
+-- The small on-device network that places a warning from where this phone brakes.
+CREATE TABLE onset_net (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  sample_count INTEGER NOT NULL,
+  weights TEXT NOT NULL,
+  bias TEXT NOT NULL
 );

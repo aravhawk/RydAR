@@ -9,7 +9,7 @@ struct DebriefScreen: View {
     /// The Settings switch can stay on while this trip sent nothing.
     private var uploadSentence: String {
         if trip.driverMode == .under18 {
-            return "Not uploaded. Teen driver."
+            return "Nothing uploaded (teen driver)."
         }
         if !uploadOptIn {
             return "Uploads are off."
@@ -18,12 +18,17 @@ struct DebriefScreen: View {
             return "Saved on this iPhone."
         }
         if trip.debrief.passes.isEmpty {
-            return "Nothing to send."
+            return "No curves to share."
         }
         if trip.debrief.passes.contains(where: anonymousPassAccepted) {
-            return "Sent. No name or route."
+            return "Shared anonymously."
         }
         return "Saved on this iPhone."
+    }
+
+    private var overSummary: String {
+        let count = trip.debrief.overRangePasses.count
+        return count == 1 ? "1 curve over the suggested speed" : "\(count) curves over the suggested speed"
     }
 
     /// Same acceptance rule as the uploader: `AnonymousPass.body` returns nil for a rejected pass.
@@ -51,9 +56,9 @@ struct DebriefScreen: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Parked.")
                         .font(.largeTitle.bold())
-                    Text("\(trip.debrief.overRangePasses.count) curves above the range")
+                    Text(overSummary)
                         .font(.headline)
-                        .foregroundStyle(AuditTheme.accentText)
+                        .foregroundStyle(RydarTheme.accentText)
                 }
                 .padding(.vertical, 4)
             }
@@ -62,7 +67,7 @@ struct DebriefScreen: View {
 
             if trip.debrief.overRangePasses.isEmpty {
                 Section {
-                    Label(trip.isConnected ? "None this trip" : "Not recorded", systemImage: "checkmark.circle")
+                    Label(trip.isConnected ? "None this trip" : "Nothing recorded", systemImage: "checkmark.circle")
                         .font(.headline)
                 }
             }
@@ -74,9 +79,9 @@ struct DebriefScreen: View {
                         Spacer()
                         Text("+\(pass.gapAboveLowEnd, specifier: "%.1f") mph")
                             .font(.headline.monospacedDigit())
-                            .foregroundStyle(AuditTheme.warningText)
+                            .foregroundStyle(RydarTheme.warningText)
                     }
-                    Text("Approach \(pass.effectiveMPH, specifier: "%.0f") mph")
+                    Text("You went \(pass.effectiveMPH, specifier: "%.0f") mph")
                         .font(.subheadline)
                     ScreeningRangeLabel(range: pass.range)
                     Text(pass.surfaceUsed.rawValue.capitalized)
@@ -94,7 +99,7 @@ struct DebriefScreen: View {
             }
             ForEach(trip.debrief.earlierPromptCards) { card in
                 Section {
-                    Label("Earlier next time", systemImage: "clock.arrow.circlepath")
+                    Label("Warnings will come earlier", systemImage: "clock.arrow.circlepath")
                         .font(.headline)
                     Text(card.message)
                         .font(.subheadline)
@@ -108,7 +113,7 @@ struct DebriefScreen: View {
                     .font(.subheadline)
                     .accessibilityIdentifier("debriefUpload")
                 if trip.driverMode != .under18 {
-                    Text("Published after 20.")
+                    Text("Shown publicly after 20 passes.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -116,7 +121,7 @@ struct DebriefScreen: View {
                     do {
                         _ = try LocalTripExport.save(trip.debrief)
                         exportMessage = "Saved on this iPhone."
-                    } catch { exportMessage = "Export could not be saved: \(error.localizedDescription)" }
+                    } catch { exportMessage = "Couldn't save a copy: \(error.localizedDescription)" }
                 }
                 .disabled(trip.debrief.passes.isEmpty)
                 .accessibilityIdentifier("exportTrip")

@@ -65,9 +65,19 @@ final class ScreeningTests: XCTestCase {
         XCTAssertTrue(shouldSpeak(effectiveSpeed: range.high + 1, range: range))
     }
 
-    func testEffectiveSpeedSubtractsAccuracyInMetersPerSecond() {
-        let mph = effectiveSpeedMPH(speedMps: 10, accuracyMps: 1)
-        XCTAssertEqual(mph, 9 * 2.23694, accuracy: 0.001)
+    func testEffectiveSpeedSubtractsAtMostHalfAMeterPerSecondOfAccuracy() {
+        XCTAssertEqual(effectiveSpeedMPH(speedMps: 10, accuracyMps: 0.3), 9.7 * 2.23694, accuracy: 0.001)
+        XCTAssertEqual(effectiveSpeedMPH(speedMps: 10, accuracyMps: 1), 9.5 * 2.23694, accuracy: 0.001)
+        XCTAssertEqual(effectiveSpeedMPH(speedMps: 10, accuracyMps: 4), 9.5 * 2.23694, accuracy: 0.001)
+        XCTAssertEqual(effectiveSpeedMPH(speedMps: 0.2, accuracyMps: 4), 0, accuracy: 0.001)
+    }
+
+    func testDistanceReadsInFeetThenMiles() {
+        XCTAssertEqual(distanceText(meters: 0), "0 ft")
+        XCTAssertEqual(distanceText(meters: 76.2), "250 ft")
+        XCTAssertEqual(distanceText(meters: 300), "980 ft")
+        XCTAssertEqual(distanceText(meters: 805), "0.5 mi")
+        XCTAssertEqual(distanceText(meters: -5), "0 ft")
     }
 
     func testBothDriverModesAllowAudio() {
@@ -105,7 +115,8 @@ final class ScreeningTests: XCTestCase {
         XCTAssertEqual(stretchDistancePhrase(meters: 400), "quarter mile")
         let alone = CurveAlerts.stretch(focus: hairpin, ahead: [hairpin])
         XCTAssertEqual(CurveAlerts.spokenLine(stretch: alone), "Slow to 15 mph for the curve ahead.")
-        XCTAssertEqual(advisorySpeedMPH(ScreeningRange(low: 19.7, high: 22.6)), 20)
+        XCTAssertEqual(advisorySpeedMPH(ScreeningRange(low: 19.7, high: 22.6)), 19)
+        XCTAssertEqual(advisorySpeedMPH(ScreeningRange(low: 24.6, high: 27)), 24)
     }
 
     func testCameraCanOnlyLower() {
@@ -175,13 +186,6 @@ final class ScreeningTests: XCTestCase {
         let water = VisionCaution(standingWaterOrSnow: true, severeUnevenOnPaved: false)
         let base = baseLookAheadMeters(speedMps: 15)
         XCTAssertEqual(lookAheadMeters(speedMps: 15, memory: calm, vision: water), base * 1.3, accuracy: 0.001)
-    }
-
-    func testRepeatPromptStaysOffUntilThisPassIsOverRange() {
-        let range = screeningRange(radiusFeet: 200, surface: .paved)
-        XCTAssertTrue(suppressRepeatPrompt(passesUnderRange: 3, effectiveSpeed: range.low, range: range))
-        XCTAssertFalse(suppressRepeatPrompt(passesUnderRange: 3, effectiveSpeed: range.low + 0.1, range: range))
-        XCTAssertFalse(suppressRepeatPrompt(passesUnderRange: 2, effectiveSpeed: range.low, range: range))
     }
 
     func testBrakingOnsetMovesTheWarningByHowLateItWas() {
@@ -416,7 +420,7 @@ final class ScreeningTests: XCTestCase {
         XCTAssertEqual(after.high, before.high, accuracy: 0.0001)
         XCTAssertEqual(before.low, 19.7, accuracy: 0.05)
         XCTAssertEqual(before.high, 22.6, accuracy: 0.05)
-        XCTAssertEqual(spokenWarning, "Slow to 25 mph for the curve ahead.")
+        XCTAssertEqual(spokenWarningExample, "Slow to 25 mph for the curve ahead.")
     }
 
     func testSpokenLineMatchesTheContract() throws {
@@ -430,6 +434,12 @@ final class ScreeningTests: XCTestCase {
         try XCTSkipUnless(FileManager.default.isReadableFile(atPath: url.path), "fixtures/ is outside the test sandbox")
         let data = try Data(contentsOf: url)
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        XCTAssertEqual(json?["spoken_line"] as? String, spokenWarning)
+        // Both fixtures describe the same curve, so they must agree. SimulatorFixtureTests checks
+        // the line itself against the bundled database.
+        let route = url.deletingLastPathComponent().appendingPathComponent("old-wire-approach.expect.json")
+        let routeJSON = try JSONSerialization.jsonObject(with: Data(contentsOf: route)) as? [String: Any]
+        XCTAssertNotNil(json?["spoken_line"] as? String)
+        XCTAssertEqual(json?["spoken_line"] as? String, routeJSON?["spoken_line"] as? String)
+        XCTAssertEqual(json?["curve_id"] as? String, routeJSON?["curve_id"] as? String)
     }
 }

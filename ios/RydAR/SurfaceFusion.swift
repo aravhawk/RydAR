@@ -4,19 +4,11 @@ enum DriverMode: String {
     case adult
     case under18
 
-    /// Trips saved before passenger mode was removed, and any leftover setting.
+    /// Trips saved before passenger mode was removed. The driver is chosen per trip and never stored.
     static func fromStored(_ raw: String) -> DriverMode? {
         if raw == "passenger" || raw == DriverMode.adult.rawValue { return .adult }
         if raw == DriverMode.under18.rawValue { return .under18 }
         return nil
-    }
-
-    /// Rewrites a saved passenger choice to Driver. Safe to call more than once.
-    static func migrateStoredSelection(defaults: UserDefaults = .standard) {
-        let keys = ["rydar.driverMode", "rydar.lastDriverMode"]
-        for key in keys where defaults.string(forKey: key) == "passenger" {
-            defaults.set(DriverMode.adult.rawValue, forKey: key)
-        }
     }
 }
 

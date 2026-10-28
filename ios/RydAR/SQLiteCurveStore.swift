@@ -253,11 +253,15 @@ final class SQLiteCurveStore: CurveStore {
     lat, lon, min_lat, max_lat, min_lon, max_lon, coordinates_json
     """
 
+    /// No curve in the file spans more than 0.0022 degrees of latitude (about 245 m). Bounding
+    /// `min_lat` from below as well lets the index skip every curve far to the south.
+    static let maxCurveLatitudeSpan = 0.0025
+
     /// Bounding-box lookup. Callers pass a radius; this never reads the whole table.
     static let nearbySQL = """
     SELECT \(curveColumns) \
     FROM curves \
-    WHERE min_lat <= ? AND max_lat >= ? AND min_lon <= ? AND max_lon >= ?
+    WHERE min_lat <= ? AND max_lat >= ? AND min_lon <= ? AND max_lon >= ? AND min_lat >= ?
     """
 
     /// One row by primary key. This is not a table scan.
@@ -360,6 +364,7 @@ final class SQLiteCurveStore: CurveStore {
                 self.connection.bind(statement, 2, minLatitude)
                 self.connection.bind(statement, 3, maxLongitude)
                 self.connection.bind(statement, 4, minLongitude)
+                self.connection.bind(statement, 5, minLatitude - Self.maxCurveLatitudeSpan)
             })
             return found.filter {
                 Geo.distanceToCurve(latitude: latitude, longitude: longitude, curve: $0) <= radiusMeters

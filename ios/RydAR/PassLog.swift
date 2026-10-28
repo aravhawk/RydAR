@@ -389,22 +389,6 @@ final class PassLog {
         return onset
     }
 
-    func passesUnderRange(curveID: String) throws -> Int {
-        lock.lock()
-        defer { lock.unlock() }
-        var count = 0
-        try connection.query(
-            "SELECT COUNT(*) FROM trip_passes WHERE curve_id = ? AND v_eff_mph <= v_lo_mph",
-            { statement in
-                count = self.connection.int(statement, 0)
-            },
-            bind: { statement in
-                self.connection.bind(statement, 1, curveID)
-            }
-        )
-        return count
-    }
-
     func passes(forTrip tripID: String) throws -> [StoredPass] {
         lock.lock()
         defer { lock.unlock() }

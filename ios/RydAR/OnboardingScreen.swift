@@ -18,14 +18,6 @@ final class ScreenPermissions: NSObject, ObservableObject, CLLocationManagerDele
         let status = manager.authorizationStatus
         Task { @MainActor in locationStatus = status }
     }
-    var locationDescription: String {
-        switch locationStatus {
-        case .authorizedAlways: return "Location allowed · Always"
-        case .authorizedWhenInUse: return "Location allowed · While Using"
-        case .denied, .restricted: return "Location unavailable · preview still works"
-        default: return "Location While Using · for approaching curves"
-        }
-    }
 }
 
 struct OnboardingScreen: View {
@@ -40,7 +32,7 @@ struct OnboardingScreen: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
                         .font(.system(size: 48))
-                        .foregroundStyle(AuditTheme.accent)
+                        .foregroundStyle(RydarTheme.accent)
                         .accessibilityHidden(true)
                     Text("A heads-up before a tight curve.")
                         .font(.title3)
@@ -54,12 +46,12 @@ struct OnboardingScreen: View {
 
             Section {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Leave it open. Alerts speak with Maps in front.")
+                    Text("Keep RydAR open while you drive. It speaks over Maps and music.")
                         .font(.subheadline)
-                    Text("“\(spokenWarning)”")
+                    Text("For example: “\(spokenWarningExample)”")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    Text("Teen driver: audio warnings only. No screen use, camera, or upload.")
+                    Text("Teen driver mode is audio only: no screen, camera, or uploads.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -72,9 +64,9 @@ struct OnboardingScreen: View {
 
             Section {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Dash is on")
+                    Text("Camera check is on")
                         .font(.headline)
-                    Text("Reads the surface. Paved can only become unpaved. Off for a teen driver.")
+                    Text("Uses the camera to spot gravel on roads listed as paved. Off for teen drivers.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -83,15 +75,15 @@ struct OnboardingScreen: View {
 
             Section {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Anonymous passes are on")
+                    Text("Sharing anonymous curve data")
                         .font(.headline)
-                    Text("Curve, direction, 5 mph band, hour. No name or route.")
+                    Text("Sends the curve, direction, speed (to the nearest 5 mph) and hour. Never your name or route.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    Text("This is how counties learn which curves need fixing. You can turn it off in Settings.")
+                    Text("Counties use it to find curves that need fixing. Turn it off any time in Settings.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    Text("Published after 20. Off for a teen driver.")
+                    Text("A curve is only shown publicly after 20 passes. Off for teen drivers.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -103,15 +95,15 @@ struct OnboardingScreen: View {
                     TreadChoiceButton(choice: choice, selection: $tread)
                 }
                 if tread?.replaceBeforeDriving == true {
-                    Text("At the wear bars. Replace them.")
+                    Text("Your tires are worn out. Replace them.")
                         .font(.subheadline.bold())
                 } else if tread == .low {
-                    Text("Low tread. Ranges sit lower.")
+                    Text("Low tread. Speed advice will be lower.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
             } header: {
-                Text("Tread")
+                Text("Tire tread")
                     .textCase(nil)
             }
         }
@@ -175,7 +167,7 @@ struct TreadChoiceButton: View {
                 if selection == choice {
                     Image(systemName: "checkmark")
                         .font(.body.weight(.semibold))
-                        .foregroundStyle(AuditTheme.accent)
+                        .foregroundStyle(RydarTheme.accent)
                 }
             }
             .contentShape(Rectangle())
@@ -192,7 +184,7 @@ struct TreadCheckScreen: View {
     var body: some View {
         Form {
             Section {
-                Text("About 1,000 miles since the last check.")
+                Text("It's been about 1,000 miles. How do your tires look?")
                     .foregroundStyle(.secondary)
             }
             Section {
@@ -200,7 +192,7 @@ struct TreadCheckScreen: View {
                     TreadChoiceButton(choice: choice, selection: $tread)
                 }
                 if tread?.replaceBeforeDriving == true {
-                    Text("Replace them before this trip.")
+                    Text("Replace them before driving.")
                         .font(.subheadline.bold())
                 }
             }
@@ -248,7 +240,7 @@ struct DriverGateScreen: View {
                                 Spacer(minLength: 8)
                                 Image(systemName: selection == mode ? "checkmark.circle.fill" : "circle")
                                     .font(.title3)
-                                    .foregroundStyle(selection == mode ? AuditTheme.accent : Color.secondary)
+                                    .foregroundStyle(selection == mode ? RydarTheme.accent : Color.secondary)
                                     .accessibilityHidden(true)
                             }
                             .padding(.vertical, 6)
@@ -259,7 +251,7 @@ struct DriverGateScreen: View {
                         .accessibilityAddTraits(selection == mode ? .isSelected : [])
                     }
                 } header: {
-                    Text("Set up while parked")
+                    Text("Choose before you drive")
                         .textCase(nil)
                 } footer: {
                     if #unavailable(iOS 26) {

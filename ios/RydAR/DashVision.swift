@@ -1,3 +1,4 @@
+import AVFoundation
 import CoreGraphics
 import Foundation
 
@@ -331,9 +332,12 @@ protocol DashRunning: AnyObject {
     func noteCurveApproach(_ curveID: String?)
     func noteCurvePassed(_ curveID: String)
     var onChange: ((DashReading) -> Void)? { get set }
+    /// The live capture session while the camera is open. The drive screen shows it in a thumbnail.
+    var previewSession: AVCaptureSession? { get }
 }
 
 extension DashRunning {
+    var previewSession: AVCaptureSession? { nil }
     func noteCurveApproach(_ curveID: String?) {}
     func noteCurvePassed(_ curveID: String) {}
 }

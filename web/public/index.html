@@ -4,17 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RydAR</title>
-  <meta name="description" content="Advisory speeds for Arkansas road bends tighter than 600 feet, computed from the filed radius.">
+  <meta name="description" content="Suggested speeds for the tight curves on Arkansas roads, and a free iPhone app that warns you before them.">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="RydAR">
   <meta property="og:title" content="RydAR">
-  <meta property="og:description" content="Advisory speeds for Arkansas road bends, computed from the filed radius.">
+  <meta property="og:description" content="Suggested speeds for the tight curves on Arkansas roads, and a free iPhone app that warns you before them.">
   <meta property="og:url" content="https://rydar.org/">
   <meta property="og:image" content="https://rydar.org/og-image.png">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="RydAR logo beside a bending road, with the line Advisory speeds for Arkansas road bends.">
+  <meta property="og:image:alt" content="RydAR logo beside a bending road, with the line Suggested speeds for Arkansas road bends.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:image" content="https://rydar.org/og-image.png">
   <script>
@@ -327,7 +327,7 @@
         <label class="check"><input type="checkbox" name="surface" value="paved" checked><span class="swatch paved"></span>Paved</label>
         <label class="check"><input type="checkbox" name="surface" value="unpaved" checked><span class="swatch unpaved"></span>Unpaved</label>
       </fieldset>
-      <p class="small muted">Loops, ramps, and corners under 50 ft are off.</p>
+      <p class="small muted">Loops, ramps and corners under 50 ft are left out.</p>
       <p class="count" id="count" role="status" aria-live="polite">Loading the map</p>
     </section>
 
@@ -812,12 +812,15 @@
       const done = workerWait.get(`${message.kind}:${message.index}`);
       if (!done) return;
       workerWait.delete(`${message.kind}:${message.index}`);
-      done(message);
+      done.resolve(message);
+    };
+    curveWorker.onerror = () => {
+      for (const waiting of workerWait.values()) waiting.reject(new Error("Curve worker failed"));
+      workerWait.clear();
     };
     function askWorker(kind, index, buffer) {
       return new Promise((resolve, reject) => {
-        workerWait.set(`${kind}:${index}`, resolve);
-        curveWorker.onerror = () => reject(new Error("Curve worker failed"));
+        workerWait.set(`${kind}:${index}`, { resolve, reject });
         if (buffer) curveWorker.postMessage({ kind, index, buffer }, [buffer]);
         else curveWorker.postMessage({ kind, index });
       });
@@ -882,7 +885,7 @@
       const low = screeningMPH(radius, -0.02, friction);
       const high = screeningMPH(radius, 0.02, friction);
       return {
-        speed: `Advisory ${low.toFixed(1)}\u2013${high.toFixed(1)} mph`,
+        speed: `Suggested speed ${Math.floor(low)}\u2013${Math.floor(high)} mph`,
       };
     }
 
@@ -901,12 +904,12 @@
       };
       add("h3", p.road || "Unnamed road");
       add("p", `${p.county} County, ${p.surface} road`);
-      add("p", `Radius ${p.radius_ft} ft · ${p.deflection_deg}°`);
+      add("p", `${p.radius_ft} ft radius · ${p.deflection_deg}° turn`);
       const range = screeningRangeText(p.radius_ft, p.surface);
       if (range) add("p", range.speed);
       for (const text of flagList(p.flags)) add("p", text, "muted");
       const s = stats[p.id];
-      if (s) add("p", `${s.n} passes · ${s.hours} hours`, "stats");
+      if (s) add("p", `${s.n} passes · ${s.hours} different hours`, "stats");
       return root;
     }
 

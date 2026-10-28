@@ -2,8 +2,8 @@
 """
 RydAR curve-screening prototype: Benton (FIPS 05007) + Washington (FIPS 05143) counties, Arkansas.
 
-Rerun:  python3 /tmp/rydar_curves/build_curves.py            (uses cached downloads when present)
-        python3 /tmp/rydar_curves/build_curves.py --refetch   (re-download everything)
+Rerun:  python3 tools/build_curves.py                         (uses cached downloads when present)
+        python3 tools/build_curves.py --refetch                (re-download everything)
 
 Inputs (all downloaded by this script):
   * Arkansas GIS Office ROADS_ACF centerlines, MapServer layer 18 (paginated, resultOffset)

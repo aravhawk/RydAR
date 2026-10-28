@@ -3,7 +3,6 @@ import SwiftUI
 @MainActor
 struct ContentView: View {
     private let store: any CurveStore
-    private let isSampleStore: Bool
     @StateObject private var trip: TripScreenBridge
     @AppStorage("rydar.onboardingComplete") private var onboarded = false
     @AppStorage("rydar.appearance") private var appearance = AppearancePreference.system.rawValue
@@ -13,10 +12,9 @@ struct ContentView: View {
     @State private var phase = ScreenPhase.home
     @State private var showDriverGate = false
 
-    init(store: any CurveStore = PreviewCurves(), trip: TripScreenBridge? = nil) {
+    init(store: any CurveStore, trip: TripScreenBridge) {
         self.store = store
-        isSampleStore = store is PreviewCurves
-        _trip = StateObject(wrappedValue: trip ?? TripScreenBridge())
+        _trip = StateObject(wrappedValue: trip)
     }
 
     var body: some View {
@@ -28,7 +26,7 @@ struct ContentView: View {
             } else {
                 switch phase {
                 case .home:
-                    HomeScreen(store: store, isSampleStore: isSampleStore,
+                    HomeScreen(store: store,
                                onStart: { showDriverGate = true }, trip: trip)
                 case .drive:
                     DriveScreen(trip: trip) {
@@ -40,7 +38,7 @@ struct ContentView: View {
                 }
             }
         }
-        .tint(AuditTheme.accent)
+        .tint(RydarTheme.accent)
         .preferredColorScheme(AppearancePreference(rawValue: appearance)?.scheme)
         .sheet(isPresented: $showDriverGate) {
             DriverGateScreen { mode in
@@ -51,11 +49,10 @@ struct ContentView: View {
                     phase = .drive
                 }
             }
-            .tint(AuditTheme.accent)
+            .tint(RydarTheme.accent)
         }
     }
 }
 
 private enum ScreenPhase { case home, drive, debrief }
 
-#Preview { ContentView() }

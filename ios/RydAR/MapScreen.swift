@@ -117,9 +117,8 @@ enum MapFraming {
     }
 }
 
-struct PreviewScreen: View {
+struct MapScreen: View {
     let store: any CurveStore
-    var isSampleStore: Bool
     @StateObject private var locator = NearbyLocator()
     @State private var curves: [Curve] = []
     @State private var counties: [CurveCounty] = []
@@ -230,8 +229,7 @@ struct PreviewScreen: View {
     }
 
     private var statusLine: String {
-        if isSampleStore && counties.isEmpty { return "Sample roads." }
-        if !showPaved && !showUnpaved { return "Turn a surface back on." }
+        if !showPaved && !showUnpaved { return "Turn on paved or unpaved." }
         if wide { return "Zoom in, or search." }
         if curves.isEmpty { return "No curves here." }
         return "\(curves.count) curves"
@@ -649,7 +647,7 @@ private struct CurveDetailSheet: View {
                 Label(curve.surface == .paved ? "Paved road" : "Unpaved road", systemImage: "road.lanes")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                Text("Radius \(curve.radiusFeet, specifier: "%.0f") ft · \(curve.deflectionDegrees, specifier: "%.0f")°")
+                Text("\(curve.radiusFeet, specifier: "%.0f") ft radius · \(curve.deflectionDegrees, specifier: "%.0f")° turn")
                     .font(.subheadline)
                 ScreeningRangeLabel(range: screeningRange(
                     radiusFeet: curve.radiusFeet,

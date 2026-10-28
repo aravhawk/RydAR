@@ -35,7 +35,7 @@ final class TripEngineTests: XCTestCase {
             latitude: baseLat, longitude: baseLon, speedMps: 12, speedAccuracyMps: 1,
             courseDegrees: 90, horizontalAccuracyMeters: 120, timestamp: now
         )
-        XCTAssertEqual(gpsStatusText(for: coarse, now: now), "Location is too coarse")
+        XCTAssertEqual(gpsStatusText(for: coarse, now: now), "Location isn't precise enough")
         XCTAssertFalse(gpsIsGood(coarse, now: now))
         let noCourse = LocationFix(
             latitude: baseLat, longitude: baseLon, speedMps: 12, speedAccuracyMps: 1,
@@ -53,8 +53,6 @@ final class TripEngineTests: XCTestCase {
         XCTAssertEqual(SpeechPrompt.mode, .voicePrompt)
         XCTAssertTrue(SpeechPrompt.options.contains(.duckOthers))
         XCTAssertTrue(SpeechPrompt.options.contains(.interruptSpokenAudioAndMixWithOthers))
-        XCTAssertEqual(SpeechPrompt.line, "Slow to 25 mph for the curve ahead.")
-        XCTAssertEqual(SpeechPrompt.line, spokenWarning)
         XCTAssertEqual(SpeechPrompt.speechRate, AVSpeechUtteranceDefaultSpeechRate * 0.95, accuracy: 0.0001)
         XCTAssertEqual(SpeechVoicePicker.rank(.premium), 3)
         XCTAssertGreaterThan(SpeechVoicePicker.rank(.premium), SpeechVoicePicker.rank(.enhanced))
@@ -293,7 +291,7 @@ final class TripEngineTests: XCTestCase {
         matcher.begin(driverMode: .adult)
         let pair = [
             line(id: "left", north: 80, east: 0),
-            line(id: "right", north: 80, east: 12),
+            line(id: "right", north: 80, east: 12, roadName: "Side St"),
         ]
         var ambiguous = TripUpdate(prompt: nil, spokenLine: nil, gate: driveGate(mode: nil, speedMps: 0, dashEnabled: false, uploadOptIn: false), matchedCurveID: nil, matchConfidence: 0, matchStreak: 0, junctionAmbiguous: false, lookAheadMeters: nil, distanceMeters: nil, surface: nil, surfaceUI: nil, completed: [])
         for index in 0..<3 {
@@ -349,11 +347,11 @@ final class TripEngineTests: XCTestCase {
         XCTAssertNil(reset.prompt)
     }
 
-    func testRepeatUnderRangeStaysQuietAndOverRangeStillSpeaks() {
+    func testUnderTheRangeStaysQuietAndOverTheRangeSpeaks() {
         let moment = date(hour: 14)
-        let quiet = run(mode: .adult, speed: 8, curve: line(id: "known", north: 80), passesUnder: 3, at: moment)
+        let quiet = run(mode: .adult, speed: 8, curve: line(id: "known", north: 80), at: moment)
         XCTAssertNil(quiet.prompt)
-        let still = run(mode: .adult, speed: 12, curve: line(id: "known", north: 80), passesUnder: 3, at: moment)
+        let still = run(mode: .adult, speed: 12, curve: line(id: "known", north: 80), at: moment)
         XCTAssertEqual(still.prompt, .speak)
         XCTAssertEqual(still.spokenLine, advisoryLine())
     }
@@ -448,7 +446,6 @@ final class TripEngineTests: XCTestCase {
         memory: ApproachMemory = ApproachMemory(latePasses: 0, earlyPasses: 0),
         vision: VisionCaution = VisionCaution(standingWaterOrSnow: false, severeUnevenOnPaved: false),
         dash: Bool = false,
-        passesUnder: Int = 0,
         at moment: Date
     ) -> TripUpdate {
         var matcher = TripMatcher()
@@ -460,7 +457,6 @@ final class TripEngineTests: XCTestCase {
                 fix: fix(speed: speed, speedAccuracy: 0, at: moment.addingTimeInterval(Double(index))),
                 nearby: [curve],
                 memoryForContext: { _ in memory },
-                passesUnderRange: { _ in passesUnder },
                 vision: vision,
                 now: moment.addingTimeInterval(Double(index))
             )
@@ -474,6 +470,7 @@ final class TripEngineTests: XCTestCase {
         east: Double = 0,
         length: Double = 40,
         radius: Double = 200,
+        roadName: String = "Test Rd",
         surface: RoadSurface = .paved,
         roadClass: String = "County",
         roadDesign: String = "Single Carriageway",
@@ -491,7 +488,7 @@ final class TripEngineTests: XCTestCase {
         return Curve(
             id: id,
             county: "Benton",
-            roadName: "Test Rd",
+            roadName: roadName,
             surface: surface,
             radiusFeet: radius,
             deflectionDegrees: 45,
@@ -766,6 +763,104 @@ final class TripEngineTests: XCTestCase {
         XCTAssertEqual(second.matchedCurveID, "sharp")
         XCTAssertEqual(second.prompt, .speak)
         XCTAssertEqual(second.spokenLine, sharpLine)
+    }
+
+    func testAGroupedWarningSpeaksWhenOnlyTheTighterBendIsOverItsRange() {
+        let start = date(hour: 14)
+        let first = line(id: "a", north: 80, radius: 200)
+        let tighter = line(id: "b", north: 200, radius: 150)
+        let speed = 18.5 / 2.23694
+        var matcher = TripMatcher()
+        matcher.begin(driverMode: .adult)
+        var last: TripUpdate?
+        for index in 0..<3 {
+            last = matcher.ingest(
+                fix: fix(speed: speed, speedAccuracy: 0, at: start.addingTimeInterval(Double(index))),
+                nearby: [first, tighter]
+            )
+        }
+        XCTAssertEqual(last?.prompt, .speak)
+        XCTAssertTrue(last?.spokenLine?.hasPrefix("Curves ahead") ?? false)
+    }
+
+    private func blank() -> TripUpdate {
+        TripUpdate(prompt: nil, spokenLine: nil, gate: driveGate(mode: .adult, speedMps: 20, dashEnabled: false, uploadOptIn: false), matchedCurveID: nil, matchConfidence: 0, matchStreak: 0, junctionAmbiguous: false, lookAheadMeters: nil, distanceMeters: nil, surface: nil, surfaceUI: nil, completed: [])
+    }
+
+    /// Drives straight north at `speed` from `from` to `to` meters, one fix a second.
+    private func drive(
+        _ matcher: inout TripMatcher,
+        curves: [Curve],
+        from: Double,
+        to: Double,
+        speed: Double,
+        start: Date
+    ) -> [TripUpdate] {
+        var updates: [TripUpdate] = []
+        var north = from
+        var second = 0.0
+        while north <= to {
+            updates.append(matcher.ingest(
+                fix: fix(north: north, speed: speed, speedAccuracy: 0, at: start.addingTimeInterval(second)),
+                nearby: curves
+            ))
+            north += speed
+            second += 1
+        }
+        return updates
+    }
+
+    func testAnSCurveWarnsBeforeTheFirstBendAndNeverInsideTheSecond() {
+        let first = line(id: "a", north: 400, length: 20, radius: 150)
+        let second = line(id: "b", north: 425, length: 60, radius: 150)
+        var matcher = TripMatcher()
+        matcher.begin(driverMode: .adult)
+        let updates = drive(&matcher, curves: [first, second], from: 0, to: 520, speed: 25, start: date(hour: 14))
+        let spoken = updates.enumerated().filter { $0.element.prompt == .speak }
+        XCTAssertEqual(spoken.count, 1, "one grouped warning for the S-curve")
+        let at = Double(spoken.first?.offset ?? 0) * 25
+        XCTAssertLessThan(at, 400 - 25 * 3, "the warning comes at least three seconds before the first bend")
+        XCTAssertTrue(spoken.first?.element.spokenLine?.hasPrefix("Curves ahead") ?? false)
+    }
+
+    func testASharpBendBehindAGentleOneWarnsBeforeTheGentleOneIsPassed() {
+        let gentle = line(id: "gentle", north: 300, length: 40, radius: 1500)
+        let sharp = line(id: "sharp", north: 460, length: 40, radius: 100)
+        var matcher = TripMatcher()
+        matcher.begin(driverMode: .adult)
+        let updates = drive(&matcher, curves: [gentle, sharp], from: 0, to: 440, speed: 20, start: date(hour: 14))
+        let first = updates.enumerated().first { $0.element.prompt == .speak }
+        let car = Double(first?.offset ?? 99) * 20
+        XCTAssertNotNil(first)
+        XCTAssertEqual(first?.element.spokenLine, advisoryLine(radius: 100))
+        XCTAssertLessThanOrEqual(car, 460 - 12 * 20 + 20, "warned within one fix of its own 12 second distance")
+        XCTAssertLessThan(car, 340, "and before the gentle bend ends")
+    }
+
+    func testABendOnAParallelRoadNeitherWarnsNorLogsAPass() {
+        let beside = line(id: "beside", north: 100, east: 60, length: 80, radius: 100, roadName: "Other Rd")
+        var matcher = TripMatcher()
+        matcher.begin(driverMode: .adult)
+        let updates = drive(&matcher, curves: [beside], from: 0, to: 300, speed: 25, start: date(hour: 14))
+        XCTAssertTrue(updates.allSatisfy { $0.prompt == nil })
+        XCTAssertTrue(updates.flatMap(\.completed).isEmpty)
+    }
+
+    func testAWarningThatWouldComeInsideThreeSecondsStaysSilent() {
+        let bend = line(id: "late", north: 60, radius: 100)
+        var matcher = TripMatcher()
+        matcher.begin(driverMode: .adult)
+        // First fix with this bend in view is already 60 m out at 45 mph.
+        let updates = drive(&matcher, curves: [bend], from: 0, to: 100, speed: 20, start: date(hour: 14))
+        XCTAssertTrue(updates.allSatisfy { $0.prompt == nil })
+    }
+
+    func testAPassOnTheCarsOwnRoadIsStillLogged() {
+        let bend = line(id: "own", north: 200, length: 40, radius: 150)
+        var matcher = TripMatcher()
+        matcher.begin(driverMode: .adult)
+        let updates = drive(&matcher, curves: [bend], from: 0, to: 400, speed: 20, start: date(hour: 14))
+        XCTAssertEqual(updates.flatMap(\.completed).map(\.curveID), ["own"])
     }
 }
 

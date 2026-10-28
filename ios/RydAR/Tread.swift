@@ -16,13 +16,12 @@ enum TreadChoice: String, CaseIterable, Identifiable {
         case .half: return "About 6/32"
         case .low: return "About 4/32"
         case .bars: return "2/32 or less"
-        case .unsure: return "Leave the usual range"
+        case .unsure: return "Use standard advice"
         }
     }
 
     /// Wear bars are the replacement point. 4/32 is the wet-grip caution.
     var replaceBeforeDriving: Bool { self == .bars }
-    var lowersRange: Bool { self == .low || self == .bars }
 }
 
 enum TreadStore {

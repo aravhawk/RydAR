@@ -3,11 +3,11 @@
   "road": "N Old Wire Rd",
   "county": "Benton",
   "direction": "forward coordinate order",
-  "spoken_line": "Slow to 25 mph for the curve ahead.",
+  "spoken_line": "Slow to 11 mph for the curve ahead.",
   "driver_mode": "adult",
   "simulator_speed_mps": 10,
   "waypoints": 66,
   "duration_seconds": 50.0,
   "approach": "Synthetic 350 m tangent extension; target curve vertices are exact database coordinates.",
-  "engine_expectation": "When connected: one prompt for this curve/pass, debrief pass; no prompt in under18 mode. Replay must not upload."
+  "engine_expectation": "When connected: one prompt for this curve/pass, debrief pass; a Teen driver hears the same line. The simulator build never uploads."
 }

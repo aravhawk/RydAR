@@ -54,8 +54,12 @@ func screeningRange(radiusFeet: Double, surface: RoadSurface, tread: TreadChoice
     )
 }
 
+/// Reported speed minus a little of its uncertainty, never more than half a meter per second.
+/// Taking all of a large accuracy figure off would hide a real overspeed.
+let speedUncertaintyCapMps = 0.5
+
 func effectiveSpeedMPH(speedMps: Double, accuracyMps: Double) -> Double {
-    max(0, speedMps - accuracyMps) * 2.23694
+    max(0, speedMps - min(max(0, accuracyMps), speedUncertaintyCapMps)) * 2.23694
 }
 
 /// The phone's reported speed. A prompt still uses effectiveSpeedMPH, which drops the uncertain part.
@@ -213,24 +217,26 @@ func lookAheadMeters(
     return min(450, max(base, placed, fromCamera))
 }
 
-/// Stay quiet on a curve this driver has already taken under the range three
-/// times, unless this pass is over the range now.
-func suppressRepeatPrompt(passesUnderRange: Int, effectiveSpeed: Double, range: ScreeningRange) -> Bool {
-    passesUnderRange >= 3 && effectiveSpeed <= range.low
-}
-
-/// The number a prompt says to slow to. The low end of the screening range,
-/// rounded to the nearest mph.
+/// The number a prompt says to slow to. The low end of the screening range, rounded down,
+/// so a driver who is told to slow to N was above N when the warning fired
+/// (`shouldSpeak` compares against the unrounded low end).
 func advisorySpeedMPH(_ range: ScreeningRange) -> Int {
-    max(0, Int(range.low.rounded()))
+    max(0, Int(range.low.rounded(.down)))
 }
 
 func spokenCurveWarning(advisoryMPH: Int) -> String {
     "Slow to \(advisoryMPH) mph for the curve ahead."
 }
 
-/// Example sentence for settings and onboarding. A real prompt fills in the curve's advisory.
-let spokenWarning = spokenCurveWarning(advisoryMPH: 25)
+/// A sentence for settings and onboarding. A real warning uses the curve's own speed.
+let spokenWarningExample = spokenCurveWarning(advisoryMPH: 25)
+
+/// Distance for the drive screen: feet up close, tenths of a mile beyond 1,000 ft.
+func distanceText(meters: Double) -> String {
+    let feet = max(0, meters) * 3.28084
+    if feet < 1000 { return "\(Int((feet / 10).rounded()) * 10) ft" }
+    return String(format: "%.1f mi", max(0, meters) / 1609.344)
+}
 
 struct CurveApproach: Equatable {
     var id: String
@@ -272,7 +278,7 @@ enum CurveAlerts {
         if overAdvisory { return spokenLine(stretch: stretch) }
         let limit = stretch.map(\.advisoryMPH).min() ?? 0
         if stretch.count >= 2 { return "Keep it under \(limit) mph" }
-        return "Advisory \(limit) mph"
+        return "Suggested speed: \(limit) mph"
     }
 }
 

@@ -16,6 +16,18 @@ enum DriveRules {
     /// Inside that hold, moving this far back out means the curve was left behind.
     static let lockLeaveMeters = 15.0
     static let lateSpeedMeters = 40.0
+    /// A warning needs at least this much road, or this many seconds at the current speed,
+    /// whichever is longer. Closer than that it is noise, not a warning.
+    static let minimumWarningMeters = 30.0
+    static let minimumWarningSeconds = 3.0
+    /// A bend counts as moving away once the car is this much farther than its closest approach.
+    static let approachSlackMeters = 10.0
+    /// A pass is only logged, and uploaded, if the car came this close to the curve.
+    static let passRecordMeters = 40.0
+    /// A curve off to the side is on another road when its sideways offset exceeds the larger of
+    /// this and a tenth of the distance.
+    static let lateralFloorMeters = 20.0
+    static let lateralFraction = 0.1
     static let searchRadiusMeters = 450.0
     static let movingSpeedMps = 1.0
     static let gpsAccuracyLimitMeters = 30.0
@@ -278,7 +290,7 @@ func gpsStatusText(for fix: LocationFix, now: Date) -> String {
         return "Standing still"
     }
     if fresh, fix.horizontalAccuracyMeters > DriveRules.gpsAccuracyLimitMeters, fix.horizontalAccuracyMeters.isFinite {
-        return "Location is too coarse"
+        return "Location isn't precise enough"
     }
     return "Waiting for location"
 }
@@ -326,6 +338,8 @@ struct TripMatcher {
     private var streak = 0
     private var lastMatchAt: Date?
     private var spokenThisPass: Set<String> = []
+    /// Bends that were due a warning but were too close or already behind. They never speak late.
+    private var silencedThisPass: Set<String> = []
     private var tracks: [String: ApproachTrack] = [:]
     /// The curve the drive screen is counting down. It stays put when a close-range
     /// heading wobble drops the match below the speaking threshold.
@@ -339,6 +353,7 @@ struct TripMatcher {
         streak = 0
         lastMatchAt = nil
         spokenThisPass = []
+        silencedThisPass = []
         tracks = [:]
         lockedID = nil
         lowConfidenceLockFixes = 0
@@ -351,6 +366,7 @@ struct TripMatcher {
         streak = 0
         lastMatchAt = nil
         spokenThisPass = []
+        silencedThisPass = []
         tracks = [:]
         lockedID = nil
         lowConfidenceLockFixes = 0
@@ -362,6 +378,7 @@ struct TripMatcher {
         streak = 0
         lastMatchAt = nil
         spokenThisPass = []
+        silencedThisPass = []
         tracks = [:]
         lockedID = nil
         lowConfidenceLockFixes = 0
@@ -371,7 +388,6 @@ struct TripMatcher {
         fix: LocationFix,
         nearby: [Curve],
         memoryForContext: (String) -> ApproachMemory = { _ in ApproachMemory(latePasses: 0, earlyPasses: 0) },
-        passesUnderRange: (String) -> Int = { _ in 0 },
         curveMemory: (String) -> ApproachMemory = { _ in ApproachMemory(latePasses: 0, earlyPasses: 0) },
         contextOnset: (String) -> OnsetMemory = { _ in .empty },
         curveOnset: (String) -> OnsetMemory = { _ in .empty },
@@ -431,7 +447,9 @@ struct TripMatcher {
             .filter { $0.confidence >= DriveRules.matchConfidenceMinimum }
             .sorted { $0.distance < $1.distance }
         var ambiguous = false
-        if hot.count >= 2, hot[1].distance - hot[0].distance < DriveRules.junctionGapMeters {
+        if hot.count >= 2, hot[1].distance - hot[0].distance < DriveRules.junctionGapMeters,
+           !Self.sameRoad(hot[0].curve, hot[1].curve) {
+            // Two bends that close together on one road are an S-curve, not a junction.
             ambiguous = true
         }
         if let lockedID {
@@ -515,7 +533,10 @@ struct TripMatcher {
             if passed {
                 tracks.removeValue(forKey: item.curve.id)
                 spokenThisPass.remove(item.curve.id)
-                completed.append(makePass(track, at: moment))
+                silencedThisPass.remove(item.curve.id)
+                if track.minDistance <= DriveRules.passRecordMeters {
+                    completed.append(makePass(track, at: moment))
+                }
             } else {
                 tracks[item.curve.id] = track
             }
@@ -523,7 +544,8 @@ struct TripMatcher {
         for identifier in tracks.keys where !seen.contains(identifier) {
             guard let track = tracks.removeValue(forKey: identifier) else { continue }
             spokenThisPass.remove(identifier)
-            if track.entered {
+            silencedThisPass.remove(identifier)
+            if track.entered, track.minDistance <= DriveRules.passRecordMeters {
                 completed.append(makePass(track, at: moment))
             }
         }
@@ -547,54 +569,46 @@ struct TripMatcher {
         var advisoryNotice: String?
         var advisoryWarning: Bool?
         if let focus {
-            // A nearby bend on a different road is not part of this stretch.
-            // Unknown road names remain single-curve warnings.
-            let road = focus.curve.roadName.trimmingCharacters(in: .whitespacesAndNewlines)
-            let approaches = scored.filter {
-                $0.curve.id == focus.curve.id || (
-                    !road.isEmpty
-                        && $0.confidence >= DriveRules.matchConfidenceMinimum
-                        && $0.curve.county == focus.curve.county
-                        && $0.curve.roadName == focus.curve.roadName
-                )
-            }.filter(\.ahead).map {
-                CurveApproach(
-                    id: $0.curve.id,
-                    distanceMeters: $0.distance,
-                    advisoryMPH: advisorySpeedMPH($0.range)
-                )
-            }
-            let focusApproach = CurveApproach(
-                id: focus.curve.id,
-                distanceMeters: focus.distance,
-                advisoryMPH: advisorySpeedMPH(focus.range)
-            )
-            let stretch = CurveAlerts.stretch(focus: focusApproach, ahead: approaches)
-            let tightestID = stretch.min { $0.advisoryMPH < $1.advisoryMPH }?.id ?? focus.curve.id
-            let tightestRange = scored.first { $0.curve.id == tightestID }?.range ?? focus.range
-            let over = shouldSpeak(effectiveSpeed: focus.effective, range: tightestRange)
-            advisoryNotice = CurveAlerts.displayNotice(stretch: stretch, overAdvisory: over)
+            let focusStretch = stretch(around: focus, in: scored)
+            let tightest = tightestRange(of: focusStretch, in: scored) ?? focus.range
+            let over = shouldSpeak(effectiveSpeed: focus.effective, range: tightest)
+            advisoryNotice = CurveAlerts.displayNotice(stretch: focusStretch, overAdvisory: over)
             advisoryWarning = over
-            let quiet = suppressRepeatPrompt(
-                passesUnderRange: passesUnderRange(focus.curve.id),
-                effectiveSpeed: focus.effective,
-                range: focus.range
-            )
-            let firstTime = !spokenThisPass.contains(focus.curve.id)
-            let inWindow = focus.distance <= focus.lookAhead
-            let confident = focus.confidence >= DriveRules.matchConfidenceMinimum
-            let ready = over && !quiet && firstTime && inWindow && streak >= DriveRules.requiredFixes
-                && confident && !ambiguous
+        }
+
+        // Any confident bend ahead may speak once it is inside its own warning distance, not
+        // only the nearest one. A sharp bend behind a gentle one would otherwise wait until
+        // the gentle one is passed. Bends too close to give a useful warning, or already
+        // moving away, stay silent and are not offered again.
+        let minimumWarning = max(DriveRules.minimumWarningMeters, max(0, fix.speedMps) * DriveRules.minimumWarningSeconds)
+        var chosen: (curve: ScoredCurve, stretch: [CurveApproach])?
+        for item in hot where item.ahead && item.distance <= item.lookAhead {
+            let identifier = item.curve.id
+            guard !spokenThisPass.contains(identifier), !silencedThisPass.contains(identifier) else { continue }
+            let around = stretch(around: item, in: scored)
+            let range = tightestRange(of: around, in: scored) ?? item.range
+            guard shouldSpeak(effectiveSpeed: item.effective, range: range) else { continue }
+            let approaching = tracks[identifier].map {
+                item.distance <= $0.minDistance + DriveRules.approachSlackMeters
+            } ?? true
+            if item.distance < minimumWarning || !approaching {
+                silencedThisPass.insert(identifier)
+                continue
+            }
+            chosen = (item, around)
+            break
+        }
+        if let chosen, streak >= DriveRules.requiredFixes, !ambiguous {
             // Audio-only teen trips always speak the advisory, regardless of the adult prompt preference.
             let style = driverMode == .under18 ? PromptStyle.normal : promptStyle
-            if ready && gate.allowsSound && style == .chimeOnly && gate.allowsChime {
+            if gate.allowsSound && style == .chimeOnly && gate.allowsChime {
                 prompt = .chime
-            } else if ready && gate.allowsSound && style != .chimeOnly {
+            } else if gate.allowsSound && style != .chimeOnly {
                 prompt = .speak
-                spokenLine = CurveAlerts.spokenLine(stretch: stretch)
+                spokenLine = CurveAlerts.spokenLine(stretch: chosen.stretch)
             }
             if prompt != nil {
-                for identifier in stretch.map(\.id) {
+                for identifier in chosen.stretch.map(\.id) {
                     spokenThisPass.insert(identifier)
                     if var track = tracks[identifier] {
                         track.spoke = true
@@ -636,6 +650,34 @@ struct TripMatcher {
             return close && !leaving
         }
         return true
+    }
+
+    private static func sameRoad(_ a: Curve, _ b: Curve) -> Bool {
+        let road = a.roadName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !road.isEmpty && a.county == b.county && a.roadName == b.roadName
+    }
+
+    /// Back-to-back bends on one road that a single warning can cover. A nearby bend on a
+    /// different road is not part of this stretch, and unknown road names stay single-curve.
+    private func stretch(around anchor: ScoredCurve, in scored: [ScoredCurve]) -> [CurveApproach] {
+        let approaches = scored.filter {
+            $0.curve.id == anchor.curve.id || (
+                $0.confidence >= DriveRules.matchConfidenceMinimum && Self.sameRoad(anchor.curve, $0.curve)
+            )
+        }.filter(\.ahead).map {
+            CurveApproach(id: $0.curve.id, distanceMeters: $0.distance, advisoryMPH: advisorySpeedMPH($0.range))
+        }
+        let anchorApproach = CurveApproach(
+            id: anchor.curve.id,
+            distanceMeters: anchor.distance,
+            advisoryMPH: advisorySpeedMPH(anchor.range)
+        )
+        return CurveAlerts.stretch(focus: anchorApproach, ahead: approaches)
+    }
+
+    private func tightestRange(of stretch: [CurveApproach], in scored: [ScoredCurve]) -> ScreeningRange? {
+        guard let tightest = stretch.min(by: { $0.advisoryMPH < $1.advisoryMPH }) else { return nil }
+        return scored.first { $0.curve.id == tightest.id }?.range
     }
 
     /// The locked curve keeps earning the speaking streak, including fixes whose
@@ -694,7 +736,12 @@ struct TripMatcher {
                 curve: curve
             )
             let ahead = geometry.headingError <= 90
-            let confidence = ahead ? max(0, cos(geometry.headingError * .pi / 180)) : 0
+            // A curve far off to the side of the line of travel is on another road, even when
+            // it lies in the direction the car is facing.
+            let sideways = geometry.distanceMeters * sin(geometry.headingError * .pi / 180)
+            let onThisRoad = geometry.distanceMeters < DriveRules.onCurveMeters
+                || sideways <= max(DriveRules.lateralFloorMeters, geometry.distanceMeters * DriveRules.lateralFraction)
+            let confidence = ahead && onThisRoad ? max(0, cos(geometry.headingError * .pi / 180)) : 0
             let fused = fuseSurface(fileLabel: curve.surface, camera: cameraUsed, threshold: DriveRules.materialConfidence)
             let range = screeningRange(radiusFeet: curve.radiusFeet, surface: fused.0, tread: tread)
             let effective = effectiveSpeedMPH(speedMps: speed, accuracyMps: max(0, fix.speedAccuracyMps))
@@ -878,6 +925,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         guard startSensors else { return }
         if allowsInDriveSound(driverMode) {
             speech.holdForTrip()
+            if matcher.driverMode == .adult { speech.prepareHaptics() }
             speechHeld = true
         }
         startSensorsIfNeeded()
@@ -935,6 +983,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         guard sensorsWanted else { return }
         if matcher.driverMode.map(allowsInDriveSound) == true {
             speech.holdForTrip()
+            if matcher.driverMode == .adult { speech.prepareHaptics() }
             speechHeld = true
         }
         startSensorsIfNeeded()
@@ -970,9 +1019,6 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
             nearby: nearby,
             memoryForContext: { key in
                 (try? self.passLog.memory(for: key)) ?? ApproachMemory(latePasses: 0, earlyPasses: 0)
-            },
-            passesUnderRange: { identifier in
-                (try? self.passLog.passesUnderRange(curveID: identifier)) ?? 0
             },
             curveMemory: { identifier in
                 (try? self.passLog.curveMemory(for: identifier)) ?? ApproachMemory(latePasses: 0, earlyPasses: 0)
@@ -1072,7 +1118,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         let roads = (try? passLog.curvesWithEarlierPrompt()) ?? 0
         guard roads > 0 else { return "" }
         let noun = roads == 1 ? "road" : "roads"
-        return "Prompts come earlier on \(roads) \(noun) where you brake late."
+        return "Warnings come earlier on \(roads) \(noun) where you tend to brake late."
     }
 
     /// Reads this trip's rows before the caller clears the trip id.

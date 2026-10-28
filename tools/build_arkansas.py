@@ -25,7 +25,7 @@ import numpy as np
 import pandas as pd
 from pyproj import Transformer
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "data" / "curves"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import build_curves as bc  # noqa: E402
 
 OUT = Path("/tmp/rydar_ar")
