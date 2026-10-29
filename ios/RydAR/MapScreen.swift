@@ -180,7 +180,7 @@ struct MapScreen: View {
             }
         }
         .safeAreaInset(edge: .top, spacing: 8) {
-            PreviewMapControls(
+            MapSearchControls(
                 store: store,
                 counties: counties,
                 countyName: $countyName,
@@ -261,8 +261,8 @@ struct MapScreen: View {
                 .overlay {
                     Circle().strokeBorder(.white, lineWidth: chosen ? 2.5 : 1.5)
                 }
-                .padding(8)
-                .contentShape(Rectangle())
+                .frame(width: 44, height: 44)
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Curve on \(curve.roadName)")
@@ -273,7 +273,7 @@ struct MapScreen: View {
     }
 
     private func lineColor(_ curve: Curve) -> Color {
-        curve.surface == .paved ? .teal : Color(red: 0.77, green: 0.48, blue: 0.17)
+        curve.surface == .paved ? RydarTheme.accent : RydarTheme.unpaved
     }
 
     private func loadCatalog() async {
@@ -436,7 +436,7 @@ struct MapScreen: View {
         span: MKCoordinateSpan(latitudeDelta: 4.2, longitudeDelta: 4.2))
 }
 
-private struct PreviewMapControls: View {
+private struct MapSearchControls: View {
     let store: any CurveStore
     let counties: [CurveCounty]
     @Binding var countyName: String
@@ -466,10 +466,10 @@ private struct PreviewMapControls: View {
                 }
                 countyMenu
                 HStack(spacing: 8) {
-                    surfaceButton("Paved", on: showPaved, color: .teal) {
+                    surfaceButton("Paved", on: showPaved, color: RydarTheme.accent) {
                         showPaved.toggle()
                     }
-                    surfaceButton("Unpaved", on: showUnpaved, color: Color(red: 0.77, green: 0.48, blue: 0.17)) {
+                    surfaceButton("Unpaved", on: showUnpaved, color: RydarTheme.unpaved) {
                         showUnpaved.toggle()
                     }
                 }

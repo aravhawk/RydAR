@@ -4,6 +4,8 @@ import MapKit
 
 enum RydarTheme {
     static let accent = Color.teal
+    /// Unpaved roads on the map and in its filter. Paved uses the accent.
+    static let unpaved = Color(red: 0.77, green: 0.48, blue: 0.17)
     /// Text on a light background. System teal and orange are under 3:1 there.
     static let accentText = Color(uiColor: UIColor { traits in
         traits.userInterfaceStyle == .dark
@@ -173,34 +175,40 @@ extension View {
         }
     }
 
+    /// Pins a primary action to the bottom edge. On iOS 26 the bar gets the soft scroll-edge
+    /// treatment, so content fades out under the glass button instead of running behind it.
     @ViewBuilder
-    func rydarGroupedPlate() -> some View {
+    func rydarBottomBar<Bar: View>(@ViewBuilder _ bar: () -> Bar) -> some View {
+        let padded = bar()
+            .padding(.horizontal, 20)
+            .padding(.bottom, 4)
         if #available(iOS 26, *) {
-            self.background(
-                Color(uiColor: .secondarySystemGroupedBackground),
-                in: ConcentricRectangle())
+            self.safeAreaBar(edge: .bottom, spacing: 12) { padded }
         } else {
-            self.background(
-                Color(uiColor: .secondarySystemGroupedBackground),
-                in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            self.safeAreaInset(edge: .bottom, spacing: 12) { padded }
         }
     }
 
+    /// A partial-height sheet keeps the system glass on iOS 26. Earlier systems get the grouped
+    /// background, since a plain sheet there is a flat white or black slab.
     @ViewBuilder
-    func rydarClipPlate() -> some View {
+    func rydarSheetSurface() -> some View {
         if #available(iOS 26, *) {
-            self.clipShape(ConcentricRectangle())
-        } else {
-            self.clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        }
-    }
-
-    @ViewBuilder
-    func rydarNavigationSubtitle(_ subtitle: String) -> some View {
-        if #available(iOS 26, *) {
-            self.navigationSubtitle(subtitle)
-        } else {
             self
+        } else {
+            self.background(RydarTheme.background.ignoresSafeArea())
+                .presentationBackground(RydarTheme.background)
+        }
+    }
+
+    /// Rows that sit inside a sheet. Quiet fill over glass, grouped fill over the old slab.
+    @ViewBuilder
+    func rydarSheetRows(radius: CGFloat = 26) -> some View {
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        if #available(iOS 26, *) {
+            self.background(.quaternary, in: shape)
+        } else {
+            self.background(Color(uiColor: .secondarySystemGroupedBackground), in: shape)
         }
     }
 }

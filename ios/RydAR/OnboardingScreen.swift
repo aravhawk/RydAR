@@ -25,13 +25,14 @@ struct OnboardingScreen: View {
     @StateObject private var permissions = ScreenPermissions()
     @State private var tread: TreadChoice?
     @Environment(\.openURL) private var openURL
+    @ScaledMetric(relativeTo: .largeTitle) private var iconSize: CGFloat = 48
 
     var body: some View {
         Form {
             Section {
                 VStack(alignment: .leading, spacing: 12) {
                     Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
-                        .font(.system(size: 48))
+                        .font(.system(size: iconSize))
                         .foregroundStyle(RydarTheme.accent)
                         .accessibilityHidden(true)
                     Text("A heads-up before a tight curve.")
@@ -45,14 +46,10 @@ struct OnboardingScreen: View {
             .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
 
             Section {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Keep RydAR open while you drive. It vibrates twice, then speaks over Maps and music.")
-                        .font(.subheadline)
-                    Text("For example: “\(spokenWarningExample)”")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 4)
+                OnboardingRow(symbol: "speaker.wave.2.fill",
+                              title: "Spoken warnings",
+                              detail: "Keep RydAR open while you drive. It vibrates twice, then speaks over Maps and music.",
+                              footnote: "For example: “\(spokenWarningExample)”")
             }
 
             Section {
@@ -60,25 +57,15 @@ struct OnboardingScreen: View {
             }
 
             Section {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Camera check is on")
-                        .font(.headline)
-                    Text("Mount the phone with the camera facing the road, or turn it off in Settings. It spots gravel on roads listed as paved.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 4)
+                OnboardingRow(symbol: "camera.fill",
+                              title: "Camera check is on",
+                              detail: "Mount the phone with the camera facing the road, or turn it off in Settings. It spots gravel on roads listed as paved.")
             }
 
             Section {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Sharing anonymous curve data")
-                        .font(.headline)
-                    Text("Sends the curve, direction, speed, and hour. Never your name or route. Turn it off in Settings.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 4)
+                OnboardingRow(symbol: "lock.shield.fill",
+                              title: "Sharing anonymous curve data",
+                              detail: "Sends the curve, direction, speed, and hour. Never your name or route. Turn it off in Settings.")
             }
 
             Section {
@@ -101,7 +88,7 @@ struct OnboardingScreen: View {
         .contentMargins(.bottom, 12, for: .scrollContent)
         .navigationTitle("RydAR")
         .navigationBarTitleDisplayMode(.large)
-        .safeAreaInset(edge: .bottom, spacing: 12) {
+        .rydarBottomBar {
             Button {
                 if let tread { TreadStore.save(tread) }
                 DashPreference.isOn = true
@@ -113,8 +100,6 @@ struct OnboardingScreen: View {
             }
             .rydarProminentAction()
             .disabled(tread == nil)
-            .padding(.horizontal, 20)
-            .padding(.bottom, 4)
             .accessibilityIdentifier("finishOnboarding")
         }
     }
@@ -122,19 +107,59 @@ struct OnboardingScreen: View {
     @ViewBuilder
     private var locationRow: some View {
         if permissions.locationStatus == .notDetermined {
-            Button("Allow location") {
+            Button {
                 permissions.requestLocation()
+            } label: {
+                Label("Allow location", systemImage: "location")
+                    .font(.body.weight(.semibold))
             }
             .accessibilityIdentifier("allowLocation")
         } else if permissions.locationStatus == .denied || permissions.locationStatus == .restricted {
-            Button("Turn on location in Settings") {
+            Button {
                 if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+            } label: {
+                Label("Turn on location in Settings", systemImage: "location.slash")
+                    .font(.body.weight(.semibold))
             }
         } else {
             Label("Location is on", systemImage: "location.fill")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
+    }
+}
+
+/// One onboarding fact: an accent symbol beside a title and its explanation.
+private struct OnboardingRow: View {
+    var symbol: String
+    var title: String
+    var detail: String
+    var footnote: String? = nil
+    @ScaledMetric(relativeTo: .headline) private var symbolWidth: CGFloat = 32
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: symbol)
+                .font(.title3)
+                .foregroundStyle(RydarTheme.accent)
+                .frame(width: symbolWidth)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.headline)
+                Text(detail)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                if let footnote {
+                    Text(footnote)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 2)
+                }
+            }
+        }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -166,6 +191,7 @@ struct TreadChoiceButton: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("tread-\(choice.rawValue)")
+        .accessibilityAddTraits(selection == choice ? .isSelected : [])
     }
 }
 
@@ -192,7 +218,7 @@ struct TreadCheckScreen: View {
         .contentMargins(.bottom, 12, for: .scrollContent)
         .navigationTitle("Check the tires")
         .navigationBarTitleDisplayMode(.large)
-        .safeAreaInset(edge: .bottom, spacing: 12) {
+        .rydarBottomBar {
             Button {
                 if let tread { TreadStore.save(tread) }
                 onContinue()
@@ -202,8 +228,6 @@ struct TreadCheckScreen: View {
             }
             .rydarProminentAction()
             .disabled(tread == nil)
-            .padding(.horizontal, 20)
-            .padding(.bottom, 4)
         }
     }
 }
@@ -235,10 +259,7 @@ struct DriverGateScreen: View {
                     }
                 }
             }
-            .background(
-                Color(uiColor: .secondarySystemGroupedBackground),
-                in: RoundedRectangle(cornerRadius: 26, style: .continuous)
-            )
+            .rydarSheetRows()
 
             Button {
                 if let selection { onStart(selection) }
@@ -262,10 +283,9 @@ struct DriverGateScreen: View {
         )
         .onPreferenceChange(SheetHeightKey.self) { contentHeight = $0 }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(RydarTheme.background.ignoresSafeArea())
+        .rydarSheetSurface()
         .presentationDetents([.height(contentHeight + bottomInset)])
         .presentationDragIndicator(.visible)
-        .presentationBackground(RydarTheme.background)
     }
 
     /// The detent height includes the home-indicator area, which the content does not use.

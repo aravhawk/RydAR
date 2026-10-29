@@ -66,6 +66,7 @@ struct HomeScreen: View {
             .padding(.top, 8)
             .padding(.bottom, 24)
         }
+        .scrollBounceBehavior(.basedOnSize)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {

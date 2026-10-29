@@ -109,14 +109,12 @@ struct DebriefScreen: View {
         .navigationTitle("Review")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden()
-        .safeAreaInset(edge: .bottom, spacing: 12) {
+        .rydarBottomBar {
             Button(action: onDone) {
                 Text("Done")
                     .frame(maxWidth: .infinity)
             }
             .rydarProminentAction()
-            .padding(.horizontal, 20)
-            .padding(.bottom, 4)
             .accessibilityIdentifier("debriefDone")
         }
     }

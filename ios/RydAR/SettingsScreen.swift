@@ -11,6 +11,13 @@ struct SettingsScreen: View {
     @State private var prompt: SettingsPrompt?
     @State private var showPrompt = false
 
+    private static var versionText: String {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? ""
+        let build = info?["CFBundleVersion"] as? String ?? ""
+        return build.isEmpty ? version : "\(version) (\(build))"
+    }
+
     private func ask(_ next: SettingsPrompt) {
         prompt = next
         showPrompt = true
@@ -53,6 +60,7 @@ struct SettingsScreen: View {
                         Text(choice.rawValue).tag(choice.rawValue)
                     }
                 }
+                .pickerStyle(.segmented)
                 .accessibilityIdentifier("appearance")
             } header: {
                 Text("Appearance")
@@ -113,7 +121,15 @@ struct SettingsScreen: View {
                 Text("On this iPhone")
                     .textCase(nil)
             } footer: {
-                Text("Reset all settings keeps your trips. Reset all data deletes trips and history and starts RydAR over. Road data stays. Roads: Arkansas GIS Office.")
+                Text("Reset all settings keeps your trips. Reset all data deletes trips and history and starts RydAR over. Road data stays.")
+            }
+
+            Section {
+                LabeledContent("Version", value: Self.versionText)
+                LabeledContent("Road data", value: "Arkansas GIS Office")
+            } header: {
+                Text("About")
+                    .textCase(nil)
             }
         }
         .navigationTitle("Settings")

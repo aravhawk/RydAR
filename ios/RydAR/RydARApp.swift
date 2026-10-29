@@ -36,22 +36,17 @@ private struct StartupFailureView: View {
     var detail: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 44))
-                .foregroundStyle(RydarTheme.warningText)
-            Text("RydAR can't open its curve data.")
-                .font(.title.bold())
-            Text("Quit and reopen the app. If it keeps happening, reinstall it. Nothing is being recorded and no warnings will play.")
-                .foregroundStyle(.secondary)
-            if !detail.isEmpty {
-                Text(detail)
-                    .font(.footnote.monospaced())
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
+        ContentUnavailableView {
+            Label("RydAR can't open its curve data.", systemImage: "exclamationmark.triangle")
+        } description: {
+            VStack(spacing: 12) {
+                Text("Quit and reopen the app. If it keeps happening, reinstall it. Nothing is being recorded and no warnings will play.")
+                if !detail.isEmpty {
+                    Text(detail)
+                        .font(.footnote.monospaced())
+                        .textSelection(.enabled)
+                }
             }
         }
-        .padding(24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 }

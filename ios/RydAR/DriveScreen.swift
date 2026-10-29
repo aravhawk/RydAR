@@ -4,6 +4,7 @@ struct DriveScreen: View {
     @ObservedObject var trip: TripScreenBridge
     var onFinish: () -> Void
     @ScaledMetric(relativeTo: .largeTitle) private var distanceSize: CGFloat = 64
+    @ScaledMetric(relativeTo: .largeTitle) private var iconSize: CGFloat = 52
     private var soundAllowed: Bool { trip.driverMode.map(allowsInDriveSound) ?? false }
     private var audioOnly: Bool { trip.driverMode == .under18 }
     private var showsMap: Bool { soundAllowed && !audioOnly && !trip.drive.isPaused }
@@ -34,7 +35,7 @@ struct DriveScreen: View {
             }
             if audioOnly || !soundAllowed {
                 Image(systemName: "moon.zzz.fill")
-                    .font(.system(size: 52))
+                    .font(.system(size: iconSize))
                     .foregroundStyle(RydarTheme.accent)
                 Text("Put the phone away.")
                     .font(.largeTitle.bold())
@@ -148,6 +149,8 @@ struct DriveScreen: View {
         .padding(.horizontal, 20)
         .padding(.top, 8)
         .padding(.bottom, 16)
+        // A glanceable, non-scrolling screen. Past this size the Pause button would leave the screen.
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         .navigationBarBackButtonHidden()
         .toolbar(.hidden, for: .navigationBar)
     }
