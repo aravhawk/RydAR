@@ -69,6 +69,22 @@ enum LiveTripDebrief {
     }
 }
 
+/// How long the drive screen keeps the last real fix.
+/// Core Location often goes quiet for several seconds while a phone is still.
+/// This does not delay a new fix: speed, curve matching, and the coordinate
+/// still change the moment one arrives.
+enum DriveDisplayHold {
+    static let graceSeconds: TimeInterval = 15
+
+    static func canShow(_ gpsStatus: String) -> Bool {
+        gpsStatus == "GPS ready" || gpsStatus == "Standing still"
+    }
+
+    static func signalIsMissing(lastFix: Date, now: Date) -> Bool {
+        now.timeIntervalSince(lastFix) > graceSeconds
+    }
+}
+
 /// Holds the engine and the screen bridge for the life of the app.
 /// Connecting it does not query every curve and does not load the vision model.
 final class LiveTripSession {
@@ -84,10 +100,11 @@ final class LiveTripSession {
     /// Passes wait here until the trip ends, so uploads carry no timing that traces the drive.
     private var pendingUploads: [AnonymousPassBody] = []
     private var lastHandledAt: Date?
+    private var lastGoodDisplayAt: Date?
+    private var showingFix = false
+    private var announcedSignalLoss = false
     private var gpsWatchdog: Timer?
     private let places: RiderPlaceLookup
-    /// No fix for this long means location stopped, not that the road went quiet.
-    static let gpsSilenceSeconds: TimeInterval = 4
 
     init(
         engine: TripEngine,
@@ -165,7 +182,11 @@ final class LiveTripSession {
         }
         engine.onHandled = { [weak self] update, curve in
             guard let self else { return }
+            self.announcedSignalLoss = false
             self.lastHandledAt = Date()
+            if DriveDisplayHold.canShow(update.gpsStatus) {
+                self.lastGoodDisplayAt = Date()
+            }
             if update.gate.allowsUpload {
                 let version = PassUpload.appVersion
                 for pass in update.completed {
@@ -236,6 +257,9 @@ final class LiveTripSession {
     private func startGPSWatchdog() {
         gpsWatchdog?.invalidate()
         lastHandledAt = nil
+        lastGoodDisplayAt = nil
+        showingFix = false
+        announcedSignalLoss = false
         gpsWatchdog = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             self?.checkGPSSilence()
         }
@@ -245,13 +269,21 @@ final class LiveTripSession {
         gpsWatchdog?.invalidate()
         gpsWatchdog = nil
         lastHandledAt = nil
+        lastGoodDisplayAt = nil
+        showingFix = false
+        announcedSignalLoss = false
     }
 
-    /// If fixes stop arriving, the last curve and distance are stale. Say so instead of freezing on them.
+    /// Fixes often pause for several seconds while the phone is still. The screen keeps the last
+    /// real position through that gap. Speed, curve matching, and the coordinate still update
+    /// only when a new fix arrives.
     private func checkGPSSilence() {
-        guard let last = lastHandledAt, engine.snapshot.tripID != nil, !engine.snapshot.paused,
-              Date().timeIntervalSince(last) > Self.gpsSilenceSeconds else { return }
-        lastHandledAt = nil
+        guard !announcedSignalLoss,
+              let last = lastHandledAt,
+              engine.snapshot.tripID != nil,
+              !engine.snapshot.paused,
+              DriveDisplayHold.signalIsMissing(lastFix: last, now: Date()) else { return }
+        announcedSignalLoss = true
         lastUpdate = nil
         lastCurve = nil
         camera.noteMatchedSurface(nil)
@@ -270,6 +302,7 @@ final class LiveTripSession {
         self.reading = reading
         // The engine needs every frame to keep the evidence fresh. The screen only needs a change.
         engine.updateVision(reading.vision, camera: reading.camera, acceptedAt: reading.acceptedAt ?? Date())
+        guard !announcedSignalLoss else { return }
         guard showsDifferently(previous, reading) else { return }
         if let lastUpdate {
             publishDrive(lastUpdate, curve: lastCurve)
@@ -287,6 +320,9 @@ final class LiveTripSession {
     }
 
     private func publishDrive(_ update: TripUpdate, curve: Curve?) {
+        if !DriveDisplayHold.canShow(update.gpsStatus), holdingLastGoodFix() {
+            return
+        }
         lastUpdate = update
         lastCurve = curve
         camera.noteMatchedSurface(update.gpsGood ? curve?.surface : nil)
@@ -312,6 +348,12 @@ final class LiveTripSession {
             longitude: update.longitude
         ))
         refreshStandingPlace(for: update)
+    }
+
+    /// A coarse or incomplete sample should not replace a fix the driver just saw.
+    private func holdingLastGoodFix() -> Bool {
+        guard showingFix, let lastGoodDisplayAt else { return false }
+        return !DriveDisplayHold.signalIsMissing(lastFix: lastGoodDisplayAt, now: Date())
     }
 
     private func standingPlace(for update: TripUpdate) -> RiderPlace? {
@@ -418,6 +460,7 @@ final class LiveTripSession {
     }
 
     private func assignDrive(_ snapshot: DriveScreenSnapshot) {
+        showingFix = snapshot.latitude != nil
         let showsDetails = engine.snapshot.driverMode == .adult
         hop {
             self.bridge.drive = snapshot

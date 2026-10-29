@@ -15,11 +15,15 @@ struct HomeScreen: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Parked.")
                         .font(.largeTitle.bold())
-                    if !dashEnabled {
-                        Text("Camera check is off.")
-                            .font(.title3)
-                            .foregroundStyle(.secondary)
-                    }
+                    Text(dashEnabled ? "Camera check is on." : "Camera check is off.")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("cameraStatus")
+                    Text(dashEnabled
+                         ? "Mount the phone with the camera facing the road, or turn it off."
+                         : "Turn it on only with the phone mounted and the camera facing the road.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                     if !trip.timingNote.isEmpty {
                         Text(trip.timingNote)
                             .font(.subheadline)
@@ -64,20 +68,10 @@ struct HomeScreen: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                HStack(spacing: 8) {
-                    Image("Logo")
-                        .resizable()
-                        .interpolation(.high)
-                        .frame(width: 30, height: 30)
-                        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-                        .accessibilityHidden(true)
-                    Text("RydAR")
-                        .font(.title3.weight(.semibold))
-                }
-                .accessibilityElement(children: .combine)
-                .accessibilityAddTraits(.isHeader)
-                .accessibilityLabel("RydAR")
+            ToolbarItem(placement: .principal) {
+                Text("RydAR")
+                    .font(.body.weight(.semibold))
+                    .accessibilityAddTraits(.isHeader)
             }
             ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink { SettingsScreen(trip: trip) } label: {

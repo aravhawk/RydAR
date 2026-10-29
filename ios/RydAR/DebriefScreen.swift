@@ -53,14 +53,10 @@ struct DebriefScreen: View {
     var body: some View {
         List {
             Section {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Parked.")
-                        .font(.largeTitle.bold())
-                    Text(headerDetail)
-                        .font(.headline)
-                        .foregroundStyle(RydarTheme.accentText)
-                }
-                .padding(.vertical, 4)
+                Text(headerDetail)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(RydarTheme.accentText)
+                    .padding(.vertical, 4)
             }
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)

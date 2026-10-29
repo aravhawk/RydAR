@@ -101,7 +101,7 @@ struct SettingsScreen: View {
                 Text("Trips")
                     .textCase(nil)
             } footer: {
-                Text("Camera check spots gravel on roads listed as paved.")
+                Text("Mount the phone with the camera facing the road, or turn this off. It spots gravel on roads listed as paved.")
             }
 
             Section {

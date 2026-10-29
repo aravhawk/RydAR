@@ -118,6 +118,17 @@ final class LiveTripTests: XCTestCase {
         XCTAssertGreaterThan(harness.bridge.drive.measuredSpeedMPH ?? 0, 10)
     }
 
+    func testAShortLocationGapDoesNotCountAsALostSignal() {
+        let now = date(hour: 14)
+        XCTAssertTrue(DriveDisplayHold.canShow("GPS ready"))
+        XCTAssertTrue(DriveDisplayHold.canShow("Standing still"))
+        XCTAssertFalse(DriveDisplayHold.canShow("Waiting for location"))
+        XCTAssertFalse(DriveDisplayHold.canShow("No GPS signal. Warnings paused."))
+        XCTAssertFalse(DriveDisplayHold.signalIsMissing(lastFix: now, now: now.addingTimeInterval(4)))
+        XCTAssertFalse(DriveDisplayHold.signalIsMissing(lastFix: now, now: now.addingTimeInterval(10)))
+        XCTAssertTrue(DriveDisplayHold.signalIsMissing(lastFix: now, now: now.addingTimeInterval(16)))
+    }
+
     func testALiveWarningSpeaks() throws {
         let harness = try makeHarness()
         let start = date(hour: 14)

@@ -63,7 +63,7 @@ struct OnboardingScreen: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Camera check is on")
                         .font(.headline)
-                    Text("Spots gravel on roads listed as paved.")
+                    Text("Mount the phone with the camera facing the road, or turn it off in Settings. It spots gravel on roads listed as paved.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -211,51 +211,70 @@ struct TreadCheckScreen: View {
 struct DriverGateScreen: View {
     var onStart: (DriverMode) -> Void
     @State private var selection: DriverMode?
-    @Environment(\.dismiss) private var dismiss
+    /// The sheet is exactly as tall as its content. iPhone sheets size by detent, so the
+    /// content's own height is measured and used as the detent.
+    @State private var contentHeight: CGFloat = 360
 
     private let choices: [DriverMode] = [.adult, .under18]
 
     var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 20) {
-                VStack(spacing: 0) {
-                    ForEach(Array(choices.enumerated()), id: \.element.rawValue) { index, mode in
-                        choiceRow(mode)
-                        if index < choices.count - 1 {
-                            Divider().padding(.leading, 16)
-                        }
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Who's driving?")
+                    .font(.title2.bold())
+                Text("This trip only.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            VStack(spacing: 0) {
+                ForEach(Array(choices.enumerated()), id: \.element.rawValue) { index, mode in
+                    choiceRow(mode)
+                    if index < choices.count - 1 {
+                        Divider().padding(.horizontal, 16)
                     }
                 }
-                .background(
-                    Color(uiColor: .secondarySystemGroupedBackground),
-                    in: RoundedRectangle(cornerRadius: 26, style: .continuous)
-                )
+            }
+            .background(
+                Color(uiColor: .secondarySystemGroupedBackground),
+                in: RoundedRectangle(cornerRadius: 26, style: .continuous)
+            )
 
-                Button {
-                    if let selection { onStart(selection) }
-                } label: {
-                    Text("Start this trip")
-                        .frame(maxWidth: .infinity)
-                }
-                .rydarProminentAction()
-                .disabled(selection == nil)
-                .accessibilityIdentifier("confirmDriver")
+            Button {
+                if let selection { onStart(selection) }
+            } label: {
+                Text("Start this trip")
+                    .frame(maxWidth: .infinity)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 8)
-            .padding(.bottom, 16)
-            .frame(maxWidth: .infinity, alignment: .top)
-            .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
-            .navigationTitle("Who's driving?")
-            .navigationBarTitleDisplayMode(.large)
-            .rydarNavigationSubtitle("This trip only.")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel", role: .cancel) { dismiss() }
-                }
-            }
+            .rydarProminentAction()
+            .disabled(selection == nil)
+            .accessibilityIdentifier("confirmDriver")
         }
-        .modifier(FittedSheet())
+        .padding(.horizontal, 20)
+        .padding(.top, 28)
+        .padding(.bottom, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .fixedSize(horizontal: false, vertical: true)
+        .background(
+            GeometryReader { proxy in
+                Color.clear.preference(key: SheetHeightKey.self, value: proxy.size.height)
+            }
+        )
+        .onPreferenceChange(SheetHeightKey.self) { contentHeight = $0 }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(RydarTheme.background.ignoresSafeArea())
+        .presentationDetents([.height(contentHeight + bottomInset)])
+        .presentationDragIndicator(.visible)
+        .presentationBackground(RydarTheme.background)
+    }
+
+    /// The detent height includes the home-indicator area, which the content does not use.
+    private var bottomInset: CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first(where: \.isKeyWindow)?
+            .safeAreaInsets.bottom ?? 0
     }
 
     private func choiceRow(_ mode: DriverMode) -> some View {
@@ -275,7 +294,7 @@ struct DriverGateScreen: View {
                 }
                 Spacer(minLength: 12)
                 Image(systemName: chosen ? "checkmark.circle.fill" : "circle")
-                    .font(.title2)
+                    .font(.title3)
                     .foregroundStyle(chosen ? RydarTheme.accent : Color.secondary)
                     .accessibilityHidden(true)
             }
@@ -289,14 +308,9 @@ struct DriverGateScreen: View {
     }
 }
 
-/// Hugs the two choices on iOS 18 and later. Earlier systems use a half sheet
-/// so the start button is not left at the bottom of an empty page.
-private struct FittedSheet: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(iOS 18, *) {
-            content.presentationSizing(.fitted)
-        } else {
-            content.presentationDetents([.medium, .large])
-        }
+private struct SheetHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }
