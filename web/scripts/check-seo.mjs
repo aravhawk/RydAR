@@ -87,7 +87,12 @@ assert(robots.includes(`Sitemap: ${site.origin}/sitemap.xml`));
 assert.doesNotMatch(robots, /^Disallow:\s*\/\s*$/m);
 const config = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
 assert.equal(config.framework, null, 'Use static routing rather than a framework SPA fallback');
-assert.equal(config.cleanUrls, true);
+assert(config.routes.some((route) => route.handle === 'filesystem'));
+assert.deepEqual(config.routes.at(-1), { src: '^/.*$', dest: '/404.html', status: 404 });
+for (const page of pages) {
+  const route = config.routes.find((item) => item.dest === '/$1.html');
+  assert(new RegExp(route.src).test(page.path), `${page.path}: missing extensionless route`);
+}
 assert.equal(config.outputDirectory, 'public');
 assert(!config.rewrites, 'Do not mask missing pages or API endpoints with a homepage rewrite');
 console.log(`SEO checks passed: ${entries.length} crawlable pages, unique metadata, JSON-LD, canonicals, links, anchors, assets, sitemap, and robots.txt.`);

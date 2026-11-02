@@ -21,7 +21,7 @@ npm run check
 npm run check:seo
 ```
 
-`content/pages.mjs` contains the page copy and metadata. `scripts/build-pages.mjs` generates the four information HTML files, the marked metadata block in `public/index.html`, and `public/sitemap.xml`. Generated output is checked in so it is reviewable. Edit the content source, not the generated information pages. The Vercel build runs generation; `cleanUrls` serves the extensionless canonical paths and redirects `.html` variants. `/index` and `/index.html` redirect home. API responses get `X-Robots-Tag: noindex`; API source and endpoints are unchanged.
+`content/pages.mjs` contains the page copy and metadata. `scripts/build-pages.mjs` generates the four information HTML files, the marked metadata block in `public/index.html`, and `public/sitemap.xml`. Generated output is checked in so it is reviewable. Edit the content source, not the generated information pages. The Vercel build runs generation. Explicit static routes serve the extensionless canonical paths and redirect `.html` and trailing-slash variants. A filesystem check preserves static assets and API functions, followed by an explicit HTTP 404 fallback for missing paths. `/index` and `/index.html` redirect home. API responses get `X-Robots-Tag: noindex`; API source and endpoints are unchanged.
 
 After deploying, verify these URLs return 200 and the expected HTML metadata:
 
