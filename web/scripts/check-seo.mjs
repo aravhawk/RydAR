@@ -86,6 +86,7 @@ const robots = await readFile(`${publicDir}robots.txt`, 'utf8');
 assert(robots.includes(`Sitemap: ${site.origin}/sitemap.xml`));
 assert.doesNotMatch(robots, /^Disallow:\s*\/\s*$/m);
 const config = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
+assert.equal(config.framework, null, 'Use static routing rather than a framework SPA fallback');
 assert.equal(config.cleanUrls, true);
 assert.equal(config.outputDirectory, 'public');
 assert(!config.rewrites, 'Do not mask missing pages or API endpoints with a homepage rewrite');
