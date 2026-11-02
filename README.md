@@ -39,7 +39,7 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 
 ## Website
 
-Pushes to `main` deploy the site. The Vercel project root is `web/`. Anonymous passes go to Neon through `DATABASE_URL`. The phone posts to `https://rydar.org/api/pass`. `npm run check` in `web/` type-checks the API.
+Pushes to `main` deploy the site. The Vercel project root is `web/`. Anonymous passes go to Neon through `DATABASE_URL`. The phone posts to `https://rydar.org/api/pass`. `npm run check` in `web/` type-checks the API. `npm run build` generates the static information pages, homepage metadata, and sitemap; `npm run check:seo` checks metadata, structured data, internal links, and sitemap coverage. See [the SEO publishing and indexing guide](docs/SEO.md) for Search Console setup and follow-through.
 
 ## Camera and timing
 
