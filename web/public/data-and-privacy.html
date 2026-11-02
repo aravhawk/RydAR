@@ -37,21 +37,17 @@
   <link rel="stylesheet" href="/information.css">
 </head>
 <body>
-  <a class="skip" href="#content">Skip to content</a>
-  <header class="site-header"><a class="wordmark" href="/" aria-label="RydAR home"><img src="/logo.svg" width="36" height="36" alt="">RydAR</a><nav aria-label="Main navigation"><a href="/">Curve map</a><a href="/arkansas-curve-map">Arkansas curve map</a><a href="/iphone-app">RydAR for iPhone</a><a href="/how-it-works">How RydAR works</a><a href="/data-and-privacy" aria-current="page">Data and privacy</a></nav></header>
-  <main id="content">
-    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">RydAR</a><span aria-hidden="true">/</span><span aria-current="page">Data and privacy</span></nav>
-    <header class="intro">
-      <p class="eyebrow">Data and privacy</p>
-      <h1>Know what your drive shares.</h1>
-      <p class="lede">The iPhone app can check the road surface and optionally share anonymous curve passes. Here is how those features work in the current implementation.</p>
+  <header class="top"><a class="wordmark" href="/" aria-label="RydAR home"><img src="/logo.svg" width="40" height="40" alt="">RydAR</a></header>
+  <main>
+    <header class="hero">
+      <nav class="crumb" aria-label="Breadcrumb"><a href="/">RydAR</a><span aria-hidden="true">/</span><span aria-current="page">Data and privacy</span></nav>
+      <h1>What your drive shares.</h1>
+      <p class="lede">Very little. Here is exactly what.</p>
 
     </header>
-    <article aria-label="Data and privacy"><section aria-labelledby="section-0"><h2 id="section-0">Camera frames stay on the phone</h2><div><p>When the road-surface check runs in Driver mode, the drive screen shows a small live preview and a Paved or Unpaved label. Frames are displayed and processed on the phone; they are not saved or uploaded. Teen driver mode does not use the camera.</p></div></section>
-<section aria-labelledby="section-1"><h2 id="section-1">Anonymous curve sharing is optional</h2><div><p>When uploads are enabled, anonymous curve passes are held until the trip ends, then sent together in random order. They are sent only if uploads are still enabled when the trip ends. Simulator builds do not upload passes.</p><p>A pass includes a curve identifier, travel direction, speed value, hour bucket, and app version. The server stores the day of arrival rather than its exact time. Curve and time information can still be sensitive; turn off sharing if you do not want to contribute passes.</p><p>The public county CSV exports contain aggregated counts per curve and the number of distinct hour buckets, not individual trip records. Read the <a href="https://github.com/aravhawk/RydAR/blob/main/web/server.ts">API implementation</a> for the fields stored and exported.</p></div></section>
-<section aria-labelledby="section-2"><h2 id="section-2">Location and the web map</h2><div><p>Your browser may ask for location access to position the <a href="/">Arkansas curve map</a> near you. You can decline and choose a county manually. RydAR’s map code uses that location locally to position the view; it does not post it to the anonymous-pass API.</p><p>The map loads basemap styles and tiles from <a href="https://openfreemap.org/">OpenFreeMap</a>. Those requests, as well as requests to the RydAR hosting provider, expose ordinary connection information such as an IP address. Apple’s TestFlight and GitHub have their own privacy terms when you follow their links.</p></div></section>
-<section aria-labelledby="section-3"><h2 id="section-3">Questions about the implementation</h2><div><p>RydAR’s <a href="https://github.com/aravhawk/RydAR">source code is public</a>. You can <a href="https://github.com/aravhawk/RydAR/issues">open an issue</a> with a question or bug report. Avoid including personal trip details in a public issue.</p><p>Learn more about <a href="/how-it-works">curve warnings and their limitations</a> or <a href="/iphone-app">the iPhone beta</a>.</p></div></section></article>
+    <div class="tiles" data-count="3"><section class="card tile"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><h2>Camera stays on the phone</h2><p>Frames are checked on the phone. Never saved or uploaded.</p></section><section class="card tile"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4M8 8l4-4 4 4"/><path d="M5 14v6h14v-6"/></svg></span><h2>Anonymous curve data</h2><p>After a trip, curve, direction, speed, and hour are sent together. Turn it off in Settings.</p></section><section class="card tile"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span><h2>Map location is optional</h2><p>Your browser may offer to center the map on you. It stays in your browser.</p></section></div>
+    <p class="note">Map tiles come from OpenFreeMap. Questions? <a href="https://github.com/aravhawk/RydAR/issues">Open an issue</a>.</p>
   </main>
-  <footer><p><strong>RydAR</strong> · Arkansas roads, one curve at a time.</p><nav aria-label="Footer navigation"><a href="/">Curve map</a><a href="/arkansas-curve-map">Arkansas curve map</a><a href="/iphone-app">RydAR for iPhone</a><a href="/how-it-works">How RydAR works</a><a href="/data-and-privacy" aria-current="page">Data and privacy</a></nav><p><a href="https://github.com/aravhawk/RydAR">Source code</a> · <a href="https://github.com/aravhawk/RydAR/issues">Report an issue</a></p></footer>
+  <footer><nav aria-label="Footer"><a href="/">Map</a><a href="/arkansas-curve-map">Arkansas curve map</a><a href="/iphone-app">RydAR for iPhone</a><a href="/how-it-works">How it works</a><a href="https://github.com/aravhawk/RydAR">GitHub</a></nav></footer>
 </body>
 </html>

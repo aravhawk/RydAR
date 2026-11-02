@@ -101,12 +101,9 @@
     }
     :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
-    .site-links { display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 0.84rem; }
-    .site-links a, .about-map a { color: var(--ink); text-underline-offset: 3px; }
-    .about-map p { font-size: 0.88rem; line-height: 1.5; }
-    .about-map h3 { font-size: 0.9rem; margin: 4px 0 0; }
-    .skip { position: absolute; top: -100px; left: 16px; z-index: 5; background: var(--card); color: var(--ink); padding: 12px; }
-    .skip:focus { top: 16px; }
+    .more { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 0 8px 2px; font-size: 0.84rem; }
+    .more a { color: var(--muted); text-underline-offset: 3px; }
+    .more a:hover { color: var(--ink); }
     aside {
       position: absolute;
       z-index: 2;
@@ -161,7 +158,7 @@
       margin-top: 4px;
       padding: 12px 14px;
       border-radius: 14px;
-      background: #1b8aa0;
+      background: #17788c;
       color: #fff;
       text-decoration: none;
     }
@@ -318,7 +315,6 @@
   </style>
 </head>
 <body>
-  <a class="skip" href="#about-rydar">About RydAR and map instructions</a>
   <aside aria-label="Map controls and notes">
     <header class="brand">
       <div class="title-row">
@@ -331,11 +327,6 @@
         <span class="txt"><strong>Get the iPhone app</strong><small>Join the free beta on TestFlight</small></span>
         <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M8 7h9v9"/></svg>
       </a>
-      <nav class="site-links" aria-label="About RydAR">
-        <a href="/arkansas-curve-map">Map guide</a>
-        <a href="/iphone-app">iPhone app</a>
-        <a href="/how-it-works">How it works</a>
-      </nav>
     </header>
 
     <section aria-labelledby="where-h">
@@ -364,23 +355,13 @@
       <ul class="results" id="results"></ul>
     </section>
 
-    <section class="about-map" id="about-rydar" aria-labelledby="about-heading" tabindex="-1">
-      <h2 id="about-heading">About RydAR</h2>
-      <p>RydAR is a free Arkansas curve map and an iPhone app for spoken curve warnings. Explore tight bends on county roads across all 75 Arkansas counties, on paved and unpaved surfaces.</p>
-      <h3>Find a curve before your trip</h3>
-      <p>Choose a county, search a road name, and click a curve to see its radius and suggested speed range. The <a href="/arkansas-curve-map">map guide</a> explains the controls and coverage.</p>
-      <h3>Get a heads-up on your iPhone</h3>
-      <p>The <a href="/iphone-app">RydAR iPhone app</a> uses a bundled curve database to warn before confidently matched bends ahead. Try the free TestFlight beta, with Driver and Teen driver modes.</p>
-      <h3>Understand the suggested speed</h3>
-      <p>Speeds are computed from mapped geometry and assumptions about banking and friction. They are separate from posted speed limits and official advisory signs. Data can miss curves; conditions can require a lower speed. <a href="/how-it-works">See the calculation and limitations</a>.</p>
-      <p>Plan while parked. The map needs JavaScript; the guides and app information are available without it.</p>
-      <noscript><p>JavaScript is off. Use the <a href="/arkansas-curve-map">map guide</a> or <a href="/iphone-app">learn about the iPhone app</a>.</p></noscript>
-      <nav class="site-links" aria-label="Project information">
-        <a href="/data-and-privacy">Data and privacy</a>
-        <a href="https://github.com/aravhawk/RydAR">Source code</a>
-        <a href="https://github.com/aravhawk/RydAR/issues">Report an issue</a>
-      </nav>
-    </section>
+    <nav class="more" aria-label="More about RydAR">
+      <a href="/arkansas-curve-map">Map guide</a>
+      <a href="/iphone-app">iPhone app</a>
+      <a href="/how-it-works">How it works</a>
+      <a href="/data-and-privacy">Privacy</a>
+    </nav>
+    <noscript><p class="small muted note">The map needs JavaScript.</p></noscript>
   </aside>
 
   <main id="map" aria-label="Map of Arkansas curves">

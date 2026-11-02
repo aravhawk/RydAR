@@ -37,21 +37,17 @@
   <link rel="stylesheet" href="/information.css">
 </head>
 <body>
-  <a class="skip" href="#content">Skip to content</a>
-  <header class="site-header"><a class="wordmark" href="/" aria-label="RydAR home"><img src="/logo.svg" width="36" height="36" alt="">RydAR</a><nav aria-label="Main navigation"><a href="/">Curve map</a><a href="/arkansas-curve-map" aria-current="page">Arkansas curve map</a><a href="/iphone-app">RydAR for iPhone</a><a href="/how-it-works">How RydAR works</a><a href="/data-and-privacy">Data and privacy</a></nav></header>
-  <main id="content">
-    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">RydAR</a><span aria-hidden="true">/</span><span aria-current="page">Arkansas curve map</span></nav>
-    <header class="intro">
-      <p class="eyebrow">Arkansas curve map</p>
+  <header class="top"><a class="wordmark" href="/" aria-label="RydAR home"><img src="/logo.svg" width="40" height="40" alt="">RydAR</a></header>
+  <main>
+    <header class="hero">
+      <nav class="crumb" aria-label="Breadcrumb"><a href="/">RydAR</a><span aria-hidden="true">/</span><span aria-current="page">Arkansas curve map</span></nav>
       <h1>Find the bends before you go.</h1>
-      <p class="lede">Explore tight curves on county roads across Arkansas’s 75 counties. RydAR’s free public map shows where bends are, the road surface, and a computed suggested speed range.</p>
-      <a class="action" href="/">Open the curve map <span aria-hidden="true">↗</span></a>
+      <p class="lede">A free map of curves on Arkansas county roads, with a suggested speed for each.</p>
+      <a class="action" href="/">Open the map<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></a>
     </header>
-    <article aria-label="Arkansas curve map"><section aria-labelledby="section-0"><h2 id="section-0">How to find curves on an Arkansas road</h2><div><ol><li><strong>Choose a county.</strong> Click a county on the map or use the County menu. You can also leave it set to All of Arkansas.</li><li><strong>Choose a surface.</strong> Keep both Paved and Unpaved selected, or narrow the map to one.</li><li><strong>Find a road.</strong> Type a road name in Find a road, then choose a result.</li><li><strong>Inspect a bend.</strong> Click a curve to see its county, surface, radius, turn angle, and suggested speed range.</li></ol><p>You can browse the map without an account or the iPhone app. The interactive map requires JavaScript; these instructions do not.</p></div></section>
-<section aria-labelledby="section-1"><h2 id="section-1">What the map covers</h2><div><p>The public map contains curves on county-class roads from the Arkansas GIS Office road inventory. It covers all 75 Arkansas counties, including Benton, Washington, Carroll, Newton, Pulaski, and Garland. It is a county-road curve explorer, not an inventory of every bend on every highway.</p><p>Paved and unpaved classifications come from the road data. The map leaves out flagged loops, ramps, connectors, and corners with a radius under 50 feet. A missing curve does not mean a road is straight or safe at a particular speed.</p></div></section>
-<section aria-labelledby="section-2"><h2 id="section-2">What a suggested curve speed means</h2><div><p>RydAR estimates a range from the curve radius and assumptions about road banking and friction. The range is separate from a posted speed limit or an official advisory sign. Weather, visibility, road condition, tires, and the vehicle can require a lower speed.</p><p>Read <a href="/how-it-works">how RydAR calculates curve speeds</a> for the formula, data source, and limitations. Plan your route while parked.</p></div></section>
-<section aria-labelledby="section-3"><h2 id="section-3">Want warnings on your iPhone?</h2><div><p>The web map is for exploring roads. The <a href="/iphone-app">RydAR iPhone app</a> uses a bundled curve database to give spoken warnings before confidently matched bends ahead. The app is available as a free TestFlight beta.</p></div></section></article>
+    <ol class="card steps"><li><div><h2>Pick a county</h2><p>Or stay on all of Arkansas.</p></div></li><li><div><h2>Choose paved or unpaved</h2><p>Show one surface or both.</p></div></li><li><div><h2>Search a road</h2><p>Type a name and pick a result.</p></div></li><li><div><h2>Tap a curve</h2><p>See its radius, turn angle, and suggested speed.</p></div></li></ol>
+    <div class="tiles" data-count="2"><section class="card tile"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span><h2>All 75 counties</h2><p>County roads, paved and unpaved.</p></section><section class="card tile"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17a8 8 0 1 1 16 0"/><path d="m12 17 4-5"/></svg></span><h2>Suggested, not posted</h2><p>A computed range. See <a href="/how-it-works">how it works</a>.</p></section></div>
   </main>
-  <footer><p><strong>RydAR</strong> · Arkansas roads, one curve at a time.</p><nav aria-label="Footer navigation"><a href="/">Curve map</a><a href="/arkansas-curve-map" aria-current="page">Arkansas curve map</a><a href="/iphone-app">RydAR for iPhone</a><a href="/how-it-works">How RydAR works</a><a href="/data-and-privacy">Data and privacy</a></nav><p><a href="https://github.com/aravhawk/RydAR">Source code</a> · <a href="https://github.com/aravhawk/RydAR/issues">Report an issue</a></p></footer>
+  <footer><nav aria-label="Footer"><a href="/">Map</a><a href="/iphone-app">RydAR for iPhone</a><a href="/how-it-works">How it works</a><a href="/data-and-privacy">Data and privacy</a><a href="https://github.com/aravhawk/RydAR">GitHub</a></nav></footer>
 </body>
 </html>
