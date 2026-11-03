@@ -10,7 +10,9 @@ While the camera check is running, the drive screen shows a small live thumbnail
 
 A warning only plays when there is road left for it: closer than three seconds of travel (and at least 30 m), or once the car is already moving away from the bend, it stays silent. Any confident bend ahead can warn once it is inside its own warning distance, so a sharp bend behind a gentle one is not left until the gentle one is passed. A bend far to the side of the line of travel is treated as another road: it does not warn and its pass is not logged. If GPS fixes stop for more than four seconds the drive screen says so instead of freezing on the last curve.
 
-Anonymous passes are held until the trip ends, then sent together in random order, and only if uploads are still on. The simulator build never uploads. The server keeps the day, not the time.
+Anonymous passes are held until the trip ends, then sent together in random order, and only if uploads are still on. Each install makes one App Attest key, which Apple attests once through `/api/attest`; every trip's batch is then signed on the phone with an assertion (no Apple call, so no attestation rate limit). The key id lives in the Keychain (this device only, not backed up) and is replaced after Reset all data, after sharing is turned off, or when iOS invalidates it. The server keeps a hash of the key id, its public key, a replay counter, and a last-seen day, never linked to passes, and deletes records unused for 180 days. A batch that cannot be sent waits on the phone (not backed up) and is retried on the next trip or launch; it is dropped after five tries or 14 days, and at once if sharing is turned off. The simulator build never uploads. The server keeps the day, not the time.
+
+Trips need location, Precise Location, and a fix in Arkansas (2 km margin at the state line, checked on the phone against `ios/RydAR/ArkansasCounties.json`). Elsewhere Home says "RydAR covers Arkansas roads. More states are coming soon." and the map still works. A trip that leaves the state keeps running and shows "Outside Arkansas · No curve data".
 
 ## Layout
 
@@ -29,6 +31,8 @@ Anonymous passes are held until the trip ends, then sent together in random orde
 open ios/RydAR.xcodeproj
 ```
 
+Location is When In Use only. A trip always starts in the foreground, so its updates keep running behind Maps with the location indicator showing; the app never asks for Always. Onboarding asks whether to share anonymous curve data and whether to use the camera check before any trip, and resetting settings never turns either back on. `PrivacyInfo.xcprivacy` declares the shared curve (precise location), pass details (other usage data), and the App Attest key (device ID, app functionality only), none linked to the rider or used for tracking; the App Store privacy label must say the same.
+
 Builds need `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`. The team is `XLR6H6DKHH`. Install onto an unlocked phone. The curve database and the model ship inside the app. Launch reads neither the full curve table nor the model. The camera check loads the model. A drive queries a bounding box and the road ahead.
 
 ```bash
@@ -39,7 +43,7 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 
 ## Website
 
-Pushes to `main` deploy the site. The Vercel project root is `web/`. Anonymous passes go to Neon through `DATABASE_URL`. The phone posts to `https://rydar.org/api/pass`. `npm run check` in `web/` type-checks the API. `npm run build` generates the static information pages, homepage metadata, and sitemap; `npm run check:seo` checks metadata, structured data, internal links, and sitemap coverage.
+Pushes to `main` deploy the site. The Vercel project root is `web/`. Anonymous passes go to Neon through `DATABASE_URL`. The phone gets a challenge from `https://rydar.org/api/challenge`, registers its key once at `https://rydar.org/api/attest`, then posts one assertion-signed batch per trip to `https://rydar.org/api/pass` (shapes in `Contracts/pass.json`). Uploads need `PASS_CHALLENGE_SECRET` (32+ random characters) in Vercel; without it the challenge, attest, and pass endpoints answer 503 and nothing is stored. `APP_ATTEST_APP_ID` defaults to `XLR6H6DKHH.org.rydar.app`; `APP_ATTEST_ALLOW_DEVELOPMENT=1` also accepts development-environment keys (the app ships the production entitlement, so this is normally off). `npm run check` in `web/` type-checks the API and `npm test` runs its tests, including a real recorded attestation and assertion. `npm run build` generates the static information pages, homepage metadata, and sitemap; `npm run check:seo` checks metadata, structured data, internal links, and sitemap coverage.
 
 ## Camera and timing
 

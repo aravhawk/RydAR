@@ -106,6 +106,12 @@ const block = (item) => {
   if (item.type === 'formula') {
     return `<section class="card formula"><p class="equation" aria-label="V equals the square root of 15 times R times e plus f">${item.formula}</p><ul>${item.terms.map((term) => `<li>${term}</li>`).join('')}</ul><p>${item.text}</p></section>`;
   }
+  if (item.type === 'policy') {
+    const part = (entry) => typeof entry === 'string'
+      ? `<p>${entry}</p>`
+      : `<ul>${entry.list.map((line) => `<li>${line}</li>`).join('')}</ul>`;
+    return `<article class="card policy">${item.sections.map(([title, entries]) => `<section><h2>${title}</h2>${entries.map(part).join('')}</section>`).join('')}<p class="updated">Last updated ${item.updated}.</p></article>`;
+  }
   return `<p class="note">${item.text}</p>`;
 };
 

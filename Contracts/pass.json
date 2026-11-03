@@ -1,7 +1,36 @@
 {
-  "curve_id": "007-2-3",
-  "direction": "N",
-  "speed_band_mph": 44.7,
-  "hour_bucket": 14,
-  "app_version": "0.1.0"
+  "about": "Uploads use one App Attest key per install. Every request first does GET /api/challenge for a `challenge` that is good for 10 minutes. Payloads and keys are base64.",
+  "register_once": {
+    "endpoint": "POST /api/attest",
+    "signs": "attestKey clientDataHash = SHA-256(\"rydar-attest-v1\\n\" + challenge)",
+    "body": {
+      "key_id": "<base64 key id from DCAppAttestService.generateKey>",
+      "attestation": "<base64 attestation object from attestKey>",
+      "challenge": "v1.1793620800.<nonce>.<hmac>"
+    },
+    "replies": "200 registered; 400 or 401 discard this key and make a new one; 503 try later with the same key"
+  },
+  "each_trip": {
+    "endpoint": "POST /api/pass",
+    "signs": "generateAssertion clientDataHash = SHA-256(\"rydar-pass-v1\\n\" + challenge + \"\\n\" + payload bytes)",
+    "body": {
+      "key_id": "<base64 key id>",
+      "assertion": "<base64 assertion from generateAssertion>",
+      "challenge": "v1.1793620800.<nonce>.<hmac>",
+      "payload": "<base64 of the exact JSON bytes of payload_decoded>"
+    },
+    "limits": "1 to 2000 passes, body at most 512 KB",
+    "replies": "200 stored; 400 or 413 never retry; 403 key unknown, register a new key; 401, 409, 503 retry later"
+  },
+  "payload_decoded": {
+    "passes": [
+      {
+        "app_version": "1.0.0",
+        "curve_id": "007-2-3",
+        "direction": "N",
+        "hour_bucket": 14,
+        "speed_band_mph": 44.7
+      }
+    ]
+  }
 }

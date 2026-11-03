@@ -1,0 +1,11 @@
+{
+  "assertionBase64": "omlzaWduYXR1cmVYRjBEAiBJ6BT/QR689UKy84YyN3RDydYD9KVQ2BTRK+x1i8ezqAIgGM7BsZbSuF6TjmK6xtOFekyVyjf8akGvp5qFRGm9LTxxYXV0aGVudGljYXRvckRhdGFYJUVlEup+JpR2q5Pht5cWhVkv9z+JSsDsL9VICKCL+2yPQAAAAAE=",
+  "bundleIdentifier": "de.vincent-haupert.apple-appattest-poc",
+  "challengeBase64": "d3VyemVs",
+  "clientDataBase64": "d3VyemVscGZyb3Bm",
+  "counter": "1",
+  "environment": "development",
+  "keyIdBase64": "YmbJO4x5nEHUvncp9zdWuVZjNBEMgJn3cdSToAXQe3M=",
+  "teamIdentifier": "6MURL8TA57",
+  "timestamp": "2021-01-23T12:13:36.016Z"
+}

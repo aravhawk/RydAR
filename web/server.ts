@@ -1,7 +1,7 @@
 import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
 import { Hono } from "hono";
-
-declare const process: { env: Record<string, string | undefined> };
+import { AttestationError, sha256, verifyAssertion, verifyAttestation } from "./appattest.js";
+import { checkChallenge, issueChallenge } from "./challenge.js";
 
 type Sql = NeonQueryFunction<false, false>;
 
@@ -29,7 +29,7 @@ const DIRECTIONS = new Set(["N", "NE", "E", "SE", "S", "SW", "W", "NW"]);
 
 const CURVE_ID = /^(\d{3})-\d{1,7}-\d{1,7}$/;
 
-interface PassBody {
+export interface PassBody {
   curve_id: string;
   direction: string;
   speed_band_mph: number;
@@ -93,6 +93,17 @@ function ensureSchema(sql: Sql): Promise<void> {
         )
       `);
       await sql.query(`CREATE INDEX IF NOT EXISTS passes_curve ON passes (curve_id)`);
+      // One row per registered App Attest key (one per app install). Holds a hash of the key id,
+      // its public key, the last assertion counter, and the last day it was used. Passes never
+      // reference it. Rows unused for KEY_IDLE_DAYS are deleted; that phone then registers again.
+      await sql.query(`
+        CREATE TABLE IF NOT EXISTS app_keys (
+          key_hash TEXT PRIMARY KEY,
+          public_key TEXT NOT NULL,
+          counter BIGINT NOT NULL DEFAULT 0,
+          seen_on DATE NOT NULL DEFAULT current_date
+        )
+      `);
       await sql.query(
         `ALTER TABLE passes ALTER COLUMN speed_band_mph TYPE DOUBLE PRECISION USING speed_band_mph::double precision`,
       );
@@ -106,31 +117,225 @@ function ensureSchema(sql: Sql): Promise<void> {
 
 app.get("/api/health", (c) => c.json({ ok: true }));
 
-app.post("/api/pass", async (c) => {
-  const client = database();
-  if (!client) return c.json({ error: "database unavailable" }, 503);
-  let body: unknown;
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ error: "invalid json" }, 400);
-  }
-  if (!isPass(body)) return c.json({ error: "missing fields" }, 400);
-  await ensureSchema(client);
-  await client.query(
-    // The day is enough for the rolling export. A full timestamp plus the order of arrival
-    // could be used to follow one phone along a drive.
-    `INSERT INTO passes (curve_id, direction, speed_band_mph, hour_bucket, app_version, created_at)
-     VALUES ($1, $2, $3, $4, $5, date_trunc('day', now()))`,
-    [
-      body.curve_id,
-      body.direction,
-      body.speed_band_mph,
-      body.hour_bucket,
-      body.app_version,
-    ],
+/** Real trips stay far below these. They only stop abuse. */
+export const MAX_BODY_BYTES = 512 * 1024;
+export const MAX_PASSES_PER_BATCH = 2_000;
+export const KEY_IDLE_DAYS = 180;
+const PASS_PREFIX = "rydar-pass-v1\n";
+const ATTEST_PREFIX = "rydar-attest-v1\n";
+const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
+
+function challengeSecret(): string | null {
+  const secret = process.env.PASS_CHALLENGE_SECRET ?? "";
+  return secret.length >= 32 ? secret : null;
+}
+
+function appId(): string {
+  return process.env.APP_ATTEST_APP_ID ?? "XLR6H6DKHH.org.rydar.app";
+}
+
+function isBase64(value: unknown, maxLength: number): value is string {
+  return typeof value === "string" && value.length > 0 && value.length <= maxLength && BASE64.test(value);
+}
+
+function isKeyId(value: unknown): value is string {
+  return isBase64(value, 44) && Buffer.from(value, "base64").length === 32;
+}
+
+function isChallengeShaped(value: unknown): value is string {
+  return typeof value === "string" && value.length <= 128;
+}
+
+interface Registration {
+  key_id: string;
+  attestation: string;
+  challenge: string;
+}
+
+export function isRegistration(value: unknown): value is Registration {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const row = value as Record<string, unknown>;
+  return isKeyId(row.key_id) && isBase64(row.attestation, 64 * 1024) && isChallengeShaped(row.challenge);
+}
+
+interface SignedBatch {
+  key_id: string;
+  assertion: string;
+  challenge: string;
+  payload: string;
+}
+
+export function isSignedBatch(value: unknown): value is SignedBatch {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const row = value as Record<string, unknown>;
+  return (
+    isKeyId(row.key_id) &&
+    isBase64(row.assertion, 4 * 1024) &&
+    isChallengeShaped(row.challenge) &&
+    isBase64(row.payload, MAX_BODY_BYTES)
   );
-  return c.json({ stored: true });
+}
+
+/** The batch the app signed: `{"passes":[...]}` with 1 to MAX_PASSES_PER_BATCH valid passes. */
+export function parsePayload(bytes: Buffer): PassBody[] | null {
+  let value: unknown;
+  try {
+    value = JSON.parse(bytes.toString("utf8"));
+  } catch {
+    return null;
+  }
+  if (typeof value !== "object" || value === null) return null;
+  const passes = (value as Record<string, unknown>).passes;
+  if (!Array.isArray(passes) || passes.length < 1 || passes.length > MAX_PASSES_PER_BATCH) return null;
+  return passes.every(isPass) ? (passes as PassBody[]) : null;
+}
+
+/** What the app signs for a trip: SHA-256 of the prefix, the challenge, a newline, then the payload bytes. */
+export function clientDataHash(challenge: string, payload: Buffer): Buffer {
+  return sha256(Buffer.concat([Buffer.from(`${PASS_PREFIX}${challenge}\n`, "utf8"), payload]));
+}
+
+/** What the app signs when it registers a key. */
+export function registrationHash(challenge: string): Buffer {
+  return sha256(Buffer.from(`${ATTEST_PREFIX}${challenge}`, "utf8"));
+}
+
+function keyHash(keyId: string): string {
+  return sha256(Buffer.from(keyId, "base64")).toString("hex");
+}
+
+const noStore = { "cache-control": "no-store" };
+
+/** Reads a JSON body no larger than MAX_BODY_BYTES. */
+async function readJson(request: Request, declaredLength: string | undefined): Promise<
+  { ok: true; value: unknown } | { ok: false; status: 400 | 413 }
+> {
+  const declared = Number(declaredLength ?? "0");
+  if (!Number.isFinite(declared) || declared > MAX_BODY_BYTES) return { ok: false, status: 413 };
+  const raw = Buffer.from(await request.arrayBuffer());
+  if (raw.length > MAX_BODY_BYTES) return { ok: false, status: 413 };
+  try {
+    return { ok: true, value: JSON.parse(raw.toString("utf8")) };
+  } catch {
+    return { ok: false, status: 400 };
+  }
+}
+
+async function pruneIdleKeys(sql: Sql): Promise<void> {
+  await sql
+    .query(`DELETE FROM app_keys WHERE seen_on < current_date - $1::int`, [KEY_IDLE_DAYS])
+    .catch(() => undefined);
+}
+
+app.get("/api/challenge", (c) => {
+  const secret = challengeSecret();
+  if (!secret) return c.json({ error: "uploads unavailable" }, 503, noStore);
+  return c.json({ challenge: issueChallenge(secret) }, 200, noStore);
+});
+
+// Registers one install's App Attest key. Apple's attestation proves the key lives in the
+// Secure Enclave of a real iPhone running the genuine RydAR app. Called once per key.
+app.post("/api/attest", async (c) => {
+  const secret = challengeSecret();
+  const client = database();
+  if (!secret || !client) return c.json({ error: "uploads unavailable" }, 503, noStore);
+  const body = await readJson(c.req.raw, c.req.header("content-length"));
+  if (!body.ok) return c.json({ error: "bad request" }, body.status, noStore);
+  if (!isRegistration(body.value)) return c.json({ error: "registration required" }, 400, noStore);
+  const registration = body.value;
+  if (!checkChallenge(secret, registration.challenge)) {
+    return c.json({ error: "challenge expired" }, 401, noStore);
+  }
+  let publicKeyPem: string;
+  try {
+    publicKeyPem = verifyAttestation({
+      attestation: Buffer.from(registration.attestation, "base64"),
+      keyId: registration.key_id,
+      clientDataHash: registrationHash(registration.challenge),
+      appId: appId(),
+      allowDevelopment: process.env.APP_ATTEST_ALLOW_DEVELOPMENT === "1",
+    }).publicKeyPem;
+  } catch (error) {
+    if (error instanceof AttestationError) return c.json({ error: "attestation rejected" }, 401, noStore);
+    throw error;
+  }
+  await ensureSchema(client);
+  // A key is registered once. Registering it again keeps the stored counter.
+  await client.query(
+    `INSERT INTO app_keys (key_hash, public_key) VALUES ($1, $2)
+     ON CONFLICT (key_hash) DO UPDATE SET seen_on = current_date`,
+    [keyHash(registration.key_id), publicKeyPem],
+  );
+  await pruneIdleKeys(client);
+  return c.json({ registered: true }, 200, noStore);
+});
+
+// One trip's passes, signed by an assertion from a registered key. The signature covers every
+// byte of the batch, and the counter means each assertion is accepted once.
+// No IP address, key, or device detail is stored with the passes.
+app.post("/api/pass", async (c) => {
+  const secret = challengeSecret();
+  const client = database();
+  if (!secret || !client) return c.json({ error: "uploads unavailable" }, 503, noStore);
+  const body = await readJson(c.req.raw, c.req.header("content-length"));
+  if (!body.ok) return c.json({ error: "bad request" }, body.status, noStore);
+  if (!isSignedBatch(body.value)) return c.json({ error: "signed batch required" }, 400, noStore);
+  const batch = body.value;
+  const payload = Buffer.from(batch.payload, "base64");
+  const passes = parsePayload(payload);
+  if (!passes) return c.json({ error: "invalid passes" }, 400, noStore);
+  if (!checkChallenge(secret, batch.challenge)) return c.json({ error: "challenge expired" }, 401, noStore);
+
+  await ensureSchema(client);
+  const hash = keyHash(batch.key_id);
+  const rows = (await client.query(`SELECT public_key, counter FROM app_keys WHERE key_hash = $1`, [hash])) as Array<{
+    public_key: string;
+    counter: string | number;
+  }>;
+  // 403 tells the app to register a new key: this one was never registered, or was idle too long.
+  if (rows.length === 0) return c.json({ error: "unknown key" }, 403, noStore);
+
+  let counter: number;
+  try {
+    counter = verifyAssertion({
+      assertion: Buffer.from(batch.assertion, "base64"),
+      clientDataHash: clientDataHash(batch.challenge, payload),
+      publicKeyPem: rows[0].public_key,
+      appId: appId(),
+      previousCounter: Number(rows[0].counter),
+    }).counter;
+  } catch (error) {
+    if (error instanceof AttestationError) return c.json({ error: "assertion rejected" }, 401, noStore);
+    throw error;
+  }
+
+  // One statement: the counter moves forward and the passes are stored together, or neither
+  // happens (a replayed or out-of-order assertion stores nothing).
+  const stored = (await client.query(
+    `WITH bump AS (
+       UPDATE app_keys SET counter = $6, seen_on = current_date
+       WHERE key_hash = $7 AND counter < $6
+       RETURNING 1
+     )
+     INSERT INTO passes (curve_id, direction, speed_band_mph, hour_bucket, app_version, created_at)
+     SELECT t.curve_id, t.direction, t.speed, t.hour, t.version, date_trunc('day', now())
+     FROM unnest($1::text[], $2::text[], $3::float8[], $4::int[], $5::text[])
+       AS t(curve_id, direction, speed, hour, version)
+     WHERE EXISTS (SELECT 1 FROM bump)
+     RETURNING 1`,
+    [
+      passes.map((pass) => pass.curve_id),
+      passes.map((pass) => pass.direction),
+      passes.map((pass) => pass.speed_band_mph),
+      passes.map((pass) => pass.hour_bucket),
+      passes.map((pass) => pass.app_version),
+      counter,
+      hash,
+    ],
+  )) as unknown[];
+  if (stored.length === 0) return c.json({ error: "assertion already used" }, 409, noStore);
+  await pruneIdleKeys(client);
+  return c.json({ stored: stored.length }, 200, noStore);
 });
 
 app.get("/api/export/:file", async (c) => {

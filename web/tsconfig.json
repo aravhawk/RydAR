@@ -5,8 +5,20 @@
     "moduleResolution": "bundler",
     "strict": true,
     "noEmit": true,
-    "lib": ["ES2022", "DOM"],
-    "types": []
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "types": [
+      "node"
+    ],
+    "allowImportingTsExtensions": true
   },
-  "include": ["server.ts", "api/**/*.ts"]
+  "include": [
+    "server.ts",
+    "appattest.ts",
+    "challenge.ts",
+    "api/**/*.ts",
+    "test/**/*.ts"
+  ]
 }

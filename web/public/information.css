@@ -93,6 +93,16 @@ main > .card, main > .tiles { margin-top: 12px; }
 .formula ul + p { margin-top: 20px; color: var(--muted); }
 
 .note { margin: 20px 8px 0; color: var(--muted); font-size: 0.9rem; }
+.policy { padding: 8px 24px 20px; }
+.policy section { padding-block: 16px; }
+.policy section + section { border-top: 1px solid var(--rule); }
+.policy h2 { font: 700 1.05rem/1.3 var(--sans); letter-spacing: -0.02em; }
+.policy p, .policy li { color: var(--muted); font-size: 0.95rem; line-height: 1.55; }
+.policy p { margin-top: 8px; }
+.policy ul { margin: 8px 0 0; padding-left: 1.2em; }
+.policy li + li { margin-top: 4px; }
+.policy strong { color: var(--ink); font-weight: 650; }
+.policy .updated { margin-top: 8px; font-size: 0.85rem; }
 
 footer { padding-block: 24px 40px; }
 footer nav { display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 0.88rem; }
