@@ -39,6 +39,11 @@ enum BundledCurves {
         return directory
     }
 
+    /// Trip batches waiting to be sent. See `PendingPassStore`.
+    static func pendingUploadsURL() throws -> URL {
+        try supportDirectory().appendingPathComponent("pending-passes.json")
+    }
+
     static func passLogURL() throws -> URL {
         try supportDirectory().appendingPathComponent("passlog.sqlite")
     }
@@ -55,7 +60,7 @@ enum BundledCurves {
         do {
             try migrateLegacy(from: try legacyURL(), to: destination)
         } catch {
-            print("Moving earlier trips failed, will retry next launch: \(error)")
+            debugLog("Moving earlier trips failed, will retry next launch: \(error)")
         }
         return destination
     }
@@ -370,7 +375,7 @@ final class SQLiteCurveStore: CurveStore {
                 Geo.distanceToCurve(latitude: latitude, longitude: longitude, curve: $0) <= radiusMeters
             }
         } catch {
-            print("Curve lookup failed: \(error)")
+            debugLog("Curve lookup failed: \(error)")
             return []
         }
     }
@@ -410,7 +415,7 @@ final class SQLiteCurveStore: CurveStore {
             }
             return found
         } catch {
-            print("County lookup failed: \(error)")
+            debugLog("County lookup failed: \(error)")
             return []
         }
     }
@@ -507,7 +512,7 @@ final class SQLiteCurveStore: CurveStore {
             }
             return index
         } catch {
-            print("Road index failed: \(error)")
+            debugLog("Road index failed: \(error)")
             return nil
         }
     }
@@ -545,7 +550,7 @@ final class SQLiteCurveStore: CurveStore {
             }, bind: bind)
             return found
         } catch {
-            print("Curve lookup failed: \(error)")
+            debugLog("Curve lookup failed: \(error)")
             return []
         }
     }
@@ -562,7 +567,7 @@ final class SQLiteCurveStore: CurveStore {
             })
             return found
         } catch {
-            print("Curve id lookup failed: \(error)")
+            debugLog("Curve id lookup failed: \(error)")
             return nil
         }
     }

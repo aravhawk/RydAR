@@ -170,13 +170,17 @@ final class LiveTripSession {
         }
         let onUpload: (Bool) -> Void = { [weak self] upload in
             self?.engine.uploadOptIn = upload
-            if !upload { self?.pendingUploads = [] }
+            if !upload {
+                self?.pendingUploads = []
+                self?.uploader.discardPending()
+            }
         }
         let onDelete: () throws -> Void = { [weak self] in
             guard let self else { return }
             self.camera.stop()
             self.reading = DashReading(camera: nil, vision: .quiet, state: .off, acceptedAt: nil)
             self.pendingUploads = []
+            self.uploader.discardPending()
             try self.engine.deletePassHistory()
             self.publishTiming()
         }
@@ -214,6 +218,12 @@ final class LiveTripSession {
             bridge.onDeleteAllData = onDelete
         }
         publishTiming()
+        // Batches from earlier trips that could not be sent yet. Only while sharing is still on.
+        if UserDefaults.standard.bool(forKey: "rydar.uploadOptIn") {
+            uploader.retryPending()
+        } else {
+            uploader.discardPending()
+        }
     }
 
     private func syncCamera(mode: DriverMode?, paused: Bool) {
@@ -246,12 +256,13 @@ final class LiveTripSession {
         publishTiming()
     }
 
-    /// Sends the trip's passes once, in random order, if uploads are still on.
+    /// Hands the trip's passes over once, in random order, if uploads are still on.
+    /// The uploader signs and sends them, or keeps them on this iPhone to try again.
     private func flushUploads() {
         let batch = pendingUploads.shuffled()
         pendingUploads = []
-        guard engine.uploadOptIn else { return }
-        for body in batch { uploader.send(body) }
+        guard engine.uploadOptIn, !batch.isEmpty else { return }
+        uploader.submit(batch)
     }
 
     private func startGPSWatchdog() {
@@ -332,7 +343,7 @@ final class LiveTripSession {
         camera.noteCurveApproach(update.gpsGood ? update.matchedCurveID : nil)
         let showCurve = update.gpsGood && curve != nil && engine.snapshot.driverMode != .under18
         let place = standingPlace(for: update)
-        assignDrive(snapshot(
+        var next = snapshot(
             curve: showCurve ? curve : nil,
             distance: showCurve ? update.distanceMeters : nil,
             gps: update.gpsStatus,
@@ -346,8 +357,18 @@ final class LiveTripSession {
             placeDetail: place?.detail,
             latitude: update.latitude,
             longitude: update.longitude
-        ))
+        )
+        next.outsideArkansas = curve == nil && Self.isOutsideArkansas(update)
+        assignDrive(next)
         refreshStandingPlace(for: update)
+    }
+
+    /// Past the state line by more than the outline's margin. Unknown position is not "outside".
+    private static func isOutsideArkansas(_ update: TripUpdate) -> Bool {
+        guard update.gpsGood, let latitude = update.latitude, let longitude = update.longitude,
+              let coverage = ArkansasCoverage.bundled else { return false }
+        return !coverage.covers(latitude: latitude, longitude: longitude,
+                                marginMeters: ArkansasCoverage.outsideMarginMeters)
     }
 
     /// A coarse or incomplete sample should not replace a fix the driver just saw.

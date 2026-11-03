@@ -25,20 +25,22 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>RydAR uses the camera to check the road surface ahead. Nothing is saved.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>RydAR needs your precise location during a trip, even while Maps is open.</string>
+	<string>RydAR uses the camera during a trip to check the road surface ahead for gravel, water, or snow. Frames are checked on this iPhone and never saved or uploaded.</string>
 	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
 	<dict>
 		<key>PreciseCurve</key>
-		<string>RydAR needs your precise location to match the curve you are approaching.</string>
+		<string>RydAR needs your precise location to match the curve you are approaching and time its warning.</string>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>RydAR uses your precise location to know which curve is coming up.</string>
+	<string>RydAR uses your precise location to check that you are in Arkansas, then during a trip to know which curve is coming up and warn you before it, including while Maps or another app is open. On the map, it centers the view on you.</string>
 	<key>NSMotionUsageDescription</key>
-	<string>RydAR uses motion to notice when you brake before a curve.</string>
+	<string>RydAR uses motion data during a trip to notice when you brake before a curve, so later warnings can come at the right time. It stays on this iPhone.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
+	<key>RydARAttestEndpoint</key>
+	<string>https://rydar.org/api/attest</string>
+	<key>RydARChallengeEndpoint</key>
+	<string>https://rydar.org/api/challenge</string>
 	<key>RydARPassEndpoint</key>
 	<string>https://rydar.org/api/pass</string>
 	<key>UIApplicationSceneManifest</key>

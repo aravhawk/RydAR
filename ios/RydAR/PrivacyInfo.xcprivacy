@@ -4,8 +4,40 @@
 <dict>
 	<key>NSPrivacyTracking</key>
 	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array>
+		<!-- An anonymous pass names the curve that was driven, which is a place on the map. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypePreciseLocation</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataPurposeAppFunctionality</string>
+				<string>NSPrivacyCollectedDataPurposeAnalytics</string>
+			</array>
+		</dict>
+		<!-- The App Attest key id that signs passes: one per install, kept on the server as a hash
+		     with its public key, never stored with passes, deleted after 180 days unused.
+		     Used only to prove uploads come from the genuine app (fraud prevention). -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeDeviceID</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataPurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<!-- Direction, speed, hour bucket, and app version of that pass. -->
 		<dict>
 			<key>NSPrivacyCollectedDataType</key>
 			<string>NSPrivacyCollectedDataTypeOtherUsageData</string>
@@ -15,6 +47,7 @@
 			<false/>
 			<key>NSPrivacyCollectedDataTypePurposes</key>
 			<array>
+				<string>NSPrivacyCollectedDataPurposeAppFunctionality</string>
 				<string>NSPrivacyCollectedDataPurposeAnalytics</string>
 			</array>
 		</dict>

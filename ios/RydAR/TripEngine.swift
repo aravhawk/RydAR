@@ -128,7 +128,7 @@ enum Geo {
 
     static func compass(_ degrees: Double) -> String {
         let names = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
-        let index = Int((normalize(degrees) + 22.5) / 45) % 8
+        let index = abs(safeInt((normalize(degrees) + 22.5) / 45)) % 8
         return names[index]
     }
 
@@ -903,7 +903,6 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
     /// True only after a driver trip has taken the audio session.
     private var speechHeld = false
     private let precisePurposeKey = "PreciseCurve"
-    private let askedAlwaysKey = "rydar.askedAlwaysLocation"
     private let askedPreciseKey = "rydar.askedPreciseLocation"
     private let motionQueue: OperationQueue = {
         let queue = OperationQueue()
@@ -1071,7 +1070,7 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
                 do {
                     try passLog.record(pass, tripID: tripID)
                 } catch {
-                    print("Pass log failed: \(error)")
+                    debugLog("Pass log failed: \(error)")
                 }
             }
         }
@@ -1193,6 +1192,8 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
     }
 
     /// Best-for-navigation accuracy, Precise Location, and location updates that continue with Maps in front.
+    /// When In Use is enough: a trip always starts in the foreground, and background updates that begin
+    /// there keep running, with the location indicator showing. RydAR never asks for Always.
     private func configurePreciseLocation() {
         locationManager.pausesLocationUpdatesAutomatically = false
         locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
@@ -1205,9 +1206,6 @@ final class TripEngine: NSObject, CLLocationManagerDelegate {
         switch locationManager.authorizationStatus {
         case .notDetermined:
             locationManager.requestWhenInUseAuthorization()
-        case .authorizedWhenInUse where !UserDefaults.standard.bool(forKey: askedAlwaysKey):
-            UserDefaults.standard.set(true, forKey: askedAlwaysKey)
-            locationManager.requestAlwaysAuthorization()
         case .denied, .restricted:
             return
         default:

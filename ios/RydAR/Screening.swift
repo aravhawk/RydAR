@@ -221,7 +221,18 @@ func lookAheadMeters(
 /// so a driver who is told to slow to N was above N when the warning fired
 /// (`shouldSpeak` compares against the unrounded low end).
 func advisorySpeedMPH(_ range: ScreeningRange) -> Int {
-    max(0, Int(range.low.rounded(.down)))
+    max(0, safeInt(range.low.rounded(.down)))
+}
+
+/// `Int(_:)` traps on NaN, infinity, and out-of-range values. A bad sensor reading shows 0 instead.
+func safeInt(_ value: Double) -> Int {
+    guard value.isFinite else { return 0 }
+    return Int(min(max(value, -1_000_000), 1_000_000))
+}
+
+/// A distance in meters that is safe to format: never negative, never NaN or infinite.
+private func shownMeters(_ meters: Double) -> Double {
+    meters.isFinite ? max(0, meters) : 0
 }
 
 /// Display units. Everything is computed in mph and meters; only what the driver sees
@@ -244,7 +255,7 @@ let feetPerMeter = 3.28084
 /// A speed in the display unit. `down` floors instead of rounding, for advisories.
 func displaySpeed(mph: Double, down: Bool = false) -> Int {
     let value = UnitSystem.current == .imperial ? mph : mph * kilometersPerMile
-    return Int(down ? value.rounded(.down) : value.rounded())
+    return safeInt(down ? value.rounded(.down) : value.rounded())
 }
 
 func speedText(mph: Double, down: Bool = false) -> String {
@@ -268,13 +279,13 @@ let spokenWarningExample = spokenCurveWarning(advisoryMPH: 25)
 /// Metric shows meters up close and tenths of a kilometer beyond 1,000 m.
 func distanceText(meters: Double) -> String {
     if UnitSystem.current == .metric {
-        let m = max(0, meters)
-        if m < 1000 { return "\(Int((m / 10).rounded()) * 10) m" }
+        let m = shownMeters(meters)
+        if m < 1000 { return "\(safeInt((m / 10).rounded()) * 10) m" }
         return String(format: "%.1f km", m / 1000)
     }
-    let feet = max(0, meters) * 3.28084
-    if feet < 1000 { return "\(Int((feet / 10).rounded()) * 10) ft" }
-    return String(format: "%.1f mi", max(0, meters) / 1609.344)
+    let feet = shownMeters(meters) * 3.28084
+    if feet < 1000 { return "\(safeInt((feet / 10).rounded()) * 10) ft" }
+    return String(format: "%.1f mi", shownMeters(meters) / 1609.344)
 }
 
 struct CurveApproach: Equatable {
@@ -323,25 +334,25 @@ enum CurveAlerts {
 
 func stretchDistancePhrase(meters: Double) -> String {
     if UnitSystem.current == .metric {
-        let m = max(0, meters)
-        if m < 900 { return "\(max(100, Int((m / 50).rounded()) * 50)) meters" }
+        let m = shownMeters(meters)
+        if m < 900 { return "\(max(100, safeInt((m / 50).rounded()) * 50)) meters" }
         let km = (m / 100).rounded() / 10
         if abs(km - 1) < 0.05 { return "kilometer" }
-        if abs(km - km.rounded()) < 0.001 { return "\(Int(km.rounded())) kilometers" }
+        if abs(km - km.rounded()) < 0.001 { return "\(safeInt(km.rounded())) kilometers" }
         return String(format: "%.1f kilometers", km)
     }
-    let miles = max(0, meters) / 1609.344
+    let miles = shownMeters(meters) / 1609.344
     if miles >= 0.4 && miles < 0.65 { return "half mile" }
     if miles >= 0.18 && miles < 0.4 { return "quarter mile" }
     if miles < 0.18 {
-        let feet = max(0, meters) * 3.28084
-        let rounded = max(100, Int((feet / 50).rounded()) * 50)
+        let feet = shownMeters(meters) * 3.28084
+        let rounded = max(100, safeInt((feet / 50).rounded()) * 50)
         return "\(rounded) feet"
     }
     let tenths = (miles * 10).rounded() / 10
     if abs(tenths - 1) < 0.05 { return "mile" }
     if abs(tenths - tenths.rounded()) < 0.001 {
-        return "\(Int(tenths.rounded())) miles"
+        return "\(safeInt(tenths.rounded())) miles"
     }
     return String(format: "%.1f miles", tenths)
 }

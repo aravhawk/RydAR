@@ -25,11 +25,11 @@ struct SettingsScreen: View {
 
     /// Puts the switches back. Settings reset keeps a tire answer so this screen stays up.
     /// Clearing the answer would replace the whole app with the tire check.
+    /// Sharing and the camera check are consent choices. They are never switched back on here:
+    /// only the rider turns them on.
     private func applyDefaults(clearTread: Bool) {
         appearance = AppearancePreference.system.rawValue
         units = UnitSystem.imperial.rawValue
-        uploadOptIn = true
-        dashEnabled = true
         if clearTread {
             TreadStore.clear()
             treadRaw = ""
@@ -37,13 +37,16 @@ struct SettingsScreen: View {
             TreadStore.save(.unsure)
             treadRaw = TreadChoice.unsure.rawValue
         }
-        trip.onUploadPreference?(true)
     }
 
     private func deleteEverything() {
         do {
             try trip.deleteAllData()
             applyDefaults(clearTread: true)
+            // Nothing is shared and the camera stays closed until onboarding asks again.
+            uploadOptIn = false
+            dashEnabled = false
+            trip.onUploadPreference?(false)
             onboarded = false
         } catch {
             let message = error.localizedDescription
@@ -83,11 +86,13 @@ struct SettingsScreen: View {
             Section {
                 Toggle("Share anonymous curve data", isOn: $uploadOptIn)
                     .accessibilityIdentifier("settingsUpload")
+                Link("Privacy policy", destination: RydarLinks.privacyPolicy)
+                    .accessibilityIdentifier("privacyPolicy")
             } header: {
                 Text("Privacy")
                     .textCase(nil)
             } footer: {
-                Text("Sends the curve, direction, speed, and hour. Never your name or route.")
+                Text("After a trip, sends the curve, direction, speed, and hour. Never your name or route.")
             }
 
             Section {
@@ -127,6 +132,7 @@ struct SettingsScreen: View {
             Section {
                 LabeledContent("Version", value: Self.versionText)
                 LabeledContent("Road data", value: "Arkansas GIS Office")
+                Link("rydar.org", destination: RydarLinks.website)
             } header: {
                 Text("About")
                     .textCase(nil)
@@ -182,11 +188,17 @@ private enum SettingsPrompt: Identifiable {
     var message: String {
         switch self {
         case .resetSettings:
-            return "Appearance, units, sharing, camera check, and tires go back to their defaults. Your trips stay."
+            return "Appearance, units, and tires go back to their defaults. Your sharing and camera choices, and your trips, stay."
         case .deleteData:
             return "Trips and history are deleted for good. RydAR starts over."
         case .failed(let message):
             return message
         }
     }
+}
+
+/// Public pages the app links to. Both open in Safari.
+enum RydarLinks {
+    static let privacyPolicy = URL(string: "https://rydar.org/data-and-privacy")!
+    static let website = URL(string: "https://rydar.org")!
 }

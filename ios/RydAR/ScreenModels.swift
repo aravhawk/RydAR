@@ -30,6 +30,8 @@ struct DriveScreenSnapshot {
     var advisoryWarning: Bool? = nil
     /// True while the phone camera is open and frames are being read. A paused trip is not live.
     var cameraRunning = false
+    /// The last fix is past the Arkansas line, where there is no curve data.
+    var outsideArkansas = false
 }
 
 struct TripCurvePass: Identifiable {

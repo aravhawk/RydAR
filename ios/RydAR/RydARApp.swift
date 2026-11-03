@@ -8,6 +8,9 @@ struct RydARApp: App {
     private let startupFailure: String?
 
     init() {
+        // No trip survives a relaunch. A Lock Screen card left by a trip the system ended
+        // would still read "Watching for curves" while nothing is watching, so clear it.
+        DriveLiveActivity.end()
         do {
             let curves = try SQLiteCurveStore.openBundled()
             let engine = try TripEngine.bundled()

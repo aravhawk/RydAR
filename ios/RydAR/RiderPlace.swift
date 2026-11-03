@@ -177,7 +177,8 @@ func driveReadout(
     gpsStatus: String,
     measuredSpeedMPH: Double?,
     placeTitle: String?,
-    placeDetail: String?
+    placeDetail: String?,
+    outsideArkansas: Bool = false
 ) -> DriveReadout {
     let standingStill = gpsStatus == "Standing still"
     let title = standingStill ? nonempty(placeTitle) : nil
@@ -189,6 +190,8 @@ func driveReadout(
         headline = road ?? "Curve ahead"
     } else if let title {
         headline = title
+    } else if outsideArkansas {
+        headline = "Outside Arkansas"
     } else if gpsStatus == "GPS ready" {
         headline = "No curve ahead"
     } else {
@@ -202,6 +205,8 @@ func driveReadout(
         } else {
             pin = nil
         }
+    } else if outsideArkansas && !hasCurve {
+        pin = "No curve data"
     } else {
         pin = gpsStatus
     }

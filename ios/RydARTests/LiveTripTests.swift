@@ -425,7 +425,7 @@ private struct Harness {
 
 private final class SpyUpload: PassSending {
     var sent: [AnonymousPassBody] = []
-    func send(_ body: AnonymousPassBody) { sent.append(body) }
+    func submit(_ batch: [AnonymousPassBody]) { sent.append(contentsOf: batch) }
 }
 
 private final class SpySpeech: PromptPlaying {

@@ -24,6 +24,12 @@ final class AnonymousPassTests: XCTestCase {
         XCTAssertNil(AnonymousPass.body(from: sample(id: "002-1-1", speed: 30, hour: 9), appVersion: "0.1.0"))
     }
 
+    func testCurveIDsAcceptOnlyASCIIDigits() {
+        XCTAssertTrue(AnonymousPass.isCurveID("007-2-3"))
+        XCTAssertFalse(AnonymousPass.isCurveID("٠٠٧-2-3"), "Arabic-Indic digits are not curve ids")
+        XCTAssertFalse(AnonymousPass.isCurveID("007-2"))
+    }
+
     private func sample(id: String, speed: Double, hour: Int) -> CompletedPass {
         CompletedPass(
             curveID: id,

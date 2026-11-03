@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct HomeScreen: View {
     let store: any CurveStore
@@ -6,6 +7,9 @@ struct HomeScreen: View {
     @ObservedObject var trip: TripScreenBridge
     @AppStorage("rydar.dashEnabled") private var dashEnabled = true
     @AppStorage(TreadStore.choiceKey) private var treadRaw = ""
+    @StateObject private var readiness = TripReadinessMonitor()
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openURL) private var openURL
 
     private var tread: TreadChoice? { TreadChoice(rawValue: treadRaw) }
 
@@ -30,6 +34,13 @@ struct HomeScreen: View {
                             .foregroundStyle(.secondary)
                             .accessibilityIdentifier("timingNote")
                     }
+                    if !readiness.readiness.explanation.isEmpty {
+                        Text(readiness.readiness.explanation)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(readiness.readiness == .outsideArkansas ? Color.primary : Color.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("tripReadiness")
+                    }
                     if tread?.replaceBeforeDriving == true {
                         Text("Replace your tires before driving.")
                             .font(.headline)
@@ -42,12 +53,7 @@ struct HomeScreen: View {
 
                 RydarGlassGroup(spacing: 12) {
                     VStack(spacing: 12) {
-                        Button(action: onStart) {
-                            Label(tread?.replaceBeforeDriving == true ? "Start anyway" : "Start trip", systemImage: "arrow.right")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .rydarProminentAction()
-                        .accessibilityIdentifier("startTrip")
+                        tripAction
 
                         NavigationLink {
                             MapScreen(store: store)
@@ -67,6 +73,11 @@ struct HomeScreen: View {
             .padding(.bottom, 24)
         }
         .scrollBounceBehavior(.basedOnSize)
+        .onAppear { readiness.refresh() }
+        .onDisappear { readiness.stop() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { readiness.refresh() } else { readiness.stop() }
+        }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
@@ -83,5 +94,59 @@ struct HomeScreen: View {
                 .accessibilityIdentifier("settings")
             }
         }
+    }
+
+    /// Start trip when a trip can run here. Otherwise the one step that unblocks it.
+    @ViewBuilder
+    private var tripAction: some View {
+        switch readiness.readiness {
+        case .ready:
+            Button(action: onStart) {
+                Label(tread?.replaceBeforeDriving == true ? "Start anyway" : "Start trip", systemImage: "arrow.right")
+                    .frame(maxWidth: .infinity)
+            }
+            .rydarProminentAction()
+            .accessibilityIdentifier("startTrip")
+        case .needsPermission:
+            Button { readiness.requestPermission() } label: {
+                Label("Allow location", systemImage: "location")
+                    .frame(maxWidth: .infinity)
+            }
+            .rydarProminentAction()
+            .accessibilityIdentifier("allowTripLocation")
+        case .locationOff, .needsPrecise:
+            Button(action: openSettings) {
+                Label(readiness.readiness == .needsPrecise ? "Turn on Precise Location" : "Turn on location in Settings",
+                      systemImage: "location.slash")
+                    .frame(maxWidth: .infinity)
+            }
+            .rydarProminentAction()
+            .accessibilityIdentifier("openLocationSettings")
+        case .locating:
+            Button(action: {}) {
+                HStack(spacing: 8) {
+                    ProgressView()
+                    Text("Start trip")
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .rydarProminentAction()
+            .disabled(true)
+            .accessibilityLabel("Start trip, finding your location")
+            .accessibilityIdentifier("startTrip")
+        case .outsideArkansas:
+            Button(action: {}) {
+                Label("Start trip", systemImage: "arrow.right")
+                    .frame(maxWidth: .infinity)
+            }
+            .rydarProminentAction()
+            .disabled(true)
+            .accessibilityHint("RydAR covers Arkansas roads. More states are coming soon.")
+            .accessibilityIdentifier("startTrip")
+        }
+    }
+
+    private func openSettings() {
+        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
     }
 }

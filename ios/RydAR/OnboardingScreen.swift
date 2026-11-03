@@ -24,6 +24,10 @@ struct OnboardingScreen: View {
     var onContinue: () -> Void
     @StateObject private var permissions = ScreenPermissions()
     @State private var tread: TreadChoice?
+    /// The rider's sharing choice, made here before any trip can send a pass.
+    @State private var shareCurves = true
+    /// The rider's camera choice, made here before any trip opens the camera.
+    @State private var cameraCheck = true
     @Environment(\.openURL) private var openURL
     @ScaledMetric(relativeTo: .largeTitle) private var iconSize: CGFloat = 48
 
@@ -46,6 +50,12 @@ struct OnboardingScreen: View {
             .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
 
             Section {
+                OnboardingRow(symbol: "exclamationmark.triangle.fill",
+                              title: "Eyes on the road",
+                              detail: "Set up before you drive and leave the phone alone while moving. Warnings are advice from road records, not a guarantee. Posted signs, the road, and the weather come first.")
+            }
+
+            Section {
                 OnboardingRow(symbol: "speaker.wave.2.fill",
                               title: "Spoken warnings",
                               detail: "Keep RydAR open while you drive. It vibrates twice, then speaks over Maps and music.",
@@ -58,14 +68,19 @@ struct OnboardingScreen: View {
 
             Section {
                 OnboardingRow(symbol: "camera.fill",
-                              title: "Camera check is on",
-                              detail: "Mount the phone with the camera facing the road, or turn it off in Settings. It spots gravel on roads listed as paved.")
+                              title: "Camera check",
+                              detail: "During a trip, the camera spots gravel on roads listed as paved. Mount the phone facing the road. Frames are checked on this iPhone and never saved. Change it anytime in Settings.")
+                Toggle("Use the camera check", isOn: $cameraCheck)
+                    .accessibilityIdentifier("onboardingCamera")
             }
 
             Section {
                 OnboardingRow(symbol: "lock.shield.fill",
                               title: "Sharing anonymous curve data",
-                              detail: "Sends the curve, direction, speed, and hour. Never your name or route. Turn it off in Settings.")
+                              detail: "After a trip, sends the curve, direction, speed, and hour. Never your name or route. Change it anytime in Settings.")
+                Toggle("Share anonymous curve data", isOn: $shareCurves)
+                    .accessibilityIdentifier("onboardingUpload")
+                Link("Privacy policy", destination: RydarLinks.privacyPolicy)
             }
 
             Section {
@@ -91,8 +106,8 @@ struct OnboardingScreen: View {
         .rydarBottomBar {
             Button {
                 if let tread { TreadStore.save(tread) }
-                DashPreference.isOn = true
-                UserDefaults.standard.set(true, forKey: "rydar.uploadOptIn")
+                DashPreference.isOn = cameraCheck
+                UserDefaults.standard.set(shareCurves, forKey: "rydar.uploadOptIn")
                 onContinue()
             } label: {
                 Text("Continue")

@@ -91,6 +91,19 @@ final class ScreeningTests: XCTestCase {
         XCTAssertEqual(distanceText(meters: -5), "0 ft")
     }
 
+    /// A NaN or infinite reading must not trap the drive screen or the Lock Screen card.
+    func testNonFiniteReadingsFormatWithoutCrashing() {
+        XCTAssertEqual(distanceText(meters: .nan), "0 ft")
+        XCTAssertEqual(distanceText(meters: .infinity), "0 ft")
+        XCTAssertEqual(speedText(mph: .nan), "0 mph")
+        XCTAssertEqual(speedText(mph: -.infinity, down: true), "0 mph")
+        XCTAssertEqual(stretchDistancePhrase(meters: .nan), "100 feet")
+        XCTAssertEqual(advisorySpeedMPH(ScreeningRange(low: .nan, high: .nan)), 0)
+        XCTAssertEqual(safeInt(1e300), 1_000_000)
+        XCTAssertEqual(safeInt(19.9), 19)
+        XCTAssertEqual(Geo.compass(.nan), "N")
+    }
+
     func testBothDriverModesAllowAudio() {
         XCTAssertTrue(allowsInDriveSound(.under18))
         XCTAssertTrue(allowsInDriveSound(.adult))

@@ -119,6 +119,14 @@ enum DriveLiveActivity {
                 alerting: above
             )
         }
+        if drive.outsideArkansas && drive.gpsStatus != "Standing still" {
+            return DriveActivityAttributes.ContentState(
+                headline: "Outside Arkansas",
+                detail: "No curve data",
+                compact: drive.measuredSpeedMPH.map { speedText(mph: Double(bucketSpeed($0))) } ?? "On",
+                alerting: false
+            )
+        }
         if drive.gpsStatus == "Standing still" {
             let readout = driveReadout(
                 hasCurve: false,
@@ -161,10 +169,10 @@ enum DriveLiveActivity {
     }
 
     private static func bucketDistance(_ meters: Double) -> Int {
-        max(0, Int((meters / 25).rounded()) * 25)
+        max(0, safeInt((meters / 25).rounded()) * 25)
     }
 
     private static func bucketSpeed(_ mph: Double) -> Int {
-        max(0, Int((mph / 5).rounded()) * 5)
+        max(0, safeInt((mph / 5).rounded()) * 5)
     }
 }

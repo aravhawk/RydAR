@@ -16,7 +16,8 @@ struct DriveScreen: View {
             gpsStatus: trip.drive.gpsStatus,
             measuredSpeedMPH: trip.drive.measuredSpeedMPH,
             placeTitle: trip.drive.placeTitle,
-            placeDetail: trip.drive.placeDetail
+            placeDetail: trip.drive.placeDetail,
+            outsideArkansas: trip.drive.outsideArkansas
         )
     }
 
