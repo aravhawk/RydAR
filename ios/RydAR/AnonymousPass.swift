@@ -437,10 +437,15 @@ final class PassUpload: PassSending {
         stateLock.unlock()
         Task.detached(priority: .utility) { [self] in
             await self.flush(generation: started)
-            self.stateLock.lock()
-            self.flushing = false
-            self.stateLock.unlock()
+            self.finishFlushing()
         }
+    }
+
+    /// Synchronous on purpose: NSLock must not be taken directly inside an async context.
+    private func finishFlushing() {
+        stateLock.lock()
+        flushing = false
+        stateLock.unlock()
     }
 
     func discardPending() {

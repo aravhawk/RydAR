@@ -52,7 +52,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
-				RydAR.entitlements,
 			);
 			target = CA0000000000000000000001 /* RydAR */;
 		};
