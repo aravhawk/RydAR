@@ -6,24 +6,36 @@
   "routes": [
     {
       "src": "^/index(?:\\.html)?/?$",
-      "headers": { "Location": "/" },
+      "headers": {
+        "Location": "/"
+      },
       "status": 308
     },
     {
-      "src": "^/(arkansas-curve-map|iphone-app|how-it-works|data-and-privacy)(?:\\.html|/)$",
-      "headers": { "Location": "/$1" },
+      "src": "^/(arkansas-curve-map(?:/(?:arkansas-county|ashley-county|baxter-county|benton-county|boone-county|bradley-county|calhoun-county|carroll-county|chicot-county|clark-county|clay-county|cleburne-county|cleveland-county|columbia-county|conway-county|craighead-county|crawford-county|crittenden-county|cross-county|dallas-county|desha-county|drew-county|faulkner-county|franklin-county|fulton-county|garland-county|grant-county|greene-county|hempstead-county|hot-spring-county|howard-county|independence-county|izard-county|jackson-county|jefferson-county|johnson-county|lafayette-county|lawrence-county|lee-county|lincoln-county|little-river-county|logan-county|lonoke-county|madison-county|marion-county|miller-county|mississippi-county|monroe-county|montgomery-county|nevada-county|newton-county|ouachita-county|perry-county|phillips-county|pike-county|poinsett-county|polk-county|pope-county|prairie-county|pulaski-county|randolph-county|saline-county|scott-county|searcy-county|sebastian-county|sevier-county|sharp-county|st-francis-county|stone-county|union-county|van-buren-county|washington-county|white-county|woodruff-county|yell-county))?|iphone-app|how-it-works|curve-speed-calculator|data-and-privacy)(?:\\.html|/)$",
+      "headers": {
+        "Location": "/$1"
+      },
       "status": 308
     },
     {
-      "src": "^/(arkansas-curve-map|iphone-app|how-it-works|data-and-privacy)$",
+      "src": "^/(arkansas-curve-map(?:/(?:arkansas-county|ashley-county|baxter-county|benton-county|boone-county|bradley-county|calhoun-county|carroll-county|chicot-county|clark-county|clay-county|cleburne-county|cleveland-county|columbia-county|conway-county|craighead-county|crawford-county|crittenden-county|cross-county|dallas-county|desha-county|drew-county|faulkner-county|franklin-county|fulton-county|garland-county|grant-county|greene-county|hempstead-county|hot-spring-county|howard-county|independence-county|izard-county|jackson-county|jefferson-county|johnson-county|lafayette-county|lawrence-county|lee-county|lincoln-county|little-river-county|logan-county|lonoke-county|madison-county|marion-county|miller-county|mississippi-county|monroe-county|montgomery-county|nevada-county|newton-county|ouachita-county|perry-county|phillips-county|pike-county|poinsett-county|polk-county|pope-county|prairie-county|pulaski-county|randolph-county|saline-county|scott-county|searcy-county|sebastian-county|sevier-county|sharp-county|st-francis-county|stone-county|union-county|van-buren-county|washington-county|white-county|woodruff-county|yell-county))?|iphone-app|how-it-works|curve-speed-calculator|data-and-privacy)$",
       "dest": "/$1.html"
     },
     {
       "src": "^/api/(.*)$",
-      "headers": { "X-Robots-Tag": "noindex" },
+      "headers": {
+        "X-Robots-Tag": "noindex"
+      },
       "continue": true
     },
-    { "handle": "filesystem" },
-    { "src": "^/.*$", "dest": "/404.html", "status": 404 }
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "^/.*$",
+      "dest": "/404.html",
+      "status": 404
+    }
   ]
 }

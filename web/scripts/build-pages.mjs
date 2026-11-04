@@ -1,57 +1,86 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { home, pages, site } from '../content/pages.mjs';
+import { countyPages, counties, statewide, FRICTION } from '../content/counties.mjs';
 
 const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
 const escape = (value) => value.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+const plain = (html) => html.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
 const url = (path) => `${site.origin}${path}`;
 const ref = (id) => ({ '@id': url(`/#${id}`) });
+const logo = { '@type': 'ImageObject', url: url('/apple-touch-icon.png'), width: 180, height: 180 };
+const ogImage = { '@type': 'ImageObject', url: url('/og-image.png'), width: 1200, height: 630 };
+const arkansas = { '@type': 'State', name: 'Arkansas', containedInPlace: { '@type': 'Country', name: 'United States' } };
+const countyPlace = (name) => ({ '@type': 'AdministrativeArea', name: `${name} County, Arkansas`, containedInPlace: arkansas });
 
 function metadata(page) {
+  const faq = page.blocks?.find((item) => item.type === 'faq');
   const graph = [
     {
-      '@type': 'Organization', ...ref('org'), name: site.name, url: url('/'),
-      logo: url('/apple-touch-icon.png'), sameAs: [site.source],
+      '@type': 'Organization', ...ref('org'), name: site.name, alternateName: site.alternateNames,
+      url: url('/'), logo, image: logo, slogan: site.slogan, sameAs: [site.source],
+      description: 'RydAR makes a free Arkansas curve map and an iPhone app that speaks a suggested speed before tight curves.',
     },
     {
-      '@type': 'WebSite', ...ref('website'), name: site.name,
-      alternateName: ['RydAR: Safe Driving', 'RydAR Arkansas'], url: url('/'),
-      description: home.description, inLanguage: 'en-US', publisher: ref('org'),
+      '@type': 'WebSite', ...ref('website'), name: site.name, alternateName: site.alternateNames,
+      url: url('/'), description: home.description, inLanguage: 'en-US', publisher: ref('org'),
     },
     {
-      '@type': 'WebPage', '@id': `${url(page.path)}#webpage`, url: url(page.path),
+      '@type': faq ? ['WebPage', 'FAQPage'] : 'WebPage', '@id': `${url(page.path)}#webpage`, url: url(page.path),
       name: page.title, description: page.description, inLanguage: 'en-US',
-      isPartOf: ref('website'), about: ref(page.path === '/iphone-app' ? 'app' : 'org'),
-      primaryImageOfPage: { '@type': 'ImageObject', url: url('/og-image.png') },
+      isPartOf: ref('website'), publisher: ref('org'),
+      about: page.county ? countyPlace(page.county) : ref(page.path === '/iphone-app' ? 'app' : 'org'),
+      primaryImageOfPage: ogImage,
       ...(page.path === '/' ? { mainEntity: ref('map') } : { breadcrumb: { '@id': `${url(page.path)}#breadcrumb` } }),
+      ...(faq ? { mainEntity: faq.items.map(([question, answer]) => ({
+        '@type': 'Question', name: question, acceptedAnswer: { '@type': 'Answer', text: plain(answer) },
+      })) } : {}),
     },
   ];
   if (page.path !== '/') {
+    const trail = [['/', site.name], ...(page.parents || []), [page.path, page.label]];
     graph.push({
       '@type': 'BreadcrumbList', '@id': `${url(page.path)}#breadcrumb`,
-      itemListElement: [
-        { '@type': 'ListItem', position: 1, name: site.name, item: url('/') },
-        { '@type': 'ListItem', position: 2, name: page.label, item: url(page.path) },
-      ],
+      itemListElement: trail.map(([path, name], index) => ({ '@type': 'ListItem', position: index + 1, name, item: url(path) })),
     });
   }
   if (page.path === '/' || page.path === '/arkansas-curve-map') {
     graph.push({
       '@type': 'WebApplication', ...ref('map'), name: 'RydAR Arkansas Curve Map',
-      url: url('/'), applicationCategory: 'NavigationApplication', operatingSystem: 'Any',
+      url: url('/'), applicationCategory: 'TravelApplication', operatingSystem: 'Any',
       browserRequirements: 'Requires JavaScript', isAccessibleForFree: true,
-      description: 'Free map of tight bends on Arkansas county roads, with road surfaces and computed suggested speed ranges.',
+      description: `Free map of ${statewide.total.toLocaleString('en-US')} curves on Arkansas roads in all 75 counties, with road surfaces and a suggested speed for each.`,
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-      image: url('/og-image.png'), publisher: ref('org'), isPartOf: ref('website'),
+      image: ogImage, publisher: ref('org'), isPartOf: ref('website'), spatialCoverage: arkansas,
     });
   }
   if (page.path === '/' || page.path === '/iphone-app') {
     graph.push({
-      '@type': 'MobileApplication', ...ref('app'), name: site.name,
-      url: url('/iphone-app'), description: 'An iPhone app for spoken curve warnings on Arkansas roads, available as a free TestFlight beta.',
-      applicationCategory: 'NavigationApplication', operatingSystem: 'iOS',
-      installUrl: site.beta, image: url('/og-image.png'), publisher: ref('org'),
+      '@type': 'MobileApplication', ...ref('app'), name: site.name, alternateName: 'RydAR: Safe Driving',
+      url: url('/iphone-app'), description: 'An iPhone app that speaks a suggested speed before tight curves on Arkansas roads, available as a free TestFlight beta.',
+      applicationCategory: 'TravelApplication', operatingSystem: 'iOS',
+      featureList: ['Spoken curve warnings', 'Suggested curve speeds', 'Built-in Arkansas curve database', 'Teen driver mode', 'Optional camera road-surface check'],
+      installUrl: site.beta, downloadUrl: site.beta, image: ogImage, publisher: ref('org'),
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    });
+  }
+  if (page.dataset) {
+    graph.push({
+      '@type': 'Dataset', '@id': url('/arkansas-curve-map#dataset'), name: 'Arkansas road curves',
+      description: `Every bend tighter than 600 ft in radius on Arkansas roads, ${statewide.total.toLocaleString('en-US')} in all, measured from Arkansas GIS Office road centerlines. Each curve has its county, road name, surface, radius in feet, and turn angle in degrees.`,
+      url: url('/arkansas-curve-map'), creator: ref('org'), publisher: ref('org'), isAccessibleForFree: true,
+      isBasedOn: 'https://gis.arkansas.gov/arcgis/rest/services/FEATURESERVICES/Transportation/MapServer/18',
+      spatialCoverage: arkansas, keywords: ['Arkansas', 'road curves', 'horizontal curves', 'curve radius', 'road safety'],
+      variableMeasured: ['radius_ft', 'deflection_deg', 'surface'],
+      distribution: [1, 2, 3, 4].map((n) => ({ '@type': 'DataDownload', encodingFormat: 'application/geo+json', contentUrl: url(`/data/curves-arkansas-${n}.geojson`) })),
+    });
+  }
+  if (page.path === '/curve-speed-calculator') {
+    graph.push({
+      '@type': 'WebApplication', '@id': `${url(page.path)}#calculator`, name: 'RydAR Curve Speed Calculator',
+      url: url(page.path), applicationCategory: 'UtilitiesApplication', operatingSystem: 'Any', isAccessibleForFree: true,
+      description: 'Suggested safe speed for a road curve from its radius and surface.',
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }, publisher: ref('org'),
     });
   }
   return `<!-- seo:head:start -->
@@ -61,6 +90,7 @@ function metadata(page) {
   <meta name="application-name" content="RydAR">
   <meta name="apple-mobile-web-app-title" content="RydAR">
   <meta name="theme-color" content="#062e38">
+  <meta name="geo.region" content="US-AR">
   <link rel="canonical" href="${url(page.path)}">
   <link rel="manifest" href="/manifest.webmanifest">
   <meta property="og:type" content="website">
@@ -95,6 +125,62 @@ const icons = {
 };
 const icon = (name) => `<span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]}</svg></span>`;
 const arrow = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>';
+const chevron = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+
+// The calculator works out the default radius at build time, so the page reads right before (or without) the script.
+const calcScript = `<script>
+(() => {
+  const form = document.getElementById('calc');
+  const speed = document.getElementById('calc-speed');
+  const sub = document.getElementById('calc-sub');
+  const friction = ${JSON.stringify(FRICTION)};
+  const mph = (r, e, f) => Math.sqrt(Math.max(0, 15 * r * (e + f)));
+  const update = () => {
+    const value = Number(form.radius.value);
+    const feet = form.unit.value === 'm' ? value * 3.28084 : value;
+    if (!Number.isFinite(feet) || feet <= 0) {
+      speed.textContent = '–';
+      sub.textContent = 'Enter a radius above zero.';
+      return;
+    }
+    const f = friction[form.surface.value];
+    const low = mph(feet, -0.02, f);
+    const high = mph(feet, 0.02, f);
+    speed.textContent = Math.floor(low) + '–' + Math.floor(high);
+    sub.textContent = 'About ' + Math.floor(low * 1.609344) + '–' + Math.floor(high * 1.609344) + ' km/h. RydAR would say “Slow to ' + Math.floor(low) + ' mph for the curve ahead.”';
+  };
+  form.addEventListener('input', update);
+  form.addEventListener('change', update);
+  form.addEventListener('submit', (event) => { event.preventDefault(); update(); });
+  update();
+})();
+</script>`;
+
+function calculator({ radius }) {
+  const low = Math.sqrt(15 * radius * (FRICTION.paved - 0.02));
+  const high = Math.sqrt(15 * radius * (FRICTION.paved + 0.02));
+  return `<section class="card calc" aria-label="Curve speed calculator">
+      <form id="calc" class="calc-form">
+        <div class="calc-field">
+          <label for="radius">Curve radius</label>
+          <div class="calc-input">
+            <input id="radius" name="radius" type="number" inputmode="decimal" min="1" max="100000" step="any" value="${radius}">
+            <select id="unit" name="unit" aria-label="Radius unit"><option value="ft" selected>ft</option><option value="m">m</option></select>
+          </div>
+        </div>
+        <fieldset class="calc-field">
+          <legend>Road surface</legend>
+          <div class="segmented">
+            <label><input type="radio" name="surface" value="paved" checked><span>Paved</span></label>
+            <label><input type="radio" name="surface" value="unpaved"><span>Unpaved</span></label>
+          </div>
+        </fieldset>
+      </form>
+      <output class="calc-result" for="radius unit" aria-live="polite"><span id="calc-speed">${Math.floor(low)}–${Math.floor(high)}</span><span class="calc-unit">mph</span></output>
+      <p class="calc-sub" id="calc-sub">About ${Math.floor(low * 1.609344)}–${Math.floor(high * 1.609344)} km/h. RydAR would say “Slow to ${Math.floor(low)} mph for the curve ahead.”</p>
+    </section>
+    ${calcScript}`;
+}
 
 const block = (item) => {
   if (item.type === 'steps') {
@@ -103,6 +189,32 @@ const block = (item) => {
   if (item.type === 'tiles') {
     return `<div class="tiles" data-count="${item.items.length}">${item.items.map(([name, title, text]) => `<section class="card tile">${icon(name)}<h2>${title}</h2><p>${text}</p></section>`).join('')}</div>`;
   }
+  if (item.type === 'stats') {
+    return `<dl class="stats">${item.items.map(([value, label]) => `<div class="card stat"><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl>`;
+  }
+  if (item.type === 'table') {
+    const cell = (index) => (item.numeric?.includes(index) ? ' class="num"' : '');
+    return `<section class="card data">
+      <h2>${item.title}</h2>${item.text ? `<p>${item.text}</p>` : ''}
+      <div class="scroll" role="region" aria-label="${escape(item.title)}" tabindex="0"><table>
+        <thead><tr>${item.head.map((head, i) => `<th scope="col"${cell(i)}>${head}</th>`).join('')}</tr></thead>
+        <tbody>${item.rows.map((row) => `<tr>${row.map((value, i) => (i === 0 ? `<th scope="row"${cell(i)}>${value}</th>` : `<td${cell(i)}>${value}</td>`)).join('')}</tr>`).join('')}</tbody>
+      </table></div>
+    </section>`;
+  }
+  if (item.type === 'links') {
+    return `<section class="card links"${item.id ? ` id="${item.id}"` : ''}>
+      <h2>${item.title}</h2>
+      <ul class="link-grid${item.columns ? ' wide' : ''}">${item.items.map(([href, label, meta]) => `<li><a href="${href}"><span>${label}</span><small>${meta}</small></a></li>`).join('')}</ul>
+    </section>`;
+  }
+  if (item.type === 'faq') {
+    return `<section class="card faq">
+      <h2>${item.title || 'Questions'}</h2>
+      ${item.items.map(([question, answer]) => `<details><summary>${question}${chevron}</summary><p>${answer}</p></details>`).join('')}
+    </section>`;
+  }
+  if (item.type === 'calculator') return calculator(item);
   if (item.type === 'formula') {
     return `<section class="card formula"><p class="equation" aria-label="V equals the square root of 15 times R times e plus f">${item.formula}</p><ul>${item.terms.map((term) => `<li>${term}</li>`).join('')}</ul><p>${item.text}</p></section>`;
   }
@@ -121,8 +233,8 @@ const footerLinks = (current) => [['/', 'Map'], ...pages.map((page) => [page.pat
   .concat(`<a href="${site.source}">GitHub</a>`)
   .join('');
 
-const shell = ({ head, current, crumb, heading, intro, action, blocks }) => `<!DOCTYPE html>
-<!-- Generated by scripts/build-pages.mjs from content/pages.mjs. -->
+const shell = ({ head, current, parents = [], crumb, heading, intro, action, blocks }) => `<!DOCTYPE html>
+<!-- Generated by scripts/build-pages.mjs from content/pages.mjs and content/counties.mjs. -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -137,23 +249,29 @@ const shell = ({ head, current, crumb, heading, intro, action, blocks }) => `<!D
   <header class="top"><a class="wordmark" href="/" aria-label="RydAR home"><img src="/logo.svg" width="40" height="40" alt="">RydAR</a></header>
   <main>
     <header class="hero">
-      ${crumb ? `<nav class="crumb" aria-label="Breadcrumb"><a href="/">RydAR</a><span aria-hidden="true">/</span><span aria-current="page">${crumb}</span></nav>` : ''}
+      ${crumb ? `<nav class="crumb" aria-label="Breadcrumb"><a href="/">RydAR</a>${parents.map(([path, label]) => `<span aria-hidden="true">/</span><a href="${path}">${label}</a>`).join('')}<span aria-hidden="true">/</span><span aria-current="page">${crumb}</span></nav>` : ''}
       <h1>${heading}</h1>
       <p class="lede">${intro}</p>
       ${action ? `<a class="action" href="${action[1]}">${action[0]}${arrow}</a>` : ''}
     </header>
     ${blocks.map(block).join('\n    ')}
   </main>
-  <footer><nav aria-label="Footer">${footerLinks(current)}</nav></footer>
+  <footer>
+    <nav aria-label="Footer">${footerLinks(current)}</nav>
+    <p class="brandline"><strong>RydAR</strong> · Curve warnings for Arkansas roads</p>
+  </footer>
 </body>
 </html>
 `;
 
 const write = (name, html) => writeFile(`${publicDir}${name}`, html.replace(/[ \t]+$/gm, ''));
+const generated = countyPages();
+const indexed = [...pages, ...generated];
 
-for (const page of pages) {
+await mkdir(`${publicDir}arkansas-curve-map`, { recursive: true });
+for (const page of indexed) {
   await write(`${page.path.slice(1)}.html`, shell({
-    head: metadata(page), current: page.path, crumb: page.label,
+    head: metadata(page), current: page.path, parents: page.parents, crumb: page.label,
     heading: page.heading, intro: page.intro, action: page.action, blocks: page.blocks,
   }));
 }
@@ -174,7 +292,25 @@ await writeFile(homePath, original.replace(/<!-- seo:head:start -->[\s\S]*?<!-- 
 // No invented modification dates: regenerate from the actual page list.
 await writeFile(`${publicDir}sitemap.xml`, `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${[home, ...pages].map((page) => `  <url><loc>${url(page.path)}</loc></url>`).join('\n')}
+${[home, ...indexed].map((page) => `  <url><loc>${url(page.path)}</loc></url>`).join('\n')}
 </urlset>
 `);
-console.log(`Built ${pages.length} information pages, homepage metadata, and sitemap.`);
+
+// A plain-text summary for AI search and answer engines (llmstxt.org).
+await writeFile(`${publicDir}llms.txt`, `# RydAR
+
+> RydAR (rydar.org) is a free map of ${statewide.total.toLocaleString('en-US')} curves on Arkansas roads in all ${statewide.counties} counties, and an iPhone app that speaks a suggested speed before tight curves ("Slow to 25 mph for the curve ahead."). The suggested speed comes from V = √(15 · R · (e + f)) and is separate from posted speed limits.
+
+- Map: works in any browser, no account. Pick a county, search a road, tap a curve for its radius, turn angle, and suggested speed.
+- iPhone app: free beta on TestFlight (${site.beta}). The curve database is built in. Driver mode and Teen driver mode.
+- Source code: ${site.source}
+
+## Pages
+
+${[home, ...pages].map((page) => `- [${page.title}](${url(page.path)}): ${page.description}`).join('\n')}
+
+## Curvy roads by county
+
+${counties.map((county) => `- [${county.name} County](${url(county.path)}): ${county.total.toLocaleString('en-US')} curves`).join('\n')}
+`);
+console.log(`Built ${pages.length} information pages, ${generated.length} county pages, homepage metadata, sitemap, and llms.txt.`);
