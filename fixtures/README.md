@@ -12,22 +12,22 @@ The script plays the GPX with `simctl location start`, at 10 m/s and one fix per
 
 `old-wire-approach.expect.json` records the target, the mode, and the sentence. On a pass, expect one prompt for this curve, exactly "Slow to 11 mph for the curve ahead." End the trip once. The pass shows on Review. Run it again as a Teen driver and expect the same spoken line, with no camera. Sharing follows the same switch as any other trip. A replay of a finished trip stays on the phone.
 
-## Showcase route: Hayden Rd
+## Showcase route: Haden Rd
 
-`hayden-rd-part1.gpx` and `hayden-rd-part2.gpx` follow the Arkansas GIS Office centerline of Hayden Rd, Benton County, south to north. The eight bundled curves on this road lie within 1 m of that line. The route is the real road, with no invented segments. It is meant for screenshots and screen recordings, and the replay never uploads.
+`haden-rd.gpx` follows the Arkansas GIS Office centerline of Haden Rd, Benton County (unpaved), south to north, for 2.15 km through all four bundled curves on the road (`007-517-1496`, `1495`, `1492`, `1491`). They lie within 1 m of that line. The route is the real road, with no invented segments. It is meant for screenshots and screen recordings, and the replay never uploads.
 
-| Part | Length | What it shows | Expected warnings at 20 m/s (45 mph) |
-|---|---|---|---|
-| `part1` | 1.3 km | Two tight bends, about 90 degrees each | "Slow to 17 mph for the curve ahead." then "Slow to 16 mph for the curve ahead." |
-| `part2` | 1.9 km | Three bends in 350 m, then two more | "Slow to 24 mph…", "Slow to 16 mph…", "Curves ahead for the next 950 feet, keep it under 24 mph.", then "Curves ahead for the next 850 feet, keep it under 25 mph." |
-
-Park the simulator at the start, then replay:
+Park the simulator at the start, then replay (about 2.5 minutes at 15 m/s, 33 mph):
 
 ```sh
-xcrun simctl location booted set 36.45810,-94.12321   # part1 start
-bash fixtures/run-showcase.sh part1
-xcrun simctl location booted set 36.47973,-94.11445   # part2 start
-bash fixtures/run-showcase.sh part2
+xcrun simctl location booted set 36.22993,-94.28554
+bash fixtures/run-showcase.sh
 ```
 
-Those lines come from running the app's own `TripMatcher` over the route, one fix per second, as Driver, tire answer "Not sure", camera check off. They are the contract for the replay. Speech is audible from the Mac but is not part of a `simctl recordVideo` capture; the advisory also shows on the drive screen. Live Activities only appear once the app leaves the foreground (Home, or lock the simulator with ⌘L).
+Expected spoken lines, from running the app's own `TripMatcher` over the route at 15 m/s, one fix per second, as Driver, tire answer "Not sure", camera check off:
+
+1. "Slow to 10 mph for the curve ahead." (R 99 ft gravel bend)
+2. "Slow to 17 mph for the curve ahead." (the gentler 248 ft bend right after it)
+3. "Slow to 13 mph for the curve ahead." (R 150 ft)
+4. "Slow to 12 mph for the curve ahead." (R 136 ft)
+
+Speech is audible from the Mac but is not part of a `simctl recordVideo` capture; the advisory also shows on the drive screen. Live Activities only appear once the app leaves the foreground (Home, or lock the simulator with ⌘L).
