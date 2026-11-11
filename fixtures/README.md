@@ -11,3 +11,7 @@ bash fixtures/run-gpx.sh
 The script plays the GPX with `simctl location start`, at 10 m/s and one fix per second, about 50 seconds. Pass a simulator UUID as the first argument when more than one simulator is booted. Stop with `xcrun simctl location booted clear`. In Xcode, the same file is under Debug → Simulate Location. The script is what sets the speed and the fix interval.
 
 `old-wire-approach.expect.json` records the target, the mode, and the sentence. On a pass, expect one prompt for this curve, exactly "Slow to 11 mph for the curve ahead." End the trip once. The pass shows on Review. Run it again as a Teen driver and expect the same spoken line, with no camera. Sharing follows the same switch as any other trip. A replay of a finished trip stays on the phone.
+
+## Showcase route
+
+`scenic-dr-showcase.gpx` chains 14 real bundled curves on Scenic Dr, Benton County (`007-609-1747` through `007-609-1763`) into a 2.6 km drive with tight and gentle bends, back-to-back stretches, and long gaps. The curve vertices are exact database coordinates. The lead-in, the connectors between curves, and the tail are synthetic. Run it with `bash fixtures/run-showcase.sh` (speed in m/s, default 16, about 2:40). It is meant for screenshots and screen recordings. It is not a surveyed route and the replay never uploads.
