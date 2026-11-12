@@ -5,7 +5,8 @@ const fmt = (n) => n.toLocaleString('en-US');
 export const site = {
   origin: 'https://rydar.org',
   name: 'RydAR',
-  beta: 'https://testflight.apple.com/join/WRKVeXwc',
+  appStore: 'https://apps.apple.com/us/app/rydar-safe-driving/id6827042655',
+  appStoreId: '6827042655',
   source: 'https://github.com/aravhawk/RydAR',
   // Spellings and descriptions people use when they search for the product itself.
   alternateNames: ['Rydar', 'RydAR: Safe Driving', 'RydAR Arkansas', 'RydAR Curve Map', 'RydAR app'],
@@ -59,11 +60,11 @@ export const pages = [
   {
     path: '/iphone-app',
     title: 'RydAR for iPhone: Curve Warning App for Arkansas Roads',
-    description: 'RydAR is a free iPhone app that speaks a suggested speed before tight curves on Arkansas roads. Curve data built in, plus a Teen driver mode. Join the beta.',
+    description: 'RydAR is a free iPhone app that speaks a suggested speed before tight curves on Arkansas roads. Curve data built in, plus a Teen driver mode.',
     heading: 'A heads-up for the next bend.',
     label: 'RydAR for iPhone',
     intro: 'RydAR speaks a suggested speed before tight curves in Arkansas.',
-    action: ['Join the free beta', site.beta],
+    action: ['Download on the App Store', site.appStore],
     blocks: [
       { type: 'tiles', items: [
         ['speaker', 'Spoken warnings', '“Slow to 25 mph for the curve ahead.”'],
@@ -72,14 +73,14 @@ export const pages = [
         ['person', 'Teen driver mode', 'Spoken warnings and two buzzes. No screen, no camera.'],
       ] },
       { type: 'faq', items: [
-        ['Is RydAR free?', 'Yes. The beta is free on TestFlight, with no account and no ads.'],
+        ['Is RydAR free?', 'Yes. RydAR is a free download on the App Store, with no account and no ads.'],
         ['Does it need a cell signal?', 'No. The Arkansas curve database ships inside the app, so warnings don’t wait on the network.'],
         ['Does it work outside Arkansas?', 'Curve warnings cover Arkansas roads for now. A trip that leaves the state keeps running and says it has no curve data there.'],
         ['Is the suggested speed a speed limit?', 'No. It is a computed range for the bend, separate from any posted sign. <a href="/how-it-works">How it works</a>.'],
         ['Is it good for teen drivers?', 'Teen driver mode speaks the same curve warnings and buzzes twice before each one, with no screen to look at and no camera.'],
         ['Is there an Android app?', 'RydAR is an iPhone app. The <a href="/arkansas-curve-map">curve map</a> works in any browser, including on Android.'],
       ] },
-      { type: 'note', text: 'Free on TestFlight. Set up while parked.' },
+      { type: 'note', text: 'Free on the App Store. Set up while parked.' },
     ],
   },
   {

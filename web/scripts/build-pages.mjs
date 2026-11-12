@@ -1,4 +1,5 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { home, pages, site } from '../content/pages.mjs';
 import { countyPages, counties, statewide, FRICTION } from '../content/counties.mjs';
@@ -18,7 +19,7 @@ function metadata(page) {
   const graph = [
     {
       '@type': 'Organization', ...ref('org'), name: site.name, alternateName: site.alternateNames,
-      url: url('/'), logo, image: logo, slogan: site.slogan, sameAs: [site.source],
+      url: url('/'), logo, image: logo, slogan: site.slogan, sameAs: [site.source, site.appStore],
       description: 'RydAR makes a free Arkansas curve map and an iPhone app that speaks a suggested speed before tight curves.',
     },
     {
@@ -57,10 +58,11 @@ function metadata(page) {
   if (page.path === '/' || page.path === '/iphone-app') {
     graph.push({
       '@type': 'MobileApplication', ...ref('app'), name: site.name, alternateName: 'RydAR: Safe Driving',
-      url: url('/iphone-app'), description: 'An iPhone app that speaks a suggested speed before tight curves on Arkansas roads, available as a free TestFlight beta.',
-      applicationCategory: 'TravelApplication', operatingSystem: 'iOS',
+      url: url('/iphone-app'), description: 'An iPhone app that speaks a suggested speed before tight curves on Arkansas roads, available as a free download on the App Store.',
+      applicationCategory: 'TravelApplication', operatingSystem: 'iOS 17.0 or later', isAccessibleForFree: true,
+      contentRating: '4+', datePublished: '2026-11-11', sameAs: site.appStore, countriesSupported: 'US',
       featureList: ['Spoken curve warnings', 'Suggested curve speeds', 'Built-in Arkansas curve database', 'Teen driver mode', 'Optional camera road-surface check'],
-      installUrl: site.beta, downloadUrl: site.beta, image: ogImage, publisher: ref('org'),
+      installUrl: site.appStore, downloadUrl: site.appStore, image: ogImage, publisher: ref('org'),
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
     });
   }
@@ -90,6 +92,7 @@ function metadata(page) {
   <meta name="application-name" content="RydAR">
   <meta name="apple-mobile-web-app-title" content="RydAR">
   <meta name="theme-color" content="#062e38">
+  <meta name="apple-itunes-app" content="app-id=${site.appStoreId}">
   <meta name="geo.region" content="US-AR">
   <link rel="canonical" href="${url(page.path)}">
   <link rel="manifest" href="/manifest.webmanifest">
@@ -230,7 +233,7 @@ const block = (item) => {
 const footerLinks = (current) => [['/', 'Map'], ...pages.map((page) => [page.path, page.label])]
   .filter(([path]) => path !== current)
   .map(([path, label]) => `<a href="${path}">${label}</a>`)
-  .concat(`<a href="${site.source}">GitHub</a>`)
+  .concat(`<a href="${site.appStore}" rel="noopener">RydAR on the App Store</a>`, `<a href="${site.source}">GitHub</a>`)
   .join('');
 
 const shell = ({ head, current, parents = [], crumb, heading, intro, action, blocks }) => `<!DOCTYPE html>
@@ -289,10 +292,30 @@ if (!original.includes('<!-- seo:head:start -->') || !original.includes('<!-- se
 }
 await writeFile(homePath, original.replace(/<!-- seo:head:start -->[\s\S]*?<!-- seo:head:end -->/, metadata(home)));
 
-// No invented modification dates: regenerate from the actual page list.
+// Modification dates come from real history: the last commit that touched a page (and, for the
+// map pages, the curve data), or today for files with uncommitted changes. Where git history is
+// unavailable (a source upload or a shallow clone), keep the dates already in the committed sitemap.
+const git = (...args) => execFileSync('git', args, { cwd: publicDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+let history = true;
+try { history = git('rev-parse', '--is-shallow-repository') === 'false'; } catch { history = false; }
+const previous = new Map();
+try {
+  for (const [, loc, date] of (await readFile(`${publicDir}sitemap.xml`, 'utf8')).matchAll(/<loc>(.*?)<\/loc>(?:<lastmod>(.*?)<\/lastmod>)?/g)) if (date) previous.set(loc, date);
+} catch {}
+const today = new Date().toISOString().slice(0, 10);
+const pageFile = (page) => `${page.path === '/' ? 'index' : page.path.slice(1)}.html`;
+const lastmod = (page) => {
+  if (!history) return previous.get(url(page.path));
+  const files = [pageFile(page), ...(page.path === '/' || page.path === '/arkansas-curve-map' ? ['data'] : [])];
+  try {
+    if (git('status', '--porcelain', '--', ...files)) return today;
+    return git('log', '-1', '--format=%cs', '--', ...files) || previous.get(url(page.path));
+  } catch { return previous.get(url(page.path)); }
+};
+const entry = (page) => { const date = lastmod(page); return `  <url><loc>${url(page.path)}</loc>${date ? `<lastmod>${date}</lastmod>` : ''}</url>`; };
 await writeFile(`${publicDir}sitemap.xml`, `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${[home, ...indexed].map((page) => `  <url><loc>${url(page.path)}</loc></url>`).join('\n')}
+${[home, ...indexed].map(entry).join('\n')}
 </urlset>
 `);
 
@@ -302,7 +325,7 @@ await writeFile(`${publicDir}llms.txt`, `# RydAR
 > RydAR (rydar.org) is a free map of ${statewide.total.toLocaleString('en-US')} curves on Arkansas roads in all ${statewide.counties} counties, and an iPhone app that speaks a suggested speed before tight curves ("Slow to 25 mph for the curve ahead."). The suggested speed comes from V = √(15 · R · (e + f)) and is separate from posted speed limits.
 
 - Map: works in any browser, no account. Pick a county, search a road, tap a curve for its radius, turn angle, and suggested speed.
-- iPhone app: free beta on TestFlight (${site.beta}). The curve database is built in. Driver mode and Teen driver mode.
+- iPhone app: free on the App Store (${site.appStore}). The curve database is built in. Driver mode and Teen driver mode.
 - Source code: ${site.source}
 
 ## Pages

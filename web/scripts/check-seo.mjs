@@ -33,6 +33,9 @@ for (const page of entries) {
   assert.equal(description, page.description);
   assert(!descriptions.has(description), `Duplicate description: ${page.path}`);
   descriptions.add(description);
+  assert(html.includes(`<meta name="apple-itunes-app" content="app-id=${site.appStoreId}">`), `${page.path}: missing Smart App Banner`);
+  assert(html.includes(site.appStore), `${page.path}: missing App Store link`);
+  assert.doesNotMatch(html, /testflight/i, `${page.path}: TestFlight reference`);
   const canonical = html.match(/<link rel="canonical" href="([^"]+)"/g) || [];
   assert.equal(canonical.length, 1);
   assert(canonical[0].includes(`href="${site.origin}${page.path}"`), `${page.path}: canonical mismatch`);
@@ -101,6 +104,9 @@ while (queue.length) {
 assert.deepEqual(reached, knownPaths);
 const sitemap = await readFile(`${publicDir}sitemap.xml`, 'utf8');
 assert(sitemap.includes('xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"'));
+for (const [, date] of sitemap.matchAll(/<lastmod>(.*?)<\/lastmod>/g)) {
+  assert(/^\d{4}-\d{2}-\d{2}$/.test(date) && date <= new Date().toISOString().slice(0, 10), `Bad sitemap lastmod: ${date}`);
+}
 assert.deepEqual(new Set([...sitemap.matchAll(/<loc>(.*?)<\/loc>/g)].map((match) => match[1])), new Set(entries.map((page) => `${site.origin}${page.path}`)));
 const robots = await readFile(`${publicDir}robots.txt`, 'utf8');
 assert(robots.includes(`Sitemap: ${site.origin}/sitemap.xml`));

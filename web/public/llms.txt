@@ -3,14 +3,14 @@
 > RydAR (rydar.org) is a free map of 153,328 curves on Arkansas roads in all 75 counties, and an iPhone app that speaks a suggested speed before tight curves ("Slow to 25 mph for the curve ahead."). The suggested speed comes from V = √(15 · R · (e + f)) and is separate from posted speed limits.
 
 - Map: works in any browser, no account. Pick a county, search a road, tap a curve for its radius, turn angle, and suggested speed.
-- iPhone app: free beta on TestFlight (https://testflight.apple.com/join/WRKVeXwc). The curve database is built in. Driver mode and Teen driver mode.
+- iPhone app: free on the App Store (https://apps.apple.com/us/app/rydar-safe-driving/id6827042655). The curve database is built in. Driver mode and Teen driver mode.
 - Source code: https://github.com/aravhawk/RydAR
 
 ## Pages
 
 - [RydAR: Arkansas Curve Map & Curve Warning App for iPhone](https://rydar.org/): RydAR maps 153,328 curves on Arkansas roads, with a suggested speed for each. Find curvy roads by county, or get spoken curve warnings on iPhone.
 - [Arkansas Curve Map: Curvy Roads in All 75 Counties | RydAR](https://rydar.org/arkansas-curve-map): A free map of 153,328 curves on Arkansas roads in all 75 counties. Find curvy roads and sharp bends by county, with a suggested speed for each.
-- [RydAR for iPhone: Curve Warning App for Arkansas Roads](https://rydar.org/iphone-app): RydAR is a free iPhone app that speaks a suggested speed before tight curves on Arkansas roads. Curve data built in, plus a Teen driver mode. Join the beta.
+- [RydAR for iPhone: Curve Warning App for Arkansas Roads](https://rydar.org/iphone-app): RydAR is a free iPhone app that speaks a suggested speed before tight curves on Arkansas roads. Curve data built in, plus a Teen driver mode.
 - [How RydAR Calculates a Safe Curve Speed | RydAR](https://rydar.org/how-it-works): How RydAR finds curves in Arkansas road data, calculates a suggested curve speed from radius, banking, and friction, and times each warning.
 - [Curve Speed Calculator: Safe Speed from Radius | RydAR](https://rydar.org/curve-speed-calculator): Free curve speed calculator. Enter a curve’s radius to get a suggested safe speed in mph for paved or unpaved roads, from V = √(15R(e + f)).
 - [RydAR Privacy Policy | Camera, Location & Anonymous Sharing](https://rydar.org/data-and-privacy): RydAR’s privacy policy: what the iPhone app and Arkansas curve map collect, how anonymous curve passes are signed and kept, and how to turn sharing off.
