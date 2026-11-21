@@ -16,6 +16,6 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",
-    "hono": "^4.13.14"
+    "hono": "^4.13.19"
   }
 }
