@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { access, readFile } from 'node:fs/promises';
+import { access, readFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { home, pages, site } from '../content/pages.mjs';
 import { countyPages } from '../content/counties.mjs';
@@ -14,6 +14,7 @@ const titles = new Set();
 const descriptions = new Set();
 const links = new Map();
 const htmlByPath = new Map();
+const imageOwner = new Map();
 
 for (const page of entries) {
   const html = await readFile(`${publicDir}${page.path === '/' ? 'index' : page.path.slice(1)}.html`, 'utf8');
@@ -44,6 +45,40 @@ for (const page of entries) {
     const actual = decode(html.match(new RegExp(`<meta property="${key}" content="([^"]+)"`))[1]);
     assert.equal(actual, value);
   }
+  // Social previews: every Open Graph and Twitter tag, and the image file those tags point at.
+  const tag = (attr, key) => {
+    const found = html.match(new RegExp(`<meta ${attr}="${key}" content="([^"]*)"`));
+    assert(found, `${page.path}: missing ${key}`);
+    return decode(found[1]);
+  };
+  assert.equal(tag('property', 'og:type'), 'website');
+  assert.equal(tag('property', 'og:site_name'), 'RydAR');
+  assert.equal(tag('property', 'og:locale'), 'en_US');
+  assert.equal(tag('name', 'twitter:card'), 'summary_large_image');
+  assert.equal(tag('name', 'twitter:title'), title);
+  assert.equal(tag('name', 'twitter:description'), description);
+  const image = tag('property', 'og:image');
+  assert.equal(image, page.card ? `${site.origin}/og/${page.path.split('/').pop()}.png` : `${site.origin}/og-image.png`, `${page.path}: unexpected social image`);
+  assert.equal(tag('name', 'twitter:image'), image);
+  assert.equal(tag('property', 'og:image:type'), 'image/png');
+  assert.equal(tag('property', 'og:image:width'), '1200');
+  assert.equal(tag('property', 'og:image:height'), '630');
+  const alt = tag('property', 'og:image:alt');
+  assert(alt.length >= 20 && alt.length <= 420, `${page.path}: og:image:alt is ${alt.length} characters`);
+  assert.equal(tag('name', 'twitter:image:alt'), alt);
+  assert(!imageOwner.has(image) || image.endsWith('/og-image.png'), `${page.path}: shares its social image with ${imageOwner.get(image)}`);
+  imageOwner.set(image, page.path);
+  const png = await readFile(`${publicDir}${image.slice(site.origin.length + 1)}`);
+  assert.equal(png.subarray(1, 4).toString(), 'PNG', `${image}: not a PNG`);
+  assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [1200, 630], `${image}: must be 1200x630`);
+  assert(png.length < 300 * 1024, `${image}: ${png.length} bytes is heavy for a preview`);
+  // Copy rules for everything a crawler or a feed shows.
+  for (const text of [title, description, alt]) assert.doesNotMatch(text, /\u2014/, `${page.path}: no em dashes in metadata`);
+  // Head tags that stand in for a framework's metadata API: icons, manifest, theme color, one language.
+  for (const required of ['<link rel="icon" href="/favicon.ico"', '<link rel="icon" href="/logo.svg"', '<link rel="apple-touch-icon" href="/apple-touch-icon.png">', '<link rel="manifest" href="/manifest.webmanifest">', '<meta name="theme-color" content="#062e38">', '<meta name="viewport"']) {
+    assert(html.includes(required), `${page.path}: missing ${required}`);
+  }
+  assert.doesNotMatch(html, /hreflang/, `${page.path}: the site is English only, so it has no hreflang`);
   const data = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)?.[1] || 'null');
   assert.equal(data['@context'], 'https://schema.org');
   const graph = data['@graph'];
@@ -52,6 +87,7 @@ for (const page of entries) {
   const webPage = graph.find((node) => isType(node, 'WebPage'));
   assert.equal(webPage.url, `${site.origin}${page.path}`);
   assert.equal(webPage.name, title);
+  assert.equal(webPage.primaryImageOfPage.url, image, `${page.path}: JSON-LD image must match og:image`);
   if (page.path !== '/') {
     const crumbs = graph.find((node) => isType(node, 'BreadcrumbList')).itemListElement;
     assert.equal(crumbs.at(-1).item, webPage.url);
@@ -122,6 +158,32 @@ for (const page of [...pages, ...generated]) {
 }
 assert(!new RegExp(route.src).test('/arkansas-curve-map/nowhere-county'), 'Unknown county pages must reach the 404');
 assert((await readFile(`${publicDir}llms.txt`, 'utf8')).startsWith('# RydAR'));
+// The social cards on disk are exactly the ones pages point at; none are left over from removed pages.
+assert.deepEqual(
+  (await readdir(`${publicDir}og`)).sort(),
+  entries.filter((page) => page.card).map((page) => `${page.path.split('/').pop()}.png`).sort(),
+  'public/og holds a card for every page that has one, and nothing else',
+);
+// The web app manifest: installable (192 and 512 PNGs, one maskable) and every icon real.
+const manifest = JSON.parse(await readFile(`${publicDir}manifest.webmanifest`, 'utf8'));
+assert.equal(manifest.theme_color, '#062e38');
+assert.equal(manifest.start_url, '/');
+assert.equal(manifest.lang, 'en-US');
+assert(manifest.id && manifest.scope, 'manifest needs an id and a scope');
+for (const icon of manifest.icons) {
+  const file = await readFile(`${publicDir}${icon.src.slice(1)}`);
+  if (icon.type === 'image/png') {
+    const [w, h] = [file.readUInt32BE(16), file.readUInt32BE(20)];
+    assert.equal(`${w}x${h}`, icon.sizes, `${icon.src}: declared ${icon.sizes}`);
+  }
+}
+for (const size of ['192x192', '512x512']) assert(manifest.icons.some((icon) => icon.sizes === size && icon.type === 'image/png' && (icon.purpose || 'any') === 'any'), `manifest needs a ${size} PNG icon`);
+assert(manifest.icons.some((icon) => icon.purpose === 'maskable' && icon.type === 'image/png'), 'manifest needs a maskable icon');
+assert((await readFile(`${publicDir}icons/icon-512.png`)).readUInt32BE(16) === 512);
+// A missing page must not be indexed or claim a canonical address.
+const notFound = await readFile(`${publicDir}404.html`, 'utf8');
+assert.match(notFound, /<meta name="robots" content="noindex">/);
+assert.doesNotMatch(notFound, /rel="canonical"/);
 assert.equal(config.outputDirectory, 'public');
 assert(!config.rewrites, 'Do not mask missing pages or API endpoints with a homepage rewrite');
-console.log(`SEO checks passed: ${entries.length} crawlable pages (${generated.length} county pages), unique metadata, JSON-LD, FAQs, canonicals, links, anchors, assets, routes, sitemap, robots.txt, and llms.txt.`);
+console.log(`SEO checks passed: ${entries.length} crawlable pages (${generated.length} county pages), unique metadata, Open Graph and Twitter cards, social images, JSON-LD, FAQs, canonicals, icons, manifest, links, anchors, assets, routes, sitemap, robots.txt, and llms.txt.`);

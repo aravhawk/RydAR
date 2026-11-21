@@ -1,8 +1,10 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, readdir, rm } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { home, pages, site } from '../content/pages.mjs';
 import { countyPages, counties, statewide, FRICTION } from '../content/counties.mjs';
+import { renderCard, cardAlt, WIDTH, HEIGHT } from './og-card.mjs';
+import { ICONS, renderIcon } from './icons.mjs';
 
 const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
 const escape = (value) => value.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
@@ -10,12 +12,19 @@ const plain = (html) => html.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
 const url = (path) => `${site.origin}${path}`;
 const ref = (id) => ({ '@id': url(`/#${id}`) });
 const logo = { '@type': 'ImageObject', url: url('/apple-touch-icon.png'), width: 180, height: 180 };
-const ogImage = { '@type': 'ImageObject', url: url('/og-image.png'), width: 1200, height: 630 };
+const ogImage = { '@type': 'ImageObject', url: url('/og-image.png'), width: WIDTH, height: HEIGHT };
+// Pages with a `card` get their own social image (/og/<last path segment>.png, drawn by og-card.mjs);
+// the homepage keeps the brand image, og-image.png.
+const cardFile = (page) => `og/${page.path.split('/').pop()}.png`;
+const socialImage = (page) => (page.card
+  ? { url: url(`/${cardFile(page)}`), alt: cardAlt(page.card) }
+  : { url: ogImage.url, alt: 'RydAR: Safe Driving, with the RydAR logo beside a bending road.' });
 const arkansas = { '@type': 'State', name: 'Arkansas', containedInPlace: { '@type': 'Country', name: 'United States' } };
 const countyPlace = (name) => ({ '@type': 'AdministrativeArea', name: `${name} County, Arkansas`, containedInPlace: arkansas });
 
 function metadata(page) {
   const faq = page.blocks?.find((item) => item.type === 'faq');
+  const social = socialImage(page);
   const graph = [
     {
       '@type': 'Organization', ...ref('org'), name: site.name, alternateName: site.alternateNames,
@@ -31,7 +40,7 @@ function metadata(page) {
       name: page.title, description: page.description, inLanguage: 'en-US',
       isPartOf: ref('website'), publisher: ref('org'),
       about: page.county ? countyPlace(page.county) : ref(page.path === '/iphone-app' ? 'app' : 'org'),
-      primaryImageOfPage: ogImage,
+      primaryImageOfPage: { '@type': 'ImageObject', url: social.url, width: WIDTH, height: HEIGHT },
       ...(page.path === '/' ? { mainEntity: ref('map') } : { breadcrumb: { '@id': `${url(page.path)}#breadcrumb` } }),
       ...(faq ? { mainEntity: faq.items.map(([question, answer]) => ({
         '@type': 'Question', name: question, acceptedAnswer: { '@type': 'Answer', text: plain(answer) },
@@ -102,16 +111,16 @@ function metadata(page) {
   <meta property="og:title" content="${escape(page.title)}">
   <meta property="og:description" content="${escape(page.description)}">
   <meta property="og:url" content="${url(page.path)}">
-  <meta property="og:image" content="${url('/og-image.png')}">
+  <meta property="og:image" content="${social.url}">
   <meta property="og:image:type" content="image/png">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="RydAR: Safe Driving, with the RydAR logo beside a bending road.">
+  <meta property="og:image:width" content="${WIDTH}">
+  <meta property="og:image:height" content="${HEIGHT}">
+  <meta property="og:image:alt" content="${escape(social.alt)}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${escape(page.title)}">
   <meta name="twitter:description" content="${escape(page.description)}">
-  <meta name="twitter:image" content="${url('/og-image.png')}">
-  <meta name="twitter:image:alt" content="RydAR: Safe Driving, with the RydAR logo beside a bending road.">
+  <meta name="twitter:image" content="${social.url}">
+  <meta name="twitter:image:alt" content="${escape(social.alt)}">
   <script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@graph': graph }).replaceAll('<', '\\u003c')}</script>
   <!-- seo:head:end -->`;
 }
@@ -272,12 +281,24 @@ const generated = countyPages();
 const indexed = [...pages, ...generated];
 
 await mkdir(`${publicDir}arkansas-curve-map`, { recursive: true });
+await mkdir(`${publicDir}og`, { recursive: true });
 for (const page of indexed) {
   await write(`${page.path.slice(1)}.html`, shell({
     head: metadata(page), current: page.path, parents: page.parents, crumb: page.label,
     heading: page.heading, intro: page.intro, action: page.action, blocks: page.blocks,
   }));
 }
+
+// One social card per page that has one. Cards for pages that no longer exist are removed.
+const cards = indexed.filter((page) => page.card);
+for (const page of cards) await writeFile(`${publicDir}${cardFile(page)}`, renderCard(page.card));
+const current = new Set(cards.map((page) => cardFile(page).slice(3)));
+for (const name of await readdir(`${publicDir}og`)) if (!current.has(name)) await rm(`${publicDir}og/${name}`);
+
+// The manifest's PNG icons, drawn from the logo.
+const logoSVG = await readFile(`${publicDir}logo.svg`, 'utf8');
+await mkdir(`${publicDir}icons`, { recursive: true });
+for (const [name, size, maskable] of ICONS) await writeFile(`${publicDir}icons/${name}`, renderIcon(logoSVG, size, maskable));
 
 await write('404.html', shell({
   head: '<title>Page Not Found | RydAR</title>\n  <meta name="robots" content="noindex">',
@@ -336,4 +357,4 @@ ${[home, ...pages].map((page) => `- [${page.title}](${url(page.path)}): ${page.d
 
 ${counties.map((county) => `- [${county.name} County](${url(county.path)}): ${county.total.toLocaleString('en-US')} curves`).join('\n')}
 `);
-console.log(`Built ${pages.length} information pages, ${generated.length} county pages, homepage metadata, sitemap, and llms.txt.`);
+console.log(`Built ${pages.length} information pages, ${generated.length} county pages, ${cards.length} social cards, homepage metadata, sitemap, and llms.txt.`);
