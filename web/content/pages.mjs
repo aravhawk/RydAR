@@ -27,6 +27,8 @@ export const pages = [
     description: `A free map of ${fmt(statewide.total)} curves on Arkansas roads in all 75 counties. Find curvy roads and sharp bends by county, with a suggested speed for each.`,
     heading: 'Find the bends before you go.',
     label: 'Arkansas curve map',
+    // What the page's social card (public/og/*.png) says: a headline and a line beneath it. Arrays are lines broken by hand.
+    card: { title: 'Find the bends before you go.', sub: `${fmt(statewide.total)} curves in all ${statewide.counties} counties` },
     intro: 'A free map of curves on Arkansas roads, with a suggested speed for each.',
     action: ['Open the map', '/'],
     dataset: true,
@@ -63,6 +65,7 @@ export const pages = [
     description: 'RydAR is a free iPhone app that speaks a suggested speed before tight curves on Arkansas roads. Curve data built in, plus a Teen driver mode.',
     heading: 'A heads-up for the next bend.',
     label: 'RydAR for iPhone',
+    card: { title: 'A heads-up for the next bend.', sub: 'Spoken curve warnings for Arkansas roads' },
     intro: 'RydAR speaks a suggested speed before tight curves in Arkansas.',
     action: ['Download on the App Store', site.appStore],
     blocks: [
@@ -89,6 +92,7 @@ export const pages = [
     description: 'How RydAR finds curves in Arkansas road data, calculates a suggested curve speed from radius, banking, and friction, and times each warning.',
     heading: 'What goes into a curve warning.',
     label: 'How it works',
+    card: { title: 'What goes into a curve warning.', sub: ['Road shape, a simple formula,', 'and your position'] },
     intro: 'Road shape, a simple formula, and your position.',
     action: ['Open the map', '/'],
     blocks: [
@@ -113,6 +117,7 @@ export const pages = [
     description: 'Free curve speed calculator. Enter a curve’s radius to get a suggested safe speed in mph for paved or unpaved roads, from V = √(15R(e + f)).',
     heading: 'How fast for this curve?',
     label: 'Curve speed calculator',
+    card: { title: 'How fast for this curve?', sub: 'A suggested speed from a curve’s radius' },
     intro: 'Enter a bend’s radius for a suggested speed, from the same formula RydAR uses.',
     script: true,
     blocks: [
@@ -134,6 +139,7 @@ export const pages = [
     description: 'RydAR’s privacy policy: what the iPhone app and Arkansas curve map collect, how anonymous curve passes are signed and kept, and how to turn sharing off.',
     heading: 'What your drive shares.',
     label: 'Data and privacy',
+    card: { title: 'What your drive shares.', sub: ['Very little.', 'Here is exactly what.'] },
     intro: 'Very little. Here is exactly what, in the app and on this site.',
     blocks: [
       { type: 'tiles', items: [

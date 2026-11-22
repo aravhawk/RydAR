@@ -8,9 +8,10 @@
     "deploy": "vercel deploy --prod --yes",
     "build": "node scripts/build-pages.mjs && node scripts/check-seo.mjs",
     "check:seo": "node scripts/check-seo.mjs",
-    "test": "node --import ./test/ts-resolve.mjs --test test/*.test.ts"
+    "test": "node --import ./test/ts-resolve.mjs --test test/*.test.ts test/*.test.mjs"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "2.6.2",
     "@types/node": "26.6.6",
     "typescript": "5.9.3"
   },

@@ -186,6 +186,7 @@ export function countyPages() {
         ? `${fmt(county.total)} mapped curves on ${full}, Arkansas roads, ${fmt(county.paved)} paved and ${fmt(county.unpaved)} unpaved. See the curviest roads, the sharpest bends, and suggested speeds.`
         : `${fmt(county.total)} mapped curves on ${fmt(county.roads.size)} named roads in ${full}, Arkansas. See the curviest roads, the sharpest bends, and a suggested speed for each.`,
       heading: `Curvy roads in ${full}`,
+      card: { title: `${full}.`, sub: `${fmt(county.total)} mapped curves` },
       label: full,
       parents: [['/arkansas-curve-map', 'Arkansas curve map']],
       intro: `${fmt(county.total)} mapped bends on ${full}, Arkansas roads, each with a suggested speed.${surfaceKnown ? ` ${share}% are on unpaved roads.` : ''}`,
