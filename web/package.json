@@ -8,7 +8,9 @@
     "deploy": "vercel deploy --prod --yes",
     "build": "node scripts/build-pages.mjs && node scripts/check-seo.mjs",
     "check:seo": "node scripts/check-seo.mjs",
-    "test": "node --import ./test/ts-resolve.mjs --test test/*.test.ts test/*.test.mjs"
+    "test": "node --import ./test/ts-resolve.mjs --test test/*.test.ts test/*.test.mjs",
+    "start": "node dist/render.js",
+    "build:render": "npm run build && tsc -p tsconfig.render.json"
   },
   "devDependencies": {
     "@resvg/resvg-js": "2.6.2",
@@ -16,6 +18,7 @@
     "typescript": "5.9.3"
   },
   "dependencies": {
+    "@hono/node-server": "^2.1.11",
     "@neondatabase/serverless": "^1.2.0",
     "hono": "^4.13.19"
   }
